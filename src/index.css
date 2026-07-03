@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Page shell: centre the app card, phone-width on desktop. */
+html,
+body,
+#root {
+  height: 100%;
+}
+body {
+  margin: 0;
+  background: #efe6da;
+  -webkit-font-smoothing: antialiased;
+}
+#root {
+  display: grid;
+  place-items: start center;
+  padding: 16px;
+}
+#root > * {
+  width: 100%;
+  max-width: 480px;
+}
+
+/* Mascot motion — referenced by Ollie via Tailwind arbitrary animation utils. */
+@keyframes ollieBob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(2deg);
+  }
+}
+@keyframes olliePop {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.25) rotate(6deg);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ollie-anim {
+    animation: none !important;
+  }
+}
