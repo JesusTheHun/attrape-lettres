@@ -28,25 +28,34 @@ export function ShopItem({ option, owned, equipped, locked, affordable, onTap }:
   const disabled = locked || (!owned && !affordable);
   const minStage = option.minStage ?? 0;
 
-  const badge = locked
-    ? `🌱 niv. ${minStage + 1}`
-    : equipped
-      ? "Équipé ✓"
-      : owned
-        ? "À toi"
-        : affordable
-          ? `⭐ ${option.cost}`
-          : "pas encore";
+  const price = `⭐ ${option.cost}`;
+  // Only accessories come off by tapping; a colour/style is changed by picking
+  // another tile (its factory-look tile returns it to the original).
+  const removable = equipped && option.category === "accessory";
 
-  const stateLabel = locked
-    ? `à débloquer au niveau ${minStage + 1}`
-    : equipped
-      ? "équipé, appuie pour changer"
-      : owned
-        ? "à toi"
+  // Price is always shown until owned — even when unaffordable or growth-locked,
+  // so a kid can see what to save up for. Owned/equipped items drop the number.
+  const badge = equipped
+    ? removable
+      ? "Enlever ✕"
+      : "Équipé ✓"
+    : owned
+      ? "À toi"
+      : locked
+        ? `🌱 niv. ${minStage + 1} · ${price}`
+        : price;
+
+  const stateLabel = equipped
+    ? removable
+      ? "équipé, appuie pour enlever"
+      : "équipé"
+    : owned
+      ? "à toi"
+      : locked
+        ? `coûte ${option.cost} points, à débloquer au niveau ${minStage + 1}`
         : affordable
           ? `coûte ${option.cost} points`
-          : "pas encore assez de points";
+          : `coûte ${option.cost} points, pas encore assez`;
 
   // Colours show a swatch of their hex; everything else its emoji (or a spark).
   const thumb = option.emoji ?? (option.category === "color" ? null : "✨");

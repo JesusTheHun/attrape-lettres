@@ -20,9 +20,11 @@ function color(
   value: string,
   name: string,
   emoji: string,
-  cost: number
+  cost: number,
+  minStage?: number
 ): CustomizationOption {
-  return { id: `${species}.color.${slot}.${token}`, species, category: "color", slot, value, name, emoji, cost };
+  const base: CustomizationOption = { id: `${species}.color.${slot}.${token}`, species, category: "color", slot, value, name, emoji, cost };
+  return minStage === undefined ? base : { ...base, minStage };
 }
 
 function style(
@@ -31,9 +33,11 @@ function style(
   value: string,
   name: string,
   emoji: string,
-  cost: number
+  cost: number,
+  minStage?: number
 ): CustomizationOption {
-  return { id: `${species}.style.${slot}.${value}`, species, category: "style", slot, value, name, emoji, cost };
+  const base: CustomizationOption = { id: `${species}.style.${slot}.${value}`, species, category: "style", slot, value, name, emoji, cost };
+  return minStage === undefined ? base : { ...base, minStage };
 }
 
 function accessory(
@@ -60,13 +64,15 @@ export const CATALOG: CustomizationOption[] = [
   color("unicorn", U.body, "rose", "#FFD6E8", "Corps rose", "🌸", 18),
   color("unicorn", U.body, "ciel", "#DCEFFB", "Corps bleu ciel", "💧", 18),
   color("unicorn", U.body, "menthe", "#DDF3D8", "Corps menthe", "🌿", 18),
-  color("unicorn", U.horn, "rose", "#FF8FB1", "Corne rose", "🦄", 20),
-  color("unicorn", U.horn, "turquoise", "#7FD1D8", "Corne turquoise", "💠", 20),
+  // Horn only sprouts at stade 2 (nub) → 3 (real horn); gate horn recolours and
+  // the twist so nobody buys a look a hornless baby unicorn can't show.
+  color("unicorn", U.horn, "rose", "#FF8FB1", "Corne rose", "🦄", 20, 2),
+  color("unicorn", U.horn, "turquoise", "#7FD1D8", "Corne turquoise", "💠", 20, 2),
   color("unicorn", U.mane, "corail", "#FF8A65", "Crinière corail", "🔥", 22),
   color("unicorn", U.mane, "turquoise", "#7FD1D8", "Crinière turquoise", "🌊", 22),
   color("unicorn", U.tail, "menthe", "#AED581", "Queue menthe", "🍃", 20),
   style("unicorn", US.tail, "curly", "Queue bouclée", "🌀", 40),
-  style("unicorn", US.horn, "spiral", "Corne torsadée", "🐚", 45),
+  style("unicorn", US.horn, "spiral", "Corne torsadée", "🐚", 45, 3),
   accessory(ACCESSORY.unicorn.ribbon, "unicorn", "Nœud", "🎀", 45),
   accessory(ACCESSORY.unicorn.flowerCrown, "unicorn", "Couronne de fleurs", "🌸", 95, 2),
   accessory(ACCESSORY.unicorn.starClip, "unicorn", "Étoile scintillante", "✨", 200, 4),
@@ -75,10 +81,12 @@ export const CATALOG: CustomizationOption[] = [
   color("cat", CA.body, "gris", "#C9CCD6", "Pelage gris", "🩶", 18),
   color("cat", CA.body, "blanc", "#FFF3E6", "Pelage blanc", "🤍", 18),
   color("cat", CA.body, "noir", "#6A6A72", "Pelage noir", "🖤", 20),
-  color("cat", CA.belly, "rose", "#FFE1EC", "Ventre rose", "🌸", 16),
-  color("cat", CA.tail, "roux", "#E08A4E", "Queue rousse", "🦊", 18),
+  // Stade 0 is a curled sleeping loaf — belly and tail are tucked out of sight,
+  // so gate their looks until the kitten sits up at stade 1.
+  color("cat", CA.belly, "rose", "#FFE1EC", "Ventre rose", "🌸", 16, 1),
+  color("cat", CA.tail, "roux", "#E08A4E", "Queue rousse", "🦊", 18, 1),
   style("cat", CS.hair, "fluffy", "Poil touffu", "☁️", 40),
-  style("cat", CS.tail, "short", "Petite queue", "🐈", 32),
+  style("cat", CS.tail, "short", "Petite queue", "🐈", 32, 1),
   accessory(ACCESSORY.cat.bow, "cat", "Nœud", "🎀", 45),
   accessory(ACCESSORY.cat.bellCollar, "cat", "Collier grelot", "🔔", 55),
   accessory(ACCESSORY.cat.partyHat, "cat", "Chapeau de fête", "🎉", 200, 4),
@@ -97,3 +105,46 @@ export const CATALOG: CustomizationOption[] = [
   accessory(ACCESSORY.fox.beanie, "fox", "Bonnet", "🧢", 60),
   accessory(ACCESSORY.fox.boots, "fox", "Bottes", "🥾", 200, 4),
 ];
+
+/**
+ * The mascot's factory look per colour/style slot. Each `value` MUST match the
+ * corresponding `pick(..., fallback)` default in the species rig, so selecting
+ * it (which just clears the slot) reproduces exactly what a fresh mascot shows.
+ * Surfaced in the shop as an already-owned, NAMED tile — no "reset/default"
+ * wording — so a child can simply pick it to return to the original look.
+ * `minStage` mirrors the slot's part visibility so a default for a not-yet-grown
+ * part (unicorn horn, curled-kitten belly/tail) stays gated like its variants.
+ */
+export interface DefaultLook {
+  category: "color" | "style";
+  slot: string;
+  value: string;
+  name: string;
+  emoji?: string;
+  minStage?: number;
+}
+
+export const DEFAULT_LOOKS: Record<Species, DefaultLook[]> = {
+  unicorn: [
+    { category: "color", slot: U.body, value: "#F5ECFF", name: "Corps lilas" },
+    { category: "color", slot: U.horn, value: "#FFD54F", name: "Corne dorée", minStage: 2 },
+    { category: "color", slot: U.mane, value: "#BA9EE8", name: "Crinière parme" },
+    { category: "color", slot: U.tail, value: "#F49AC2", name: "Queue rose" },
+    { category: "style", slot: US.tail, value: "straight", name: "Queue lisse", emoji: "〰️" },
+    { category: "style", slot: US.horn, value: "smooth", name: "Corne lisse", emoji: "🔺", minStage: 2 },
+  ],
+  cat: [
+    { category: "color", slot: CA.body, value: "#F6A96B", name: "Pelage roux" },
+    { category: "color", slot: CA.belly, value: "#FFF3E4", name: "Ventre crème", minStage: 1 },
+    { category: "color", slot: CA.tail, value: "#F6A96B", name: "Queue assortie", minStage: 1 },
+    { category: "style", slot: CS.hair, value: "short", name: "Poil court", emoji: "🐱" },
+    { category: "style", slot: CS.tail, value: "long", name: "Grande queue", emoji: "🐈", minStage: 1 },
+  ],
+  fox: [
+    { category: "color", slot: FO.body, value: "#FF8A65", name: "Pelage roux" },
+    { category: "color", slot: FO.belly, value: "#FFFFFF", name: "Ventre blanc" },
+    { category: "color", slot: FO.tailTip, value: "#FFFFFF", name: "Bout blanc" },
+    { category: "style", slot: FS.fur, value: "plain", name: "Pelage uni", emoji: "🟠" },
+    { category: "style", slot: FS.tail, value: "long", name: "Grande queue", emoji: "🦊" },
+  ],
+};
