@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { GameFrame } from "../components/GameFrame";
-import { Ollie } from "../components/Ollie";
+import { EarnBadge } from "../components/EarnBadge";
+import { Mascot } from "../mascot/Mascot";
 import { Tile } from "../components/Tile";
 import { useAudio } from "../hooks/useAudio";
 import { useConfetti } from "../hooks/useConfetti";
@@ -12,7 +13,8 @@ import {
   syllableTier,
   type SyllableRound,
 } from "../levels";
-import type { Mood, SyllableMode, Verdict } from "../types";
+import { useProfile } from "../hooks/useProfile";
+import type { ExerciseId, Mood, SyllableMode, Verdict } from "../types";
 
 const TRAY_COLORS = [
   { bg: "#4FC3F7", ink: "#062E3D" },
@@ -23,6 +25,7 @@ const TRAY_COLORS = [
 ];
 
 interface Props {
+  exercise: ExerciseId;
   mode: SyllableMode;
   level: number;
   onBack: () => void;
@@ -33,10 +36,11 @@ interface Props {
  * changes how a round is *seeded* (buildSyllableRound); everything below —
  * slot assembly, forgiving picks, celebration — is shared.
  */
-export function AssembleExercise({ mode, level, onBack }: Props) {
+export function AssembleExercise({ exercise, mode, level, onBack }: Props) {
   const tier = useMemo(() => syllableTier(level), [level]);
   const audio = useAudio();
   const { canvasRef, fire } = useConfetti();
+  const { award, profile } = useProfile();
 
   const [session, setSession] = useState(() => shuffle(syllablePool(tier)).slice(0, tier.poolSize));
   const [idx, setIdx] = useState(0);
@@ -45,6 +49,7 @@ export function AssembleExercise({ mode, level, onBack }: Props) {
   const [used, setUsed] = useState<Set<number>>(new Set());
   const [mood, setMood] = useState<Mood>("idle");
   const [done, setDone] = useState(false);
+  const [earned, setEarned] = useState(0);
   const locked = useRef(false);
 
   const loadRound = useCallback(
@@ -106,6 +111,7 @@ export function AssembleExercise({ mode, level, onBack }: Props) {
           const nextIdx = idx + 1;
           if (nextIdx >= session.length) {
             setMood("cheer");
+            setEarned(award(exercise, level));
             setDone(true);
             audio.speak("Bravo ! Tu as tout réussi !");
           } else {
@@ -117,17 +123,17 @@ export function AssembleExercise({ mode, level, onBack }: Props) {
       }
       return "accept";
     },
-    [audio, fire, idx, loadRound, round, session, slots]
+    [audio, award, exercise, fire, idx, level, loadRound, round, session, slots]
   );
 
   return (
     <GameFrame onBack={onBack} done={idx} total={session.length} canvasRef={canvasRef}>
       {done ? (
-        <Finished onReplay={restart} count={session.length} />
+        <Finished onReplay={restart} count={session.length} earned={earned} />
       ) : (
         <div className="relative z-[41] flex w-full flex-1 flex-col items-center px-4 pb-8 pt-2">
           <p className="m-0 mb-1 text-base font-bold text-[#7A5A3A]">{MODE_HINT[mode]}</p>
-          <Ollie mood={mood} />
+          <Mascot config={profile.config} mood={mood} />
           <div style={{ fontSize: "clamp(64px,22vw,120px)", lineHeight: 1.1, margin: "2px 0" }}>
             {round.word.emoji}
           </div>
@@ -185,10 +191,19 @@ export function AssembleExercise({ mode, level, onBack }: Props) {
   );
 }
 
-function Finished({ onReplay, count }: { onReplay: () => void; count: number }) {
+function Finished({
+  onReplay,
+  count,
+  earned,
+}: {
+  onReplay: () => void;
+  count: number;
+  earned: number;
+}) {
   return (
     <div className="relative z-[41] flex flex-1 flex-col items-center justify-center gap-5 px-6 text-center">
-      <div style={{ fontSize: "clamp(72px,22vw,120px)", lineHeight: 1 }}>🤩</div>
+      <div style={{ fontSize: "clamp(64px,20vw,110px)", lineHeight: 1 }}>🤩</div>
+      <EarnBadge earned={earned} />
       <div className="flex gap-1">
         {Array.from({ length: count }).map((_, i) => (
           <span key={i} style={{ fontSize: 28 }}>⭐</span>

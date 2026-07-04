@@ -1,0 +1,184 @@
+import type { RigProps } from "./growth";
+import { mix, pick, ramp } from "./growth";
+import { COLOR_SLOT, STYLE_SLOT, ACCESSORY } from "./ids";
+import { Aura, Bow, Cheeks, Eyes, FoldedLegs, Leg, Mouth, Plume, Sparkles } from "./parts";
+
+/**
+ * Cat timeline:
+ *  curled-up newborn kitten (can't stand) → 1 lifting head → 2-6 each a distinct
+ *  beat (legs lengthen, ears grow & sharpen, tail carriage rises) → 7-8 lynx
+ *  ear-tufts + aura → 9 majestic cat: dramatically lush, glowing, fur-clump tail.
+ */
+
+export type Tuft = "none" | "small" | "big";
+export interface CSpec {
+  /** tail length/bushiness multiplier. */
+  tail: number;
+  tuft: Tuft;
+  aura: number;
+  sparkle: number;
+}
+
+export const C_STAGES: CSpec[] = [
+  { tail: 0.5, tuft: "none", aura: 0, sparkle: 0 }, // 0
+  { tail: 0.6, tuft: "none", aura: 0, sparkle: 0 }, // 1
+  { tail: 0.8, tuft: "none", aura: 0, sparkle: 0 }, // 2
+  { tail: 0.95, tuft: "none", aura: 0, sparkle: 0 }, // 3
+  { tail: 1.05, tuft: "none", aura: 0, sparkle: 0 }, // 4
+  { tail: 1.15, tuft: "none", aura: 0, sparkle: 0 }, // 5
+  { tail: 1.25, tuft: "small", aura: 0, sparkle: 0 }, // 6
+  { tail: 1.4, tuft: "small", aura: 0.35, sparkle: 2 }, // 7
+  { tail: 1.65, tuft: "big", aura: 0.75, sparkle: 3 }, // 8
+  { tail: 2.0, tuft: "big", aura: 1, sparkle: 5 }, // 9
+];
+
+const TUFT_LEN: Record<Tuft, number> = { none: 0, small: 4, big: 7 };
+
+export function Cat({ config, layout, stage, mood, uid, spec: specOverride }: RigProps & { spec?: CSpec }) {
+  const C = COLOR_SLOT.cat;
+  const S = STYLE_SLOT.cat;
+  const A = ACCESSORY.cat;
+  const body = pick(config.colors, C.body, "#F6A96B");
+  const belly = pick(config.colors, C.belly, "#FFF3E4");
+  const tailCol = pick(config.colors, C.tail, body);
+  const fluffy = pick(config.styles, S.hair, "short") === "fluffy";
+  const longTail = pick(config.styles, S.tail, "long") === "long";
+  const has = (id: string) => config.accessories.includes(id);
+  const furEdge = mix(body, "#FFFFFF", 0.34); // lighter fluff so scallops are visible
+
+  const spec = specOverride ?? C_STAGES[Math.max(0, Math.min(9, stage))];
+  const tailF = spec.tail * (longTail ? 1 : 0.62);
+  const raise = ramp(stage, [[0, 0], [2, 0.1], [4, 0.4], [6, 0.75], [9, 1]]);
+  const earScale = ramp(stage, [[0, 0.44], [2, 0.5], [4, 0.58], [6, 0.64], [9, 0.68]]);
+  const earPoint = ramp(stage, [[0, 0.6], [3, 0.85], [6, 1], [9, 1]]);
+  const { bodyCX, bodyCY, bodyRX, bodyRY, headCX, headCY, headR, neckX, neckY, eyeR } = layout;
+  const legW = 7;
+
+  // Lush fur-clump tail: BUSHINESS (rB) scales with age; reach stays bounded so
+  // the tail curls beside the body instead of flying off-canvas.
+  const tx = bodyCX + bodyRX * 0.72;
+  const ty = bodyCY + bodyRY * 0.02;
+  const cx1 = tx + 13 + 4 * raise;
+  const cy1 = ty - (4 + 11 * raise);
+  const tipX = tx + 8 + 6 * raise;
+  const tipY = ty - (10 + 24 * raise);
+  const rB = 3.2 + 4.9 * tailF;
+  const bez = (t: number): [number, number] => [
+    (1 - t) * (1 - t) * tx + 2 * (1 - t) * t * cx1 + t * t * tipX,
+    (1 - t) * (1 - t) * ty + 2 * (1 - t) * t * cy1 + t * t * tipY,
+  ];
+  const clumps = Array.from({ length: 7 }).map((_, i) => {
+    const t = i / 6;
+    const [px, py] = bez(t);
+    return { px, py, r: rB * (0.62 + 0.5 * Math.sin(Math.PI * (0.16 + 0.8 * t))) };
+  });
+
+  return (
+    <g>
+      {spec.aura > 0 && <Aura id={`${uid}-tailglow`} cx={tipX} cy={tipY} r={rB * 1.5} color="#FFE6B0" opacity={spec.aura} />}
+
+      {/* tail behind body — core + fur clumps + fluffy tip */}
+      <path d={`M${tx} ${ty} Q${cx1} ${cy1} ${tipX} ${tipY}`} fill="none" stroke={tailCol} strokeWidth={rB * 0.7} strokeLinecap="round" />
+      {clumps.map((b, i) => <circle key={`tc${i}`} cx={b.px} cy={b.py} r={b.r} fill={tailCol} />)}
+      {fluffy && clumps.filter((_, i) => i % 2 === 1).map((b, i) => <circle key={`tf${i}`} cx={b.px - b.r * 0.4} cy={b.py - b.r * 0.4} r={b.r * 0.5} fill={furEdge} />)}
+      <Plume x={tipX} y={tipY} color={tailCol} len={5 + 5 * tailF} wide={4 + 4 * tailF} rot={-12} n={4} />
+
+      {/* back legs */}
+      {layout.legs.filter((l) => l.back).map((l, i) => (
+        <Leg key={`b${i}`} spec={l} w={legW} color={body} hoof={body} />
+      ))}
+
+      {/* fluffy: lighter scalloped fur halo breaking the body outline */}
+      {fluffy &&
+        Array.from({ length: 16 }).map((_, i) => {
+          const a = (i / 16) * Math.PI * 2;
+          return <circle key={i} cx={bodyCX + Math.cos(a) * bodyRX * 1.02} cy={bodyCY + Math.sin(a) * bodyRY * 1.02} r={5.4} fill={furEdge} />;
+        })}
+
+      {/* body */}
+      <ellipse cx={bodyCX} cy={bodyCY} rx={bodyRX} ry={bodyRY} fill={body} />
+      <ellipse cx={bodyCX} cy={bodyCY + bodyRY * 0.28} rx={bodyRX * 0.6} ry={bodyRY * 0.62} fill={belly} />
+      {!layout.standing && <FoldedLegs bodyCX={bodyCX} bodyCY={bodyCY} bodyRX={bodyRX} color={body} hoof={belly} />}
+      <path d={`M${bodyCX} ${bodyCY - bodyRY * 0.5} L${headCX} ${headCY + headR * 0.4}`} stroke={body} strokeWidth={headR * 0.95} strokeLinecap="round" />
+
+      {/* front legs */}
+      {layout.legs.filter((l) => !l.back).map((l, i) => (
+        <Leg key={`f${i}`} spec={l} w={legW} color={body} hoof={body} />
+      ))}
+
+      {/* fluffy: lighter fur halo around the head */}
+      {fluffy &&
+        Array.from({ length: 12 }).map((_, i) => {
+          const a = (i / 12) * Math.PI * 2;
+          return <circle key={`hf${i}`} cx={headCX + Math.cos(a) * headR * 1.0} cy={headCY + Math.sin(a) * headR * 1.0} r={4.6} fill={furEdge} />;
+        })}
+
+      {/* head */}
+      <ellipse cx={headCX} cy={headCY} rx={headR} ry={headR} fill={body} />
+
+      {/* ears — grow & sharpen with age; rounded tip for babies */}
+      {([-1, 1] as const).map((d) => {
+        const ex = headCX + d * headR * 0.62;
+        const ey = headCY - headR * 0.58;
+        const th = headR * earScale;
+        const tipYe = ey - th;
+        const tipXe = ex + d * th * 0.35;
+        return (
+          <g key={d}>
+            <path d={`M${ex - d * headR * 0.02} ${ey} Q${tipXe - d * th * 0.1} ${tipYe} ${tipXe} ${tipYe + th * (1 - earPoint) * 0.2} Q${tipXe + d * th * 0.05} ${tipYe + 2} ${ex - d * headR * 0.6} ${ey - headR * 0.02} Z`} fill={body} />
+            <path d={`M${ex} ${ey - 1} L${tipXe - d * th * 0.05} ${tipYe + th * 0.28} L${ex - d * headR * 0.34} ${ey - headR * 0.02} Z`} fill="#FF9AA2" />
+            {TUFT_LEN[spec.tuft] > 0 && <Plume x={tipXe} y={tipYe + 1} color={body} len={TUFT_LEN[spec.tuft]} wide={2} rot={d * 12} n={2} />}
+          </g>
+        );
+      })}
+
+      {/* fluffy cheeks + head tuft (lighter, unmistakable) */}
+      {fluffy && (
+        <g>
+          {([-1, 1] as const).map((d) => (
+            <Plume key={d} x={headCX + d * headR * 0.92} y={headCY + headR * 0.2} color={furEdge} len={11} wide={7} rot={d * 74} n={4} />
+          ))}
+          <Plume x={headCX} y={headCY - headR * 0.92} color={furEdge} len={8} wide={7} rot={0} n={3} />
+        </g>
+      )}
+
+      {/* face */}
+      <Eyes cx={headCX} y={headCY} dx={headR * 0.4} r={eyeR} mood={mood} sleepy={stage === 0} />
+      <Cheeks cx={headCX} y={headCY + headR * 0.36} dx={headR * 0.58} r={headR * 0.14} />
+      <path d={`M${headCX - 2.4} ${headCY + headR * 0.3} L${headCX + 2.4} ${headCY + headR * 0.3} L${headCX} ${headCY + headR * 0.44} Z`} fill="#FF7C93" />
+      <Mouth cx={headCX} y={headCY + headR * 0.52} w={headR * 0.15} mood={mood} />
+      {([-1, 1] as const).map((d) => (
+        <g key={d} stroke="#B79A82" strokeWidth={0.8} strokeLinecap="round">
+          <line x1={headCX + d * headR * 0.35} y1={headCY + headR * 0.4} x2={headCX + d * headR} y2={headCY + headR * 0.3} />
+          <line x1={headCX + d * headR * 0.35} y1={headCY + headR * 0.48} x2={headCX + d * headR} y2={headCY + headR * 0.5} />
+        </g>
+      ))}
+
+      {/* accessories */}
+      {has(A.bellCollar) && (
+        <g>
+          <path d={`M${neckX - headR * 0.7} ${neckY} Q${neckX} ${neckY + 6} ${neckX + headR * 0.7} ${neckY}`} fill="none" stroke="#EF6F6C" strokeWidth={3.4} strokeLinecap="round" />
+          <circle cx={neckX} cy={neckY + 4} r={3} fill="#FFD54F" />
+          <circle cx={neckX} cy={neckY + 4} r={0.9} fill="#B98A22" />
+        </g>
+      )}
+      {has(A.bow) && <Bow x={headCX - headR * 0.5} y={headCY - headR * 0.82} s={0.95} color="#FF7EA8" />}
+      {has(A.partyHat) && (
+        <g>
+          <path d={`M${headCX} ${headCY - headR * 1.7} L${headCX - headR * 0.5} ${headCY - headR * 0.8} L${headCX + headR * 0.5} ${headCY - headR * 0.8} Z`} fill="#4FC3F7" />
+          <path d={`M${headCX - headR * 0.18} ${headCY - headR * 1.2} L${headCX + headR * 0.26} ${headCY - headR * 1.1} L${headCX + headR * 0.2} ${headCY - headR * 0.87} L${headCX - headR * 0.24} ${headCY - headR * 0.95} Z`} fill="#FFD54F" />
+          <circle cx={headCX} cy={headCY - headR * 1.73} r={2.6} fill="#FF8A65" />
+        </g>
+      )}
+
+      {spec.sparkle > 0 && (
+        <Sparkles
+          points={Array.from({ length: spec.sparkle }).map((_, i) => {
+            const a = (i / spec.sparkle) * Math.PI * 2 + 0.5;
+            return [bodyCX + Math.cos(a) * (bodyRX + 12), bodyCY + Math.sin(a) * (bodyRY + 8), 1.6 + (i % 3)] as [number, number, number];
+          })}
+        />
+      )}
+    </g>
+  );
+}

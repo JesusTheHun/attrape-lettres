@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { GameFrame } from "../components/GameFrame";
-import { Ollie } from "../components/Ollie";
+import { EarnBadge } from "../components/EarnBadge";
+import { Mascot } from "../mascot/Mascot";
 import { Tile } from "../components/Tile";
 import { useAudio } from "../hooks/useAudio";
 import { useConfetti } from "../hooks/useConfetti";
+import { useProfile } from "../hooks/useProfile";
 import { FIRST_LETTER_LEVELS, FIRST_LETTER_SESSION, firstLetterPool, shuffle } from "../levels";
-import type { FirstLetterRound, Mood, Verdict } from "../types";
+import type { ExerciseId, FirstLetterRound, Mood, Verdict } from "../types";
 
 const TILE_COLORS = [
   { bg: "#FF8A65", ink: "#4A2317" },
@@ -24,14 +26,24 @@ function buildSession(level: number): FirstLetterRound[] {
   });
 }
 
-export function FirstLetterExercise({ level, onBack }: { level: number; onBack: () => void }) {
+export function FirstLetterExercise({
+  exercise,
+  level,
+  onBack,
+}: {
+  exercise: ExerciseId;
+  level: number;
+  onBack: () => void;
+}) {
   const audio = useAudio();
   const { canvasRef, fire } = useConfetti();
+  const { award, profile } = useProfile();
   const [session, setSession] = useState<FirstLetterRound[]>(() => buildSession(level));
   const [idx, setIdx] = useState(0);
   const [mood, setMood] = useState<Mood>("idle");
   const [flash, setFlash] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  const [earned, setEarned] = useState(0);
   const locked = useRef(false);
 
   const round = session[idx];
@@ -79,6 +91,7 @@ export function FirstLetterExercise({ level, onBack }: { level: number; onBack: 
         locked.current = false;
         if (next >= session.length) {
           setMood("cheer");
+          setEarned(award(exercise, level));
           setDone(true);
           audio.speak("Bravo ! Tu as tout trouvé !");
         } else {
@@ -88,16 +101,16 @@ export function FirstLetterExercise({ level, onBack }: { level: number; onBack: 
       }, 1400);
       return "accept";
     },
-    [audio, fire, idx, round, session.length]
+    [audio, award, exercise, fire, idx, level, round, session.length]
   );
 
   return (
     <GameFrame onBack={onBack} done={idx} total={session.length} canvasRef={canvasRef}>
       {done ? (
-        <Finished onReplay={restart} count={session.length} />
+        <Finished onReplay={restart} count={session.length} earned={earned} />
       ) : (
         <div className="relative z-[41] flex w-full flex-1 flex-col items-center px-4 pb-8 pt-2">
-          <Ollie mood={mood} />
+          <Mascot config={profile.config} mood={mood} />
           <div style={{ fontSize: "clamp(80px,28vw,150px)", lineHeight: 1.1, margin: "6px 0" }}>
             {round.target.emoji}
           </div>
@@ -129,10 +142,19 @@ export function FirstLetterExercise({ level, onBack }: { level: number; onBack: 
   );
 }
 
-function Finished({ onReplay, count }: { onReplay: () => void; count: number }) {
+function Finished({
+  onReplay,
+  count,
+  earned,
+}: {
+  onReplay: () => void;
+  count: number;
+  earned: number;
+}) {
   return (
     <div className="relative z-[41] flex flex-1 flex-col items-center justify-center gap-5 px-6 text-center">
-      <div style={{ fontSize: "clamp(72px,22vw,120px)", lineHeight: 1 }}>🤩</div>
+      <div style={{ fontSize: "clamp(64px,20vw,110px)", lineHeight: 1 }}>🤩</div>
+      <EarnBadge earned={earned} />
       <div className="flex gap-1">
         {Array.from({ length: count }).map((_, i) => (
           <span key={i} style={{ fontSize: 28 }}>⭐</span>

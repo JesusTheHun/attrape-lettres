@@ -2,13 +2,23 @@ import { describe, it, expect } from "vitest";
 import {
   FIRST_LETTER_LEVELS,
   SYLLABLE_TIERS,
+  SOUND_LEVELS,
   firstLetterPool,
   syllableTier,
   syllablePool,
   buildSyllableRound,
+  soundLevel,
+  soundPool,
+  buildSoundRound,
+  buildSoundSession,
+  soundPrompt,
+  soundSuccess,
+  SOUND_PICK,
+  SOUND_REPEATS,
+  SOUND_SESSION_LENGTH,
 } from "./levels";
-import { LETTER_WORDS } from "./content";
-import type { SyllableWord } from "./types";
+import { LETTER_WORDS, SOUND_LETTER_BANK } from "./content";
+import type { SoundTarget, SyllableWord } from "./types";
 
 describe("firstLetterPool", () => {
   it("restricts words to the level's allowed letters", () => {
@@ -89,5 +99,103 @@ describe("buildSyllableRound", () => {
     const round = buildSyllableRound(word, "order-distractor");
     const ids = round.tray.map((t) => t.id);
     expect(new Set(ids).size).toBe(ids.length);
+  });
+});
+
+describe("soundLevel / soundPool", () => {
+  it("clamps out-of-range levels to the ladder ends", () => {
+    expect(soundLevel(0)).toBe(SOUND_LEVELS[0]);
+    expect(soundLevel(999)).toBe(SOUND_LEVELS[SOUND_LEVELS.length - 1]);
+    expect(soundPool(0)).toBe(soundPool(1));
+  });
+
+  it("gives every level enough targets to pick a full set", () => {
+    SOUND_LEVELS.forEach((_, i) =>
+      expect(soundPool(i + 1).length).toBeGreaterThanOrEqual(SOUND_PICK)
+    );
+  });
+});
+
+describe("buildSoundSession", () => {
+  const key = (t: SoundTarget) => `${t.sound}|${t.word ?? ""}|${t.spelling.join("")}`;
+  // Every level, many runs — the invariants must hold on all pool shapes (L4 has
+  // only 6 distinct sounds across 24 entries, so we count entries, not sounds).
+  const runs = SOUND_LEVELS.flatMap((_, i) =>
+    Array.from({ length: 60 }, () => buildSoundSession(i + 1))
+  );
+
+  it("is SOUND_PICK distinct entries, SOUND_REPEATS of them replayed once", () => {
+    runs.forEach((run) => {
+      expect(run).toHaveLength(SOUND_SESSION_LENGTH);
+      const counts = new Map<string, number>();
+      run.forEach((t) => counts.set(key(t), (counts.get(key(t)) ?? 0) + 1));
+      expect(counts.size).toBe(SOUND_PICK);
+      const values = [...counts.values()];
+      expect(values.filter((n) => n === 2)).toHaveLength(SOUND_REPEATS);
+      expect(values.filter((n) => n === 1)).toHaveLength(SOUND_PICK - SOUND_REPEATS);
+      expect(values.every((n) => n <= 2)).toBe(true);
+    });
+  });
+
+  it("never replays the same entry in two consecutive rounds", () => {
+    runs.forEach((run) =>
+      run.forEach((t, i) => {
+        if (i > 0) expect(key(run[i - 1])).not.toBe(key(t));
+      })
+    );
+  });
+
+  it("draws every round from the requested level's pool", () => {
+    const pool5 = new Set(soundPool(5).map(key));
+    buildSoundSession(5).forEach((t) => expect(pool5.has(key(t))).toBe(true));
+  });
+});
+
+describe("buildSoundRound", () => {
+  const target: SoundTarget = { sound: "fo", spelling: ["P", "H", "O"], word: "photo", emoji: "📷" };
+
+  it("opens one empty slot per letter and a tray of exactly the needed letters when distractors=0", () => {
+    const round = buildSoundRound(target, 0);
+    expect(round.slots).toEqual([null, null, null]);
+    expect(round.tray.map((t) => t.letter).sort()).toEqual([...target.spelling].sort());
+  });
+
+  it("adds the requested number of intruder letters, none of which are in the target", () => {
+    const round = buildSoundRound(target, 3);
+    expect(round.tray).toHaveLength(target.spelling.length + 3);
+    const need = new Set(target.spelling);
+    const intruders = round.tray.map((t) => t.letter).filter((l) => !need.has(l));
+    expect(intruders).toHaveLength(3);
+    intruders.forEach((l) => expect(SOUND_LETTER_BANK).toContain(l));
+  });
+
+  it("never asks for more distractors than the bank can supply", () => {
+    // Bank minus a 1-letter target is the worst case; stay within it.
+    const round = buildSoundRound({ sound: "o", spelling: ["O"] }, SOUND_LETTER_BANK.length);
+    const letters = round.tray.map((t) => t.letter);
+    expect(new Set(letters).size).toBe(letters.length); // no duplicate intruders
+    expect(letters).toContain("O");
+  });
+
+  it("gives every tile a unique id", () => {
+    const round = buildSoundRound(target, 3);
+    const ids = round.tray.map((t) => t.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+});
+
+describe("sound prompt lines", () => {
+  it("speaks the bare sound with no context word, and 'comme dans' with one", () => {
+    expect(soundPrompt({ sound: "la", spelling: ["L", "A"] })).toBe("la");
+    expect(soundPrompt({ sound: "fo", spelling: ["P", "H", "O"], word: "photo" })).toBe(
+      "fo, comme dans photo."
+    );
+  });
+
+  it("celebrates with the word when present, the sound otherwise", () => {
+    expect(soundSuccess({ sound: "la", spelling: ["L", "A"] })).toBe("Oui ! la.");
+    expect(soundSuccess({ sound: "fo", spelling: ["P", "H", "O"], word: "photo" })).toBe(
+      "Oui ! photo."
+    );
   });
 });

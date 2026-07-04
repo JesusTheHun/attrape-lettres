@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
+import { clipUrl } from "../vo/clips";
 
 export interface AudioApi {
   unlock: () => void;
@@ -9,25 +10,30 @@ export interface AudioApi {
 }
 
 /**
- * Pick the least-robotic French voice available.
- * Priority: known-good named voices → neural/network (localService === false)
- *           → anything not "compact/eSpeak" → whatever is left.
+ * Pick the least-robotic French voice available, by score. Enhanced/premium/
+ * neural variants (e.g. "Aurélie (Enhanced)", "Google français", Siri) sound
+ * natural; "compact"/eSpeak are the tinny ones we push to the bottom.
  */
+function voiceScore(v: SpeechSynthesisVoice): number {
+  let s = 0;
+  if (/enhanced|premium|neural|siri/i.test(v.name)) s += 5;
+  if (/google|am[ée]lie|thomas|audrey|aur[ée]lie|denise|henri|hortense|marie|c[ée]line/i.test(v.name)) s += 3;
+  if (v.localService === false) s += 2; // network voices are usually natural
+  if (/compact|espeak/i.test(v.name)) s -= 5; // robotic
+  if (/^fr-FR/i.test(v.lang)) s += 1; // prefer France French for a 6yo in fr
+  return s;
+}
+
 function pickBestFr(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null {
   const fr = voices.filter((v) => /fr($|[-_])/i.test(v.lang));
   if (!fr.length) return null;
-  const named = fr.find((v) =>
-    /google fran|am[ée]lie|thomas|audrey|aur[ée]lie|denise|henri|hortense|marie|c[ée]line/i.test(v.name)
-  );
-  if (named) return named;
-  const neural = fr.find((v) => v.localService === false);
-  if (neural) return neural;
-  return fr.find((v) => !/compact|espeak/i.test(v.name)) ?? fr[0];
+  return fr.slice().sort((a, b) => voiceScore(b) - voiceScore(a))[0];
 }
 
 export function useAudio(): AudioApi {
   const ctxRef = useRef<AudioContext | null>(null);
   const voiceRef = useRef<SpeechSynthesisVoice | null>(null);
+  const clipRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     const resolve = () => (voiceRef.current = pickBestFr(speechSynthesis.getVoices()));
@@ -77,7 +83,10 @@ export function useAudio(): AudioApi {
   );
   const nudge = useCallback(() => blip(196, 0.14, "sine", 0.1), [blip]); // soft, non-punishing
 
-  const speak = useCallback((text: string, { rate = 1.02, pitch = 1.4 } = {}) => {
+  // On-device fallback. Warmer than the old rate 1.02 / pitch 1.4: a touch
+  // slower for a 6yo to follow, pitch near-natural so it reads friendly, not
+  // chipmunk-screechy. Only used when no baked clip exists for this utterance.
+  const speakTts = useCallback((text: string, rate: number, pitch: number) => {
     try {
       speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(text);
@@ -92,5 +101,35 @@ export function useAudio(): AudioApi {
     }
   }, []);
 
-  return { unlock, pop, success, nudge, speak };
+  // Prefer the baked Gemini clip (device-consistent, natural); fall back to the
+  // OS voice for anything not yet generated. One reused <audio> so a new line
+  // interrupts the previous one, same as speechSynthesis.cancel().
+  const speak = useCallback(
+    (text: string, { rate = 0.94, pitch = 1.1 } = {}) => {
+      const url = clipUrl(text);
+      if (url) {
+        try {
+          speechSynthesis.cancel();
+          const el = clipRef.current ?? (clipRef.current = new Audio());
+          el.pause();
+          el.src = url;
+          el.currentTime = 0;
+          void el.play().catch(() => speakTts(text, rate, pitch));
+          return;
+        } catch {
+          /* fall through to on-device speech */
+        }
+      }
+      speakTts(text, rate, pitch);
+    },
+    [speakTts]
+  );
+
+  // Stable identity — every fn is useCallback-memoised, so this object never
+  // changes. Critical: FirstLetterExercise's announce effect depends on `speak`
+  // via `prompt`; a fresh object each render would re-fire it on every tap.
+  return useMemo(
+    () => ({ unlock, pop, success, nudge, speak }),
+    [unlock, pop, success, nudge, speak]
+  );
 }

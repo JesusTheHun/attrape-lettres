@@ -4,8 +4,7 @@ Guidance for Claude Code (and any agent) working in this repo. Read before editi
 
 ## What this is
 
-A French early-reading game for ~6yo children. Vite + React 18 + TypeScript (strict)
-+ TailwindCSS. Zero runtime deps beyond React.
+A French early-reading game for ~6yo children. Vite + React 18 + TypeScript (strict) + TailwindCSS.
 
 ## Commands
 

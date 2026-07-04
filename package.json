@@ -14,7 +14,8 @@
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "vo:build": "node scripts/generate-vo.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

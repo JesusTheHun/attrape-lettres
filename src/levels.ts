@@ -1,8 +1,16 @@
-import { LETTER_WORDS, SYLLABLE_WORDS, SYLLABLE_BANK } from "./content";
+import {
+  LETTER_WORDS,
+  SYLLABLE_WORDS,
+  SYLLABLE_BANK,
+  SOUND_TARGETS,
+  SOUND_LETTER_BANK,
+} from "./content";
 import type {
   ExerciseMeta,
   FirstLetterLevel,
   LetterWord,
+  SoundLevel,
+  SoundTarget,
   SyllableMode,
   SyllableTier,
   SyllableWord,
@@ -85,6 +93,88 @@ export interface SyllableRound {
 }
 
 /* -------------------------------------------------------------------------- */
+/* Spell-the-sound — 5 explicit levels                                        */
+/* Each level is a pool (SOUND_TARGETS) + how many intruder letters to add.    */
+/* Difficulty is authored in content; only the distractor count lives here.    */
+/* -------------------------------------------------------------------------- */
+
+export const SOUND_LEVELS: SoundLevel[] = [
+  { distractors: 0 },
+  { distractors: 2 },
+  { distractors: 2 },
+  { distractors: 3 },
+  { distractors: 3 },
+];
+
+export const SOUND_LEVEL_COUNT = SOUND_LEVELS.length;
+/** Distinct sounds drawn from the pool at the start of a run. */
+export const SOUND_PICK = 8;
+/** How many of those distinct sounds come back a second time (spaced apart). */
+export const SOUND_REPEATS = 4;
+/** Rounds in a full run: the 8 picks, plus a replay of 4 of them. */
+export const SOUND_SESSION_LENGTH = SOUND_PICK + SOUND_REPEATS;
+
+export interface SoundTile {
+  id: number;
+  letter: string;
+}
+
+export interface SoundRound {
+  target: SoundTarget;
+  /** Target order; slots are filled against target.spelling. */
+  slots: (string | null)[];
+  tray: SoundTile[];
+}
+
+function clampLevel(level: number): number {
+  return Math.min(Math.max(level, 1), SOUND_LEVEL_COUNT) - 1;
+}
+
+export function soundLevel(level: number): SoundLevel {
+  return SOUND_LEVELS[clampLevel(level)];
+}
+
+export function soundPool(level: number): SoundTarget[] {
+  return SOUND_TARGETS[clampLevel(level)];
+}
+
+/**
+ * One run's ordered sound list: pick SOUND_PICK distinct sounds from the level
+ * pool, show SOUND_REPEATS of them a second time (so 12 rounds from 8 sounds),
+ * and arrange them so the same sound is never two rounds in a row — the gap is
+ * what turns a repeat into memory practice. Falls back to a plain shuffle if the
+ * pool is somehow too small to pick a full set.
+ */
+export function buildSoundSession(level: number): SoundTarget[] {
+  const pool = soundPool(level);
+  if (pool.length < SOUND_PICK) return shuffle(pool);
+
+  const picks = shuffle(pool).slice(0, SOUND_PICK);
+  const doubles = shuffle(picks).slice(0, SOUND_REPEATS);
+  const singles = picks.filter((p) => !doubles.includes(p));
+
+  // Group each repeated sound as an adjacent pair, singles after. Distributing
+  // this list across even indices then odd indices keeps every pair ≥2 apart —
+  // guaranteed collision-free because no sound appears more than twice.
+  const grouped = [...doubles.flatMap((d) => [d, d]), ...singles];
+  const out: SoundTarget[] = new Array(grouped.length);
+  let k = 0;
+  for (let i = 0; i < out.length; i += 2) out[i] = grouped[k++];
+  for (let i = 1; i < out.length; i += 2) out[i] = grouped[k++];
+  return out;
+}
+
+/** What the child hears: the bare sound, or "sound, comme dans word." on levels with context. */
+export function soundPrompt(t: SoundTarget): string {
+  return t.word ? `${t.sound}, comme dans ${t.word}.` : t.sound;
+}
+
+/** The success line spoken once the letters are all placed. */
+export function soundSuccess(t: SoundTarget): string {
+  return `Oui ! ${t.word ?? t.sound}.`;
+}
+
+/* -------------------------------------------------------------------------- */
 /* Hub catalog                                                                */
 /* -------------------------------------------------------------------------- */
 
@@ -93,6 +183,7 @@ export const EXERCISES: ExerciseMeta[] = [
   { id: "fill-blank", name: "Complète le mot", emoji: "🧩", levelCount: SYLLABLE_LEVEL_COUNT, mode: "fill-blank" },
   { id: "order-syllables", name: "Range les syllabes", emoji: "🔀", levelCount: SYLLABLE_LEVEL_COUNT, mode: "order" },
   { id: "find-intruder", name: "Trouve l’intrus", emoji: "🕵️", levelCount: SYLLABLE_LEVEL_COUNT, mode: "order-distractor" },
+  { id: "spell-sound", name: "Fabrique le son", emoji: "🎧", levelCount: SOUND_LEVEL_COUNT },
 ];
 
 export const MODE_HINT: Record<SyllableMode, string> = {
@@ -141,4 +232,17 @@ export function buildSyllableRound(word: SyllableWord, mode: SyllableMode): Syll
       ? [...syl, pickDistractorSyllable(new Set(syl))]
       : [...syl];
   return { word, slots, locked, tray: shuffle(trayValues).map(tile) };
+}
+
+let _letterTileId = 0;
+const letterTile = (letter: string): SoundTile => ({ id: _letterTileId++, letter });
+
+export function buildSoundRound(target: SoundTarget, distractors: number): SoundRound {
+  const need = new Set(target.spelling);
+  const intruders = shuffle(SOUND_LETTER_BANK.filter((l) => !need.has(l))).slice(0, distractors);
+  return {
+    target,
+    slots: target.spelling.map(() => null),
+    tray: shuffle([...target.spelling, ...intruders]).map(letterTile),
+  };
 }
