@@ -82,11 +82,13 @@ function ChildCard({
   child,
   editing,
   onPick,
+  onRename,
   onDelete,
 }: {
   child: ChildProfile;
   editing: boolean;
   onPick: () => void;
+  onRename: () => void;
   onDelete: () => void;
 }) {
   const ref = useRef<HTMLButtonElement>(null);
@@ -95,9 +97,9 @@ function ChildCard({
       <button
         ref={ref}
         type="button"
-        aria-label={`Jouer avec ${child.name}`}
+        aria-label={editing ? `Renommer ${child.name}` : `Jouer avec ${child.name}`}
         onPointerDown={() => press(ref.current)}
-        onClick={onPick}
+        onClick={editing ? onRename : onPick}
         className="flex w-full flex-col items-center gap-2 rounded-3xl p-4 active:scale-[0.97] [touch-action:manipulation] [-webkit-tap-highlight-color:transparent]"
         style={{ background: "rgba(255,255,255,0.92)", border: "none", cursor: "pointer", boxShadow: "0 8px 18px rgba(0,0,0,0.10)" }}
       >
@@ -109,22 +111,33 @@ function ChildCard({
         </span>
       </button>
       {editing && (
-        <button
-          type="button"
-          aria-label={`Supprimer ${child.name}`}
-          onClick={onDelete}
-          className="absolute -right-2 -top-2 flex h-9 w-9 items-center justify-center rounded-full text-lg font-black text-white shadow active:scale-90"
-          style={{ background: "#EF5350", border: "2px solid white" }}
-        >
-          ✕
-        </button>
+        <>
+          <button
+            type="button"
+            aria-label={`Renommer ${child.name}`}
+            onClick={onRename}
+            className="absolute -left-2 -top-2 flex h-9 w-9 items-center justify-center rounded-full text-base shadow active:scale-90"
+            style={{ background: "white", border: "2px solid #E4A15E" }}
+          >
+            ✏️
+          </button>
+          <button
+            type="button"
+            aria-label={`Supprimer ${child.name}`}
+            onClick={onDelete}
+            className="absolute -right-2 -top-2 flex h-9 w-9 items-center justify-center rounded-full text-lg font-black text-white shadow active:scale-90"
+            style={{ background: "#EF5350", border: "2px solid white" }}
+          >
+            ✕
+          </button>
+        </>
       )}
     </div>
   );
 }
 
 export function WhoIsPlaying() {
-  const { children, selectChild, deleteChild } = useProfile();
+  const { children, selectChild, renameChild, deleteChild } = useProfile();
   const [creating, setCreating] = useState(children.length === 0);
   const [editing, setEditing] = useState(false);
 
@@ -158,6 +171,10 @@ export function WhoIsPlaying() {
                 child={c}
                 editing={editing}
                 onPick={() => selectChild(c.id)}
+                onRename={() => {
+                  const next = window.prompt(`Nouveau prénom pour ${c.name} ?`, c.name);
+                  if (next !== null) renameChild(c.id, next);
+                }}
                 onDelete={() => {
                   if (window.confirm(`Supprimer le profil de ${c.name} ? Tout sera perdu.`)) {
                     deleteChild(c.id);

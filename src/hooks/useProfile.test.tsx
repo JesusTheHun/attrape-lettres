@@ -52,6 +52,16 @@ describe("useProfile — roster gate", () => {
     act(() => result.current.selectChild(id));
     expect(result.current.activeId).toBe(id);
   });
+
+  it("renameChild changes the name (trimmed) and ignores empty input", () => {
+    const { result } = render();
+    act(() => result.current.createChild("Léa"));
+    const id = result.current.activeId!;
+    act(() => result.current.renameChild(id, "  Léo  "));
+    expect(result.current.children[0].name).toBe("Léo");
+    act(() => result.current.renameChild(id, "   "));
+    expect(result.current.children[0].name).toBe("Léo"); // unchanged
+  });
 });
 
 describe("useProfile — points (per active child)", () => {

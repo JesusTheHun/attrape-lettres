@@ -198,6 +198,8 @@ export interface ProfileAPI {
   createChild: (name: string) => void;
   /** Make an existing child the active player. */
   selectChild: (id: string) => void;
+  /** Rename a child. Ignored if the trimmed name is empty. */
+  renameChild: (id: string, name: string) => void;
   /** Delete a child and everything they own. */
   deleteChild: (id: string) => void;
   /** Return to the "Qui joue ?" welcome screen (no active player). */
@@ -333,6 +335,21 @@ export function ProfileProvider({ children: kids }: { children: ReactNode }) {
     [commit]
   );
 
+  const renameChild = useCallback(
+    (id: string, name: string) => {
+      const trimmed = name.trim();
+      if (!trimmed) return;
+      const r = ref.current;
+      commit({
+        ...r,
+        children: r.children.map((c) =>
+          c.id === id ? { ...c, name: trimmed.slice(0, 14) } : c
+        ),
+      });
+    },
+    [commit]
+  );
+
   const deleteChild = useCallback(
     (id: string) => {
       const r = ref.current;
@@ -362,6 +379,7 @@ export function ProfileProvider({ children: kids }: { children: ReactNode }) {
       chooseSpecies,
       createChild,
       selectChild,
+      renameChild,
       deleteChild,
       switchChild,
     }),
@@ -375,6 +393,7 @@ export function ProfileProvider({ children: kids }: { children: ReactNode }) {
       chooseSpecies,
       createChild,
       selectChild,
+      renameChild,
       deleteChild,
       switchChild,
     ]
