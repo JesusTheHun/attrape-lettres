@@ -10,12 +10,12 @@ A French early-reading game for ~6yo children. Vite + React 18 + TypeScript (str
 ## Commands
 
 ```bash
-npm run dev         # local dev server
-npm run build       # tsc -b && vite build
-npm run typecheck   # types only
+pnpm dev            # local dev server
+pnpm build          # tsc -b && vite build
+pnpm typecheck      # types only
 ```
 
-Do **not** add `npm install <pkg>` commands to answers unless explicitly asked.
+Do **not** add `pnpm add <pkg>` commands to answers unless explicitly asked.
 Prefer solving with what's here; this app deliberately avoids animation/audio
 libraries.
 

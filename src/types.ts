@@ -20,6 +20,12 @@ export interface FirstLetterLevel {
   letters: string[] | null;
 }
 
+export interface FirstLetterRound {
+  target: LetterWord;
+  /** The target letter plus distractors, shuffled. */
+  choices: string[];
+}
+
 /** Build-syllables exercise ------------------------------------------------*/
 export interface SyllableWord {
   word: string;

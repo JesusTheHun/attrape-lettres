@@ -13,7 +13,7 @@ const COLORS = ["#FF8A65", "#FFD54F", "#4FC3F7", "#AED581", "#BA9EE8", "#F06292"
  * state, so celebrations cost nothing on the render path.
  */
 export function useConfetti() {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const partsRef = useRef<Particle[]>([]);
   const rafRef = useRef(0);
   const reduced = useRef(false);

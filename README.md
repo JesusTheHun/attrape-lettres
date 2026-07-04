@@ -17,11 +17,11 @@ canvas `requestAnimationFrame` loop.
 ## Run
 
 ```bash
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
-`npm run build` type-checks (`tsc -b`) then bundles. `npm run typecheck` runs the
+`pnpm build` type-checks (`tsc -b`) then bundles. `pnpm typecheck` runs the
 type-checker alone.
 
 ## Project shape

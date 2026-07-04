@@ -4,7 +4,7 @@ interface GameFrameProps {
   onBack: () => void;
   done: number;
   total: number;
-  canvasRef: RefObject<HTMLCanvasElement | null>;
+  canvasRef: RefObject<HTMLCanvasElement>;
   children: ReactNode;
 }
 
