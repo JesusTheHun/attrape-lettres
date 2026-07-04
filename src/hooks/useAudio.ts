@@ -7,6 +7,7 @@ export interface AudioApi {
   success: () => void;
   nudge: () => void;
   speak: (text: string, opts?: { rate?: number; pitch?: number }) => void;
+  stop: () => void;
 }
 
 /**
@@ -35,6 +36,7 @@ export function useAudio(): AudioApi {
   const voiceRef = useRef<SpeechSynthesisVoice | null>(null);
   const clipRef = useRef<HTMLAudioElement | null>(null);
   const seqRef = useRef(0);
+  const fadeRef = useRef<number | null>(null);
 
   useEffect(() => {
     const resolve = () => (voiceRef.current = pickBestFr(speechSynthesis.getVoices()));
@@ -113,6 +115,11 @@ export function useAudio(): AudioApi {
         try {
           speechSynthesis.cancel();
           const el = clipRef.current ?? (clipRef.current = new Audio());
+          if (fadeRef.current !== null) {
+            clearInterval(fadeRef.current); // a leave-fade was mid-ramp; cancel it
+            fadeRef.current = null;
+          }
+          el.volume = 1;
           el.pause();
           el.src = url;
           el.currentTime = 0;
@@ -135,11 +142,37 @@ export function useAudio(): AudioApi {
     [speakTts]
   );
 
+  // Leaving an exercise: ramp the current clip to silence over 200ms, then cut.
+  // TTS has no mid-utterance volume, so the fallback is simply cancelled.
+  const stop = useCallback(() => {
+    try {
+      speechSynthesis.cancel();
+    } catch {
+      /* speech unavailable */
+    }
+    const el = clipRef.current;
+    if (!el || el.paused) return;
+    if (fadeRef.current !== null) clearInterval(fadeRef.current);
+    const steps = 10;
+    const start = el.volume;
+    let i = 0;
+    fadeRef.current = window.setInterval(() => {
+      el.volume = Math.max(0, start * (1 - ++i / steps));
+      if (i >= steps) {
+        if (fadeRef.current !== null) clearInterval(fadeRef.current);
+        fadeRef.current = null;
+        el.pause();
+        el.currentTime = 0;
+        el.volume = 1; // restore for the next exercise's first line
+      }
+    }, 20); // 10 × 20ms = 200ms
+  }, []);
+
   // Stable identity — every fn is useCallback-memoised, so this object never
   // changes. Critical: FirstLetterExercise's announce effect depends on `speak`
   // via `prompt`; a fresh object each render would re-fire it on every tap.
   return useMemo(
-    () => ({ unlock, pop, success, nudge, speak }),
-    [unlock, pop, success, nudge, speak]
+    () => ({ unlock, pop, success, nudge, speak, stop }),
+    [unlock, pop, success, nudge, speak, stop]
   );
 }

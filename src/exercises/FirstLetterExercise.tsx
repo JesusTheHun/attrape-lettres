@@ -57,6 +57,9 @@ export function FirstLetterExercise({
     audio.unlock();
   }, [audio]);
 
+  // Leaving the exercise fades the current line out over 200ms, then cuts.
+  useEffect(() => () => audio.stop(), [audio]);
+
   useEffect(() => {
     if (done || !round) return;
     // Settle the new round before announcing (matches Assemble/SpellSound). The

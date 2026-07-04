@@ -70,6 +70,9 @@ export function AssembleExercise({ exercise, mode, level, onBack }: Props) {
     audio.unlock();
   }, [audio]);
 
+  // Leaving the exercise fades the current line out over 200ms, then cuts.
+  useEffect(() => () => audio.stop(), [audio]);
+
   useEffect(() => {
     const t = window.setTimeout(() => audio.speak(session[0].word), 350);
     return () => window.clearTimeout(t);

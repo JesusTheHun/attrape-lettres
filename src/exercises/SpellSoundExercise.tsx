@@ -70,6 +70,9 @@ export function SpellSoundExercise({ exercise, level, onBack }: Props) {
     audio.unlock();
   }, [audio]);
 
+  // Leaving the exercise fades the current line out over 200ms, then cuts.
+  useEffect(() => () => audio.stop(), [audio]);
+
   useEffect(() => {
     const t = window.setTimeout(() => audio.speak(soundPrompt(session[0])), 350);
     return () => window.clearTimeout(t);
