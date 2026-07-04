@@ -34,9 +34,12 @@ import { createServer } from "vite";
 const API_KEY = process.env.GEMINI_API_KEY ?? process.env.GOOGLE_API_KEY;
 const MODEL = process.env.GEMINI_TTS_MODEL ?? "gemini-3.1-flash-tts-preview";
 const VOICE = process.env.GEMINI_TTS_VOICE ?? "Leda"; // warm, youthful; try Aoede/Callirrhoe
+// The French "apprendre à lire" framing isn't spoken (it's a style instruction);
+// it gives the safety classifier language context so short French syllables that
+// collide with flagged English words (e.g. "nu", "tu") aren't rejected.
 const STYLE =
   process.env.GEMINI_TTS_STYLE ??
-  "Dis d'une voix douce, chaleureuse et enjouée, comme pour un enfant de six ans :";
+  "Tu aides un enfant de six ans à apprendre à lire en français. Lis ce texte français à voix haute, d'une voix douce, chaleureuse et enjouée :";
 const DELAY_MS = Number(process.env.GEMINI_TTS_DELAY_MS ?? 1500); // between API calls
 const MAX_RETRIES = Number(process.env.GEMINI_TTS_RETRIES ?? 6);
 const MAX_WAIT_MS = Number(process.env.GEMINI_TTS_MAX_WAIT_MS ?? 300000); // fail fast past this (5 min)
@@ -342,19 +345,19 @@ async function fetchResults(job, todo) {
   throw new Error(`finished job exposed no results — full job:\n${JSON.stringify(job, null, 2)}`);
 }
 
-/** Parse result JSONL and bake each clip. Matches by `key`, falls back to order. */
+/** Parse result JSONL and bake each clip. Matches by `key`, falls back to order.
+ *  Returns the bake count + a Map of key → failure reason for items that errored. */
 async function bakeResults(jsonl, todo, encoder, ext) {
   const byKey = new Map(todo.map((t) => [t.key, t]));
   const lines = jsonl.split("\n").filter((l) => l.trim());
   let made = 0;
-  let failed = 0;
+  const reasons = new Map(); // key → why it didn't bake
   for (let i = 0; i < lines.length; i++) {
     let obj;
     try {
       obj = JSON.parse(lines[i]);
     } catch {
-      failed++;
-      continue;
+      continue; // unparseable line; the disk reconciliation below still flags the gap
     }
     // Match by key. A key absent from `todo` means that clip was already baked on
     // an earlier (interrupted) run — skip it. Never fall back to position when a
@@ -365,8 +368,8 @@ async function bakeResults(jsonl, todo, encoder, ext) {
     const resp = obj.response ?? obj;
     const errored = obj.error ?? resp?.error;
     if (errored) {
-      failed++;
-      console.error(`  ✗ ${item.key} — ${JSON.stringify(errored).slice(0, 150)}`);
+      reasons.set(item.key, JSON.stringify(errored).slice(0, 150));
+      console.error(`  ✗ ${item.key} — ${reasons.get(item.key)}`);
       continue;
     }
     try {
@@ -374,11 +377,11 @@ async function bakeResults(jsonl, todo, encoder, ext) {
       made++;
       console.log(`  ✓ [${made}/${todo.length}] ${item.key}.${ext}  "${item.text}"`);
     } catch (e) {
-      failed++;
+      reasons.set(item.key, e.message);
       console.error(`  ✗ ${item.key} — ${e.message}`);
     }
   }
-  return { made, failed };
+  return { made, reasons };
 }
 
 async function runBatch(todo, encoder, ext) {
@@ -416,9 +419,9 @@ async function runBatch(todo, encoder, ext) {
   }
 
   console.log("\nBaking clips…\n");
-  let made, failed;
+  let made, reasons;
   try {
-    ({ made, failed } = await bakeResults(await fetchResults(finished, todo), todo, encoder, ext));
+    ({ made, reasons } = await bakeResults(await fetchResults(finished, todo), todo, encoder, ext));
   } catch (e) {
     // Batch is done server-side; keep the job file so a re-run re-downloads
     // instead of resubmitting. Only a completed download + conversion clears it.
@@ -427,7 +430,18 @@ async function runBatch(todo, encoder, ext) {
     return;
   }
   await clearJob(); // download + conversion done → drop the saved job
-  console.log(`\nDone. ${made} baked${failed ? `, ${failed} failed (re-run to retry)` : ""}.`);
+
+  // Authoritative check: any requested clip still absent on disk didn't complete —
+  // covers errored responses AND result lines the batch omitted entirely.
+  const missing = [];
+  for (const t of todo) if (!(await fileExists(t.out))) missing.push(t);
+
+  console.log(`\nDone. ${made} baked${missing.length ? `, ${missing.length} still missing` : ""}.`);
+  if (missing.length) {
+    console.error(`\n${missing.length} item(s) produced no clip (they'll use the robot-voice fallback):`);
+    for (const t of missing) console.error(`  ✗ "${t.text}"${reasons.has(t.key) ? ` — ${reasons.get(t.key)}` : ""}`);
+    console.error(`\nRe-run to retry only these (missing clips are resubmitted; the rest are skipped).`);
+  }
 }
 
 /* ---------------------------------- sync ---------------------------------- */
@@ -435,7 +449,7 @@ async function runBatch(todo, encoder, ext) {
 /* use --sync when topping up a handful of new words.                          */
 async function runSync(todo, encoder, ext) {
   let made = 0;
-  let failed = 0;
+  const failures = []; // { text, reason }
   for (let i = 0; i < todo.length; i++) {
     const item = todo[i];
     const n = `[${i + 1}/${todo.length}]`;
@@ -450,7 +464,7 @@ async function runSync(todo, encoder, ext) {
       made++;
       console.log(`  ✓ ${n} ${item.key}.${ext}  "${item.text}"`);
     } catch (e) {
-      failed++;
+      failures.push({ text: item.text, reason: e.message });
       console.error(`  ✗ ${n} "${item.text}" — ${e.message}`);
       if (e.fatal) {
         console.error(`\nAborting: quota reached after ${made} baked. Re-run later to resume where it stopped.`);
@@ -459,7 +473,13 @@ async function runSync(todo, encoder, ext) {
     }
     if (calledApi && DELAY_MS > 0) await sleep(DELAY_MS);
   }
-  console.log(`\nDone. ${made} baked${failed ? `, ${failed} failed` : ""}.`);
+
+  console.log(`\nDone. ${made} baked${failures.length ? `, ${failures.length} failed` : ""}.`);
+  if (failures.length) {
+    console.error(`\n${failures.length} item(s) produced no clip (they'll use the robot-voice fallback):`);
+    for (const f of failures) console.error(`  ✗ "${f.text}" — ${f.reason}`);
+    console.error(`\nRe-run to retry only these.`);
+  }
 }
 
 async function main() {
