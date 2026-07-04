@@ -1,5 +1,6 @@
 import type { RigProps } from "./growth";
 import { INK, pick } from "./growth";
+import { accessoryAnchors } from "./anchors";
 import { COLOR_SLOT, STYLE_SLOT, ACCESSORY } from "./ids";
 import { Aura, Bow, Cheeks, Crown, Eyes, Flower, FoldedLegs, GroundGlow, Halo, Leg, Mouth, Plume, Sparkles, fourStar } from "./parts";
 
@@ -140,7 +141,8 @@ export function Unicorn({ config, layout, stage, mood, uid }: RigProps) {
 
   const spec = STAGES[Math.max(0, Math.min(9, stage))];
   const hoof = "#EADAC6";
-  const { bodyCX, bodyCY, bodyRX, bodyRY, headCX, headCY, headR, neckX, neckY, eyeR } = layout;
+  const { bodyCX, bodyCY, bodyRX, bodyRY, headCX, headCY, headR, eyeR } = layout;
+  const anchor = accessoryAnchors("unicorn", layout);
   const hornBaseY = headCY - headR * 0.72;
   const apexY = hornBaseY - spec.horn;
   const legW = layout.pose === "proud" ? 6.5 : 7;
@@ -223,20 +225,27 @@ export function Unicorn({ config, layout, stage, mood, uid }: RigProps) {
       {/* hoof aura (majestic) */}
       {spec.aura > 0.4 && layout.legs.map((l, i) => <Aura key={`ha${i}`} id={`${uid}-hoof-${i}`} cx={l.footX} cy={l.footY} r={8} color="#FFF0B8" opacity={spec.aura} />)}
 
-      {/* accessories */}
-      {has(A.ribbon) && <Bow x={neckX} y={neckY} s={1.15} color="#FF7EA8" />}
+      {/* accessories — placement from the per-species/per-stage anchor resolver */}
+      {/* ribbon: baby (lying, no neck yet) wears it as a hair bow ON the head;
+          once standing it drops to the throat. */}
+      {has(A.ribbon) &&
+        (layout.standing ? (
+          <Bow x={anchor.neck.x} y={anchor.neck.y} s={anchor.head.r * 0.052} color="#FF7EA8" />
+        ) : (
+          <Bow x={headCX + headR * 0.34} y={headCY - headR * 0.5} s={headR * 0.05} color="#FF7EA8" />
+        ))}
       {has(A.flowerCrown) &&
         [-62, -31, 0, 31, 62].map((deg, i) => {
           const rad = ((deg - 90) * Math.PI) / 180;
-          const fx = headCX + Math.cos(rad) * headR * 0.98;
-          const fy = headCY + Math.sin(rad) * headR * 0.98;
+          const fx = anchor.head.x + Math.cos(rad) * anchor.head.r * 0.98;
+          const fy = anchor.head.y + Math.sin(rad) * anchor.head.r * 0.98;
           const palette = ["#FF8FB1", "#FFD54F", "#AED581", "#7FD1D8", "#BA9EE8"];
           return <Flower key={i} x={fx} y={fy} r={3.6} petal={palette[i]} center="#FFF3C4" />;
         })}
       {has(A.starClip) && (
         <g>
-          <Sparkles points={[[headCX - headR * 0.72, headCY - headR * 0.52, 6.5]]} color="#FFD54F" />
-          <Sparkles points={[[headCX - headR * 0.42, headCY - headR * 0.78, 3]]} color="#FFF3C4" />
+          <Sparkles points={[[anchor.headSide.x, anchor.headSide.y, 6.5]]} color="#FFD54F" />
+          <Sparkles points={[[anchor.headSide.x + headR * 0.3, anchor.headSide.y - headR * 0.26, 3]]} color="#FFF3C4" />
         </g>
       )}
 

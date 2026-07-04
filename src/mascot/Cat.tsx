@@ -1,5 +1,6 @@
 import type { RigProps } from "./growth";
 import { mix, pick, ramp } from "./growth";
+import { accessoryAnchors } from "./anchors";
 import { COLOR_SLOT, STYLE_SLOT, ACCESSORY } from "./ids";
 import { Aura, Bow, Cheeks, Crown, Eyes, FoldedLegs, GroundGlow, Halo, Leg, Mouth, Plume, Sparkles } from "./parts";
 
@@ -87,7 +88,8 @@ export function Cat({ config, layout, stage, mood, uid }: RigProps) {
   const raise = ramp(stage, [[0, 0], [2, 0.1], [4, 0.4], [6, 0.75], [9, 1]]);
   const earScale = ramp(stage, [[0, 0.44], [2, 0.5], [4, 0.58], [6, 0.64], [9, 0.68]]);
   const earPoint = ramp(stage, [[0, 0.6], [3, 0.85], [6, 1], [9, 1]]);
-  const { bodyCX, bodyCY, bodyRX, bodyRY, headCX, headCY, headR, neckX, neckY, eyeR } = layout;
+  const { bodyCX, bodyCY, bodyRX, bodyRY, headCX, headCY, headR, eyeR } = layout;
+  const anchor = accessoryAnchors("cat", layout);
   const legW = 7;
 
   // Lush fur-clump tail: BUSHINESS (rB) scales with age; reach stays bounded so
@@ -204,15 +206,15 @@ export function Cat({ config, layout, stage, mood, uid }: RigProps) {
       {/* royal crown (majestic) */}
       {spec.crown && <Crown cx={headCX} cy={headCY - headR * 0.5} r={headR * 0.95} band="#FFD54F" gem="#E0533B" />}
 
-      {/* accessories */}
+      {/* accessories — placement from the per-species/per-stage anchor resolver */}
       {has(A.bellCollar) && (
         <g>
-          <path d={`M${neckX - headR * 0.7} ${neckY} Q${neckX} ${neckY + 6} ${neckX + headR * 0.7} ${neckY}`} fill="none" stroke="#EF6F6C" strokeWidth={3.4} strokeLinecap="round" />
-          <circle cx={neckX} cy={neckY + 4} r={3} fill="#FFD54F" />
-          <circle cx={neckX} cy={neckY + 4} r={0.9} fill="#B98A22" />
+          <path d={`M${anchor.neck.x - anchor.neck.w} ${anchor.neck.y} Q${anchor.neck.x} ${anchor.neck.y + 6} ${anchor.neck.x + anchor.neck.w} ${anchor.neck.y}`} fill="none" stroke="#EF6F6C" strokeWidth={3.4} strokeLinecap="round" />
+          <circle cx={anchor.neck.x} cy={anchor.neck.y + 4} r={3} fill="#FFD54F" />
+          <circle cx={anchor.neck.x} cy={anchor.neck.y + 4} r={0.9} fill="#B98A22" />
         </g>
       )}
-      {has(A.bow) && <Bow x={headCX - headR * 0.5} y={headCY - headR * 0.82} s={0.95} color="#FF7EA8" />}
+      {has(A.bow) && <Bow x={anchor.headTop.x - headR * 0.5} y={anchor.headTop.y + headR * 0.18} s={0.95} color="#FF7EA8" />}
       {has(A.partyHat) && (
         <g>
           <path d={`M${headCX} ${headCY - headR * 1.7} L${headCX - headR * 0.5} ${headCY - headR * 0.8} L${headCX + headR * 0.5} ${headCY - headR * 0.8} Z`} fill="#4FC3F7" />

@@ -1,5 +1,6 @@
 import type { RigProps } from "./growth";
 import { INK, pick, ramp } from "./growth";
+import { accessoryAnchors } from "./anchors";
 import { COLOR_SLOT, STYLE_SLOT, ACCESSORY } from "./ids";
 import { Aura, Cheeks, Eyes, FoldedLegs, GroundGlow, Halo, Leg, Mouth, Plume, Sparkles, fourStar } from "./parts";
 
@@ -105,7 +106,8 @@ export function Fox({ config, layout, stage, mood, uid }: RigProps) {
 
   const spec = STAGES[Math.max(0, Math.min(9, stage))];
   const tailF = spec.tail * (longTail ? 1 : 0.66);
-  const { bodyCX, bodyCY, bodyRX, bodyRY, headCX, headCY, headR, neckX, neckY, eyeR } = layout;
+  const { bodyCX, bodyCY, bodyRX, bodyRY, headCX, headCY, headR, eyeR } = layout;
+  const anchor = accessoryAnchors("fox", layout);
   const legW = 7;
 
   // Bushy tail = fur clumps along a curve; it tapers to a pointed TIP whose fur
@@ -237,11 +239,11 @@ export function Fox({ config, layout, stage, mood, uid }: RigProps) {
       {/* forehead spirit-mark (kitsune) */}
       {spec.mark && <path d={fourStar(headCX, headCY - headR * 0.55, 2.6)} fill="#FFF3C4" />}
 
-      {/* accessories */}
+      {/* accessories — placement from the per-species/per-stage anchor resolver */}
       {has(A.scarf) && (
         <g>
-          <path d={`M${neckX - headR * 0.7} ${neckY} Q${neckX} ${neckY + 7} ${neckX + headR * 0.7} ${neckY}`} fill="none" stroke="#66BB6A" strokeWidth={5} strokeLinecap="round" />
-          <path d={`M${neckX + headR * 0.35} ${neckY + 2} l3 10 l-6 1 Z`} fill="#4FA84E" />
+          <path d={`M${anchor.neck.x - anchor.neck.w} ${anchor.neck.y} Q${anchor.neck.x} ${anchor.neck.y + 7} ${anchor.neck.x + anchor.neck.w} ${anchor.neck.y}`} fill="none" stroke="#66BB6A" strokeWidth={5} strokeLinecap="round" />
+          <path d={`M${anchor.neck.x + anchor.neck.w * 0.5} ${anchor.neck.y + 2} l3 10 l-6 1 Z`} fill="#4FA84E" />
         </g>
       )}
       {has(A.beanie) && (
@@ -252,7 +254,7 @@ export function Fox({ config, layout, stage, mood, uid }: RigProps) {
         </g>
       )}
       {has(A.boots) &&
-        layout.legs.map((l, i) => (
+        anchor.feet.map((l, i) => (
           <g key={i}>
             <rect x={l.footX - 4} y={l.footY - 6} width={8} height={8} rx={3} fill="#8D5A3B" />
             <rect x={l.footX - 5} y={l.footY - 7} width={10} height={3} rx={1.5} fill="#C98A5B" />

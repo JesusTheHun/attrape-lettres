@@ -81,11 +81,13 @@ export interface Layout {
   headR: number;
   /** Centralised huge-baby → small-adult eye radius. */
   eyeR: number;
-  neckX: number;
-  neckY: number;
   feetY: number;
   legs: LegSpec[];
 }
+// NB: worn-accessory placement (throat/hat/feet) is NOT a layout field — it lives
+// in accessoryAnchors() (anchors.ts), head-relative so it tracks the shrinking
+// head. Do not add a body-relative "neck" point here; the baby's head rides over
+// it (that was the "bow in the middle of the face" bug).
 
 export interface RigProps {
   config: MascotConfig;
@@ -149,8 +151,6 @@ export function layoutFor(stage: number): Layout {
       headCY,
       headR,
       eyeR,
-      neckX: (bodyCX + headCX) / 2,
-      neckY: (bodyCY - lyRY * 0.4 + headCY) / 2,
       feetY: 91,
       legs: [],
     };
@@ -176,8 +176,6 @@ export function layoutFor(stage: number): Layout {
     headCY,
     headR,
     eyeR,
-    neckX: 50,
-    neckY: bodyCY - bodyRY * 0.55,
     feetY,
     legs: quadLegs(bodyCX, bodyCY, bodyRY, feetY, sf, sb, bend),
   };
