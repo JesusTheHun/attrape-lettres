@@ -9,6 +9,7 @@ import { MascotGallery } from "./dev/MascotGallery";
 import { Shop } from "./shop/Shop";
 import { Picker } from "./shop/Picker";
 import { useProfile } from "./hooks/useProfile";
+import { useAudio } from "./hooks/useAudio";
 import { EXERCISES, MODE_HINT } from "./levels";
 import type { ExerciseId, View } from "./types";
 
@@ -18,6 +19,16 @@ const ROUNDED = "ui-rounded,'SF Pro Rounded',system-ui,sans-serif";
 export default function App() {
   const [view, setView] = useState<View>({ kind: "hub" });
   const { profile, preview, children, activeId, switchChild } = useProfile();
+  const audio = useAudio();
+
+  // "Écouter" the score: fr-FR TTS reads the bare digits as the whole number
+  // ("42" → « quarante-deux »), so a child ties the shape to the word — lowkey
+  // reading practice for big numbers. No baked clip needed; say() falls back to
+  // speechSynthesis for anything un-baked. Fires on the tap gesture (unlock first).
+  const listenBalance = () => {
+    audio.unlock();
+    void audio.say(String(profile.balance), { rate: 0.85 });
+  };
 
   // Dev-only gallery of all growth stages, reachable at #stages (out of kid flow).
   const [hash, setHash] = useState(() => window.location.hash);
@@ -97,13 +108,22 @@ export default function App() {
         >
           👤 {children.find((c) => c.id === activeId)?.name ?? ""}
         </button>
-        <button
-          onClick={() => setView({ kind: "dashboard" })}
-          aria-label="Mon copain et mes points"
-          className="rounded-full bg-white/80 px-4 py-2 text-lg font-black text-[#5A3A1E] shadow active:scale-95"
-        >
-          ⭐ {profile.balance}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={listenBalance}
+            aria-label="Écouter mes points"
+            className="rounded-full bg-white/80 px-3 py-2 text-lg shadow active:scale-95 [touch-action:manipulation]"
+          >
+            🔊
+          </button>
+          <button
+            onClick={() => setView({ kind: "dashboard" })}
+            aria-label="Mon copain et mes points"
+            className="rounded-full bg-white/80 px-4 py-2 text-lg font-black text-[#5A3A1E] shadow active:scale-95"
+          >
+            ⭐ {profile.balance}
+          </button>
+        </div>
       </div>
 
       <button
