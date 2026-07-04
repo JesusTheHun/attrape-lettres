@@ -13,6 +13,24 @@ body {
   background: #efe6da;
   -webkit-font-smoothing: antialiased;
 }
+/* Native-app feel when installed to the home screen: no rubber-band scroll, no
+   long-press text selection / callout menu, no tap highlight, and taps resolve
+   without the legacy 300ms delay. Inputs opt back into selection so a child's
+   name stays editable. */
+html,
+body {
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+input,
+textarea {
+  -webkit-user-select: auto;
+  user-select: auto;
+}
 #root {
   display: grid;
   place-items: start center;
