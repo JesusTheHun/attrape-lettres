@@ -51,6 +51,8 @@ export function FirstLetterExercise({
   const mountedRef = useRef(true);
 
   const round = session[idx];
+  // Last two levels drop the written word — the child works from the sound alone.
+  const showWord = level < FIRST_LETTER_LEVELS.length - 1;
 
   const prompt = useCallback(
     (word: string) => void audio.say(`Trouve la première lettre de ${word}.`),
@@ -137,7 +139,7 @@ export function FirstLetterExercise({
             aria-label="Répéter le mot"
             className="mb-6 rounded-full bg-white/70 px-5 py-2 text-lg font-bold text-[#5A3A1E] shadow [touch-action:none]"
           >
-            🔊 {round.target.word}
+            🔊{showWord ? ` ${round.target.word}` : ""}
           </button>
           <div className="flex flex-wrap items-center justify-center gap-4">
             {round.choices.map((letter, i) => (
