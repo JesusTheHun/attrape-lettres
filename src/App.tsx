@@ -41,13 +41,26 @@ export default function App() {
 
   if (view.kind === "play") {
     const back = () => setView({ kind: "hub" });
-    const meta = EXERCISES.find((e) => e.id === view.exercise)!;
+    const exIdx = EXERCISES.findIndex((e) => e.id === view.exercise);
+    const meta = EXERCISES[exIdx];
+    // "Suivant" bumps to the next level; past an exercise's last level it rolls
+    // into level 1 of the next exercise, and past the final one back to the hub.
+    // The key ⇒ any of these remounts the exercise so a fresh run seeds cleanly.
+    const next = () => {
+      if (view.level < meta.levelCount)
+        return setView({ kind: "play", exercise: view.exercise, level: view.level + 1 });
+      const nextEx = EXERCISES[exIdx + 1];
+      setView(nextEx ? { kind: "play", exercise: nextEx.id, level: 1 } : { kind: "hub" });
+    };
+    const key = `${view.exercise}-${view.level}`;
     if (view.exercise === "spell-sound")
-      return <SpellSoundExercise exercise={view.exercise} level={view.level} onBack={back} />;
+      return (
+        <SpellSoundExercise key={key} exercise={view.exercise} level={view.level} onBack={back} onNext={next} />
+      );
     return meta.mode ? (
-      <AssembleExercise exercise={view.exercise} mode={meta.mode} level={view.level} onBack={back} />
+      <AssembleExercise key={key} exercise={view.exercise} mode={meta.mode} level={view.level} onBack={back} onNext={next} />
     ) : (
-      <FirstLetterExercise exercise={view.exercise} level={view.level} onBack={back} />
+      <FirstLetterExercise key={key} exercise={view.exercise} level={view.level} onBack={back} onNext={next} />
     );
   }
 

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { GameFrame } from "../components/GameFrame";
 import { EarnBadge } from "../components/EarnBadge";
+import { EndButtons } from "../components/EndButtons";
 import { Mascot } from "../mascot/Mascot";
 import { Tile } from "../components/Tile";
 import { useAudio } from "../hooks/useAudio";
@@ -30,21 +31,24 @@ export function FirstLetterExercise({
   exercise,
   level,
   onBack,
+  onNext,
 }: {
   exercise: ExerciseId;
   level: number;
   onBack: () => void;
+  onNext: () => void;
 }) {
   const audio = useAudio();
   const { canvasRef, fire } = useConfetti();
   const { award, profile } = useProfile();
-  const [session, setSession] = useState<FirstLetterRound[]>(() => buildSession(level));
+  const [session] = useState<FirstLetterRound[]>(() => buildSession(level));
   const [idx, setIdx] = useState(0);
   const [mood, setMood] = useState<Mood>("idle");
   const [flash, setFlash] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [earned, setEarned] = useState(0);
   const locked = useRef(false);
+  const advanceTimer = useRef<number | null>(null);
 
   const round = session[idx];
 
@@ -60,6 +64,14 @@ export function FirstLetterExercise({
   // Leaving the exercise fades the current line out over 200ms, then cuts.
   useEffect(() => () => audio.stop(), [audio]);
 
+  // Never leave a pending advance running past unmount.
+  useEffect(
+    () => () => {
+      if (advanceTimer.current !== null) window.clearTimeout(advanceTimer.current);
+    },
+    []
+  );
+
   useEffect(() => {
     if (done || !round) return;
     // Settle the new round before announcing (matches Assemble/SpellSound). The
@@ -67,15 +79,6 @@ export function FirstLetterExercise({
     const t = window.setTimeout(() => prompt(round.target.word), 350);
     return () => window.clearTimeout(t);
   }, [idx, done, round, prompt]);
-
-  const restart = useCallback(() => {
-    setSession(buildSession(level));
-    setIdx(0);
-    setMood("idle");
-    setFlash(null);
-    setDone(false);
-    locked.current = false;
-  }, [level]);
 
   const pick = useCallback(
     (letter: string): Verdict => {
@@ -91,9 +94,18 @@ export function FirstLetterExercise({
       setMood("happy");
       audio.success();
       fire();
-      audio.speak(`Oui ! ${round.target.letter}. ${round.target.word}.`, { rate: 0.98 });
-      window.setTimeout(() => {
-        const next = idx + 1;
+      // Advance only once the success line has finished — the clips run 2–4.5s,
+      // so a fixed timer used to cut them off. The fallback rescues a stalled
+      // clip (backgrounded tab, media error) so the child is never stranded.
+      const next = idx + 1;
+      let advanced = false;
+      const advance = () => {
+        if (advanced) return;
+        advanced = true;
+        if (advanceTimer.current !== null) {
+          window.clearTimeout(advanceTimer.current);
+          advanceTimer.current = null;
+        }
         setFlash(null);
         locked.current = false;
         if (next >= session.length) {
@@ -105,7 +117,9 @@ export function FirstLetterExercise({
           setMood("idle");
           setIdx(next);
         }
-      }, 1400);
+      };
+      audio.speak(`Oui ! ${round.target.letter}. ${round.target.word}.`, { rate: 0.98, onEnd: advance });
+      advanceTimer.current = window.setTimeout(advance, 6000);
       return "accept";
     },
     [audio, award, exercise, fire, idx, level, round, session.length]
@@ -114,7 +128,7 @@ export function FirstLetterExercise({
   return (
     <GameFrame onBack={onBack} done={idx} total={session.length} canvasRef={canvasRef}>
       {done ? (
-        <Finished onReplay={restart} count={session.length} earned={earned} />
+        <Finished onMenu={onBack} onNext={onNext} count={session.length} earned={earned} />
       ) : (
         <div className="relative z-[41] flex w-full flex-1 flex-col items-center px-4 pb-8 pt-2">
           <Mascot config={profile.config} mood={mood} />
@@ -122,7 +136,10 @@ export function FirstLetterExercise({
             {round.target.emoji}
           </div>
           <button
-            onPointerDown={() => prompt(round.target.word)}
+            onPointerDown={() => {
+              if (locked.current) return; // don't cut the success line mid-celebration
+              prompt(round.target.word);
+            }}
             aria-label="Répéter le mot"
             className="mb-6 rounded-full bg-white/70 px-5 py-2 text-lg font-bold text-[#5A3A1E] shadow [touch-action:none]"
           >
@@ -155,11 +172,13 @@ export function FirstLetterExercise({
 }
 
 function Finished({
-  onReplay,
+  onMenu,
+  onNext,
   count,
   earned,
 }: {
-  onReplay: () => void;
+  onMenu: () => void;
+  onNext: () => void;
   count: number;
   earned: number;
 }) {
@@ -175,13 +194,7 @@ function Finished({
       <h2 className="m-0 font-black text-[#5A3A1E]" style={{ fontSize: "clamp(26px,7vw,40px)" }}>
         Tu as tout trouvé !
       </h2>
-      <button
-        onPointerDown={onReplay}
-        className="mt-1 rounded-full bg-[#66BB6A] px-9 py-4 text-2xl font-extrabold text-white [touch-action:none]"
-        style={{ boxShadow: "0 8px 0 #43A047, 0 14px 24px rgba(0,0,0,0.2)" }}
-      >
-        Rejouer
-      </button>
+      <EndButtons onMenu={onMenu} onNext={onNext} />
     </div>
   );
 }

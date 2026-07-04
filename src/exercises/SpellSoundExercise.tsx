@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { GameFrame } from "../components/GameFrame";
 import { EarnBadge } from "../components/EarnBadge";
+import { EndButtons } from "../components/EndButtons";
 import { Mascot } from "../mascot/Mascot";
 import { Tile } from "../components/Tile";
 import { useAudio } from "../hooks/useAudio";
@@ -28,6 +29,7 @@ interface Props {
   exercise: ExerciseId;
   level: number;
   onBack: () => void;
+  onNext: () => void;
 }
 
 /**
@@ -36,13 +38,13 @@ interface Props {
  * the tiles are LETTERS and the target is a grapheme. The upper levels reuse a
  * sound across several spellings so the child learns o / au / eau, f / ph, ….
  */
-export function SpellSoundExercise({ exercise, level, onBack }: Props) {
+export function SpellSoundExercise({ exercise, level, onBack, onNext }: Props) {
   const cfg = useMemo(() => soundLevel(level), [level]);
   const audio = useAudio();
   const { canvasRef, fire } = useConfetti();
   const { award, profile } = useProfile();
 
-  const [session, setSession] = useState(() => buildSoundSession(level));
+  const [session] = useState(() => buildSoundSession(level));
   const [idx, setIdx] = useState(0);
   const [round, setRound] = useState<SoundRound>(() =>
     buildSoundRound(session[0], cfg.distractors)
@@ -56,6 +58,7 @@ export function SpellSoundExercise({ exercise, level, onBack }: Props) {
   const [done, setDone] = useState(false);
   const [earned, setEarned] = useState(0);
   const locked = useRef(false);
+  const advanceTimer = useRef<number | null>(null);
 
   const loadRound = useCallback(
     (target: (typeof session)[number]) => {
@@ -77,20 +80,19 @@ export function SpellSoundExercise({ exercise, level, onBack }: Props) {
   // Leaving the exercise fades the current line out over 200ms, then cuts.
   useEffect(() => () => audio.stop(), [audio]);
 
+  // Never leave a pending advance running past unmount.
+  useEffect(
+    () => () => {
+      if (advanceTimer.current !== null) window.clearTimeout(advanceTimer.current);
+    },
+    []
+  );
+
   useEffect(() => {
     const t = window.setTimeout(() => audio.speak(soundPrompt(session[0])), 350);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const restart = useCallback(() => {
-    const next = buildSoundSession(level);
-    setSession(next);
-    setIdx(0);
-    setMood("idle");
-    setDone(false);
-    loadRound(next[0]);
-  }, [level, loadRound]);
 
   // Drop a tapped letter into the next open slot. No per-tap judgement — the
   // child spells the whole word, and only a *complete* row is checked (below).
@@ -122,9 +124,18 @@ export function SpellSoundExercise({ exercise, level, onBack }: Props) {
         setMood("happy");
         audio.success();
         fire();
-        audio.speak(soundSuccess(round.target), { rate: 0.98 });
-        window.setTimeout(() => {
-          const nextIdx = idx + 1;
+        // Advance only once the success line has finished — the clips run 2–4.5s,
+        // so a fixed timer used to cut them off. The fallback rescues a stalled
+        // clip (backgrounded tab, media error) so the child is never stranded.
+        const nextIdx = idx + 1;
+        let advanced = false;
+        const advance = () => {
+          if (advanced) return;
+          advanced = true;
+          if (advanceTimer.current !== null) {
+            window.clearTimeout(advanceTimer.current);
+            advanceTimer.current = null;
+          }
           if (nextIdx >= session.length) {
             setMood("cheer");
             setEarned(award(exercise, level));
@@ -135,7 +146,9 @@ export function SpellSoundExercise({ exercise, level, onBack }: Props) {
             setIdx(nextIdx);
             loadRound(session[nextIdx]);
           }
-        }, 1500);
+        };
+        audio.speak(soundSuccess(round.target), { rate: 0.98, onEnd: advance });
+        advanceTimer.current = window.setTimeout(advance, 6000);
       } else {
         // Wrong spelling: "Oh non", then wipe the letters out to retry.
         locked.current = true;
@@ -185,7 +198,7 @@ export function SpellSoundExercise({ exercise, level, onBack }: Props) {
   return (
     <GameFrame onBack={onBack} done={idx} total={session.length} canvasRef={canvasRef}>
       {done ? (
-        <Finished onReplay={restart} count={session.length} earned={earned} />
+        <Finished onMenu={onBack} onNext={onNext} count={session.length} earned={earned} />
       ) : (
         <div className="relative z-[41] flex w-full flex-1 flex-col items-center px-4 pb-8 pt-2">
           <p className="m-0 mb-1 text-base font-bold text-[#7A5A3A]">
@@ -198,14 +211,11 @@ export function SpellSoundExercise({ exercise, level, onBack }: Props) {
           >
             {target.emoji ?? "🎧"}
           </div>
-          <div
-            className="mb-1 rounded-2xl bg-white/70 px-4 py-1 font-black text-[#5A3A1E]"
-            style={{ fontSize: "clamp(22px,6vw,36px)" }}
-          >
-            «&nbsp;{target.sound}&nbsp;»
-          </div>
           <button
-            onPointerDown={() => audio.speak(soundPrompt(target))}
+            onPointerDown={() => {
+              if (locked.current) return; // don't cut the success line mid-celebration
+              audio.speak(soundPrompt(target));
+            }}
             aria-label="Réécouter le son"
             className="mb-5 rounded-full bg-white/70 px-5 py-2 text-lg font-bold text-[#5A3A1E] shadow [touch-action:none]"
           >
@@ -259,6 +269,7 @@ export function SpellSoundExercise({ exercise, level, onBack }: Props) {
                 disabled={used.has(t.id)}
                 onPick={() => pick(t.id, t.letter)}
                 onPreview={() => {
+                  if (locked.current) return; // don't cut the success line mid-celebration
                   audio.unlock();
                   audio.speak(t.letter);
                 }}
@@ -278,11 +289,13 @@ export function SpellSoundExercise({ exercise, level, onBack }: Props) {
 }
 
 function Finished({
-  onReplay,
+  onMenu,
+  onNext,
   count,
   earned,
 }: {
-  onReplay: () => void;
+  onMenu: () => void;
+  onNext: () => void;
   count: number;
   earned: number;
 }) {
@@ -298,13 +311,7 @@ function Finished({
       <h2 className="m-0 font-black text-[#5A3A1E]" style={{ fontSize: "clamp(26px,7vw,40px)" }}>
         Tu as tout réussi !
       </h2>
-      <button
-        onPointerDown={onReplay}
-        className="mt-1 rounded-full bg-[#66BB6A] px-9 py-4 text-2xl font-extrabold text-white [touch-action:none]"
-        style={{ boxShadow: "0 8px 0 #43A047, 0 14px 24px rgba(0,0,0,0.2)" }}
-      >
-        Rejouer
-      </button>
+      <EndButtons onMenu={onMenu} onNext={onNext} />
     </div>
   );
 }

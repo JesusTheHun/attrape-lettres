@@ -7,7 +7,7 @@ export interface AudioApi {
   success: () => void;
   nudge: () => void;
   oops: () => void;
-  speak: (text: string, opts?: { rate?: number; pitch?: number }) => void;
+  speak: (text: string, opts?: { rate?: number; pitch?: number; onEnd?: () => void }) => void;
   stop: () => void;
 }
 
@@ -96,27 +96,35 @@ export function useAudio(): AudioApi {
   // On-device fallback. Warmer than the old rate 1.02 / pitch 1.4: a touch
   // slower for a 6yo to follow, pitch near-natural so it reads friendly, not
   // chipmunk-screechy. Only used when no baked clip exists for this utterance.
-  const speakTts = useCallback((text: string, rate: number, pitch: number) => {
-    try {
-      speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      u.rate = rate;
-      u.pitch = pitch;
-      u.lang = "fr-FR";
-      const v = voiceRef.current ?? pickBestFr(speechSynthesis.getVoices());
-      if (v) u.voice = v;
-      speechSynthesis.speak(u);
-    } catch {
-      /* speech unavailable */
-    }
-  }, []);
+  const speakTts = useCallback(
+    (text: string, rate: number, pitch: number, onEnd?: () => void) => {
+      try {
+        speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        u.rate = rate;
+        u.pitch = pitch;
+        u.lang = "fr-FR";
+        const v = voiceRef.current ?? pickBestFr(speechSynthesis.getVoices());
+        if (v) u.voice = v;
+        if (onEnd) u.onend = () => onEnd();
+        speechSynthesis.speak(u);
+      } catch {
+        onEnd?.(); // speech unavailable — don't strand a caller waiting on the end
+      }
+    },
+    []
+  );
 
   // Prefer the baked Gemini clip (device-consistent, natural); fall back to the
   // OS voice for anything not yet generated. One reused <audio> so a new line
   // interrupts the previous one, same as speechSynthesis.cancel().
   const speak = useCallback(
-    (text: string, { rate = 0.94, pitch = 1.1 } = {}) => {
+    (text: string, { rate = 0.94, pitch = 1.1, onEnd }: { rate?: number; pitch?: number; onEnd?: () => void } = {}) => {
       const seq = ++seqRef.current;
+      // Fire onEnd only if no later speak() has superseded this one — a
+      // superseding line (a replay tap, the next round's announce) cancels the
+      // pending callback so it can't advance twice or over the wrong clip.
+      const fireEnd = onEnd ? () => seq === seqRef.current && onEnd() : undefined;
       const url = clipUrl(text);
       if (url) {
         try {
@@ -128,6 +136,9 @@ export function useAudio(): AudioApi {
           }
           el.volume = 1;
           el.pause();
+          // Natural-completion signal only: interrupting re-points src, which
+          // doesn't fire 'ended', so a cut-off clip never runs the callback.
+          el.onended = fireEnd ?? null;
           el.src = url;
           el.currentTime = 0;
           void el.play().catch(() => {
@@ -135,7 +146,7 @@ export function useAudio(): AudioApi {
             // pending play() with an AbortError. Only fall back to TTS when THIS call
             // is still the latest — otherwise the fallback would play over the newer
             // clip, doubling the audio at exercise start (two announces race there).
-            if (seq === seqRef.current) speakTts(text, rate, pitch);
+            if (seq === seqRef.current) speakTts(text, rate, pitch, fireEnd);
           });
           return;
         } catch {
@@ -144,7 +155,7 @@ export function useAudio(): AudioApi {
       }
       // No baked clip: stop any in-flight clip so it can't overlap the TTS line.
       clipRef.current?.pause();
-      speakTts(text, rate, pitch);
+      speakTts(text, rate, pitch, fireEnd);
     },
     [speakTts]
   );
@@ -158,7 +169,10 @@ export function useAudio(): AudioApi {
       /* speech unavailable */
     }
     const el = clipRef.current;
-    if (!el || el.paused) return;
+    if (!el) return;
+    seqRef.current++; // supersede any in-flight speak so its onEnd can't fire
+    el.onended = null;
+    if (el.paused) return;
     if (fadeRef.current !== null) clearInterval(fadeRef.current);
     const steps = 10;
     const start = el.volume;
