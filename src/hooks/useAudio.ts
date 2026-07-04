@@ -6,6 +6,7 @@ export interface AudioApi {
   pop: () => void;
   success: () => void;
   nudge: () => void;
+  oops: () => void;
   speak: (text: string, opts?: { rate?: number; pitch?: number }) => void;
   stop: () => void;
 }
@@ -85,6 +86,12 @@ export function useAudio(): AudioApi {
     [blip]
   );
   const nudge = useCallback(() => blip(196, 0.14, "sine", 0.1), [blip]); // soft, non-punishing
+  // Two-note falling "wah-wah" for a completed-but-wrong row. Gentle (sine, low
+  // gain): it marks the miss without punishing. Pairs with the "Oh non" VO.
+  const oops = useCallback(() => {
+    blip(392, 0.18, "sine", 0.13, 0);
+    blip(311.13, 0.28, "sine", 0.13, 0.16);
+  }, [blip]);
 
   // On-device fallback. Warmer than the old rate 1.02 / pitch 1.4: a touch
   // slower for a 6yo to follow, pitch near-natural so it reads friendly, not
@@ -172,7 +179,7 @@ export function useAudio(): AudioApi {
   // changes. Critical: FirstLetterExercise's announce effect depends on `speak`
   // via `prompt`; a fresh object each render would re-fire it on every tap.
   return useMemo(
-    () => ({ unlock, pop, success, nudge, speak, stop }),
-    [unlock, pop, success, nudge, speak, stop]
+    () => ({ unlock, pop, success, nudge, oops, speak, stop }),
+    [unlock, pop, success, nudge, oops, speak, stop]
   );
 }

@@ -48,6 +48,9 @@ export function SpellSoundExercise({ exercise, level, onBack }: Props) {
     buildSoundRound(session[0], cfg.distractors)
   );
   const [slots, setSlots] = useState<(string | null)[]>(round.slots);
+  // Which tray tile fills each slot, so a filled slot can be tapped to send its
+  // tile back to the tray.
+  const [slotTile, setSlotTile] = useState<(number | null)[]>(() => round.slots.map(() => null));
   const [used, setUsed] = useState<Set<number>>(new Set());
   const [mood, setMood] = useState<Mood>("idle");
   const [done, setDone] = useState(false);
@@ -59,6 +62,7 @@ export function SpellSoundExercise({ exercise, level, onBack }: Props) {
       const r = buildSoundRound(target, cfg.distractors);
       setRound(r);
       setSlots(r.slots);
+      setSlotTile(r.slots.map(() => null));
       setUsed(new Set());
       locked.current = false;
       audio.speak(soundPrompt(target));
@@ -88,6 +92,9 @@ export function SpellSoundExercise({ exercise, level, onBack }: Props) {
     loadRound(next[0]);
   }, [level, loadRound]);
 
+  // Drop a tapped letter into the next open slot. No per-tap judgement — the
+  // child spells the whole word, and only a *complete* row is checked (below).
+  // A wrong letter can be tapped back out (removeAt) before the row fills.
   const pick = useCallback(
     (tileId: number, letter: string): Verdict => {
       if (locked.current) return "reject";
@@ -96,17 +103,21 @@ export function SpellSoundExercise({ exercise, level, onBack }: Props) {
 
       const nextEmpty = slots.findIndex((s) => s === null);
       if (nextEmpty < 0) return "reject";
-      if (letter !== round.target.spelling[nextEmpty]) {
-        audio.nudge();
-        return "reject";
-      }
 
       const filled = slots.slice();
       filled[nextEmpty] = letter;
       setSlots(filled);
+      setSlotTile((prev) => {
+        const n = prev.slice();
+        n[nextEmpty] = tileId;
+        return n;
+      });
       setUsed((prev) => new Set(prev).add(tileId));
 
-      if (filled.every((s) => s !== null)) {
+      if (!filled.every((s) => s !== null)) return "accept";
+
+      // Row complete — judge the whole spelling at once.
+      if (filled.every((s, i) => s === round.target.spelling[i])) {
         locked.current = true;
         setMood("happy");
         audio.success();
@@ -125,10 +136,48 @@ export function SpellSoundExercise({ exercise, level, onBack }: Props) {
             loadRound(session[nextIdx]);
           }
         }, 1500);
+      } else {
+        // Wrong spelling: "Oh non", then wipe the letters out to retry.
+        locked.current = true;
+        audio.oops();
+        audio.speak("Oh non ! On recommence.");
+        window.setTimeout(() => {
+          setSlots(round.slots.slice());
+          setSlotTile(round.slots.map(() => null));
+          setUsed(new Set());
+          locked.current = false;
+        }, 900);
       }
       return "accept";
     },
     [audio, award, exercise, fire, idx, level, loadRound, round, session, slots]
+  );
+
+  // Tap a filled slot to send its letter back to the tray — undo a misplacement
+  // before the row is complete.
+  const removeAt = useCallback(
+    (i: number) => {
+      if (locked.current) return;
+      const tileId = slotTile[i];
+      if (tileId == null) return;
+      audio.pop();
+      setSlots((prev) => {
+        const n = prev.slice();
+        n[i] = null;
+        return n;
+      });
+      setSlotTile((prev) => {
+        const n = prev.slice();
+        n[i] = null;
+        return n;
+      });
+      setUsed((prev) => {
+        const n = new Set(prev);
+        n.delete(tileId);
+        return n;
+      });
+    },
+    [audio, slotTile]
   );
 
   const target = round.target;
@@ -163,27 +212,41 @@ export function SpellSoundExercise({ exercise, level, onBack }: Props) {
             🔊 Écouter
           </button>
 
-          {/* Spelling slots */}
+          {/* Spelling slots — a filled one is a button that pops its letter back
+              to the tray so a misplacement can be fixed mid-row. */}
           <div className="mb-6 flex flex-wrap items-center justify-center gap-2">
-            {slots.map((s, i) => (
-              <div
-                key={i}
-                className="flex items-center justify-center font-black"
-                style={{
-                  minWidth: "clamp(52px,15vw,76px)",
-                  height: "clamp(52px,15vw,76px)",
-                  padding: "0 8px",
-                  fontSize: "clamp(24px,7vw,44px)",
-                  borderRadius: 20,
-                  color: "#5A3A1E",
-                  background: s ? "#FFFFFF" : "transparent",
-                  border: s ? "none" : "3px dashed #E4A15E",
-                  boxShadow: s ? "0 6px 14px rgba(0,0,0,0.12)" : "none",
-                }}
-              >
-                {s ?? ""}
-              </div>
-            ))}
+            {slots.map((s, i) => {
+              const style = {
+                minWidth: "clamp(52px,15vw,76px)",
+                height: "clamp(52px,15vw,76px)",
+                padding: "0 8px",
+                fontSize: "clamp(24px,7vw,44px)",
+                borderRadius: 20,
+                color: "#5A3A1E",
+                background: s ? "#FFFFFF" : "transparent",
+                border: s ? "none" : "3px dashed #E4A15E",
+                boxShadow: s ? "0 6px 14px rgba(0,0,0,0.12)" : "none",
+              } as const;
+              return s != null ? (
+                <button
+                  key={i}
+                  onPointerDown={() => removeAt(i)}
+                  aria-label={`Retirer ${s}`}
+                  className="flex items-center justify-center border-none font-black [touch-action:none]"
+                  style={{ ...style, cursor: "pointer" }}
+                >
+                  {s}
+                </button>
+              ) : (
+                <div
+                  key={i}
+                  className="flex items-center justify-center font-black"
+                  style={style}
+                >
+                  {""}
+                </div>
+              );
+            })}
           </div>
 
           {/* Letter tray */}
@@ -195,6 +258,11 @@ export function SpellSoundExercise({ exercise, level, onBack }: Props) {
                 ink={TRAY_COLORS[i % TRAY_COLORS.length].ink}
                 disabled={used.has(t.id)}
                 onPick={() => pick(t.id, t.letter)}
+                onPreview={() => {
+                  audio.unlock();
+                  audio.speak(t.letter);
+                }}
+                previewLabel={`Écouter ${t.letter}`}
                 size="clamp(60px,17vw,92px)"
                 fontSize="clamp(26px,7vw,48px)"
                 ariaLabel={`Lettre ${t.letter}`}

@@ -48,6 +48,9 @@ export function AssembleExercise({ exercise, mode, level, onBack }: Props) {
   const [idx, setIdx] = useState(0);
   const [round, setRound] = useState<SyllableRound>(() => buildSyllableRound(session[0], mode));
   const [slots, setSlots] = useState<(string | null)[]>(round.slots);
+  // Which tray tile fills each slot, so a filled slot can be tapped to send its
+  // tile back to the tray. `null` = empty, or a pre-revealed (locked) slot.
+  const [slotTile, setSlotTile] = useState<(number | null)[]>(() => round.slots.map(() => null));
   const [used, setUsed] = useState<Set<number>>(new Set());
   const [mood, setMood] = useState<Mood>("idle");
   const [done, setDone] = useState(false);
@@ -59,6 +62,7 @@ export function AssembleExercise({ exercise, mode, level, onBack }: Props) {
       const r = buildSyllableRound(word, mode);
       setRound(r);
       setSlots(r.slots);
+      setSlotTile(r.slots.map(() => null));
       setUsed(new Set());
       locked.current = false;
       audio.speak(word.word);
@@ -88,6 +92,9 @@ export function AssembleExercise({ exercise, mode, level, onBack }: Props) {
     loadRound(next[0]);
   }, [tier, loadRound]);
 
+  // Drop a tapped tile into the next open slot. No per-tap judgement — the child
+  // fills the whole row, and only a *complete* row is checked (below). Until then
+  // any tile is welcome, and a wrong one can be tapped back out (removeAt).
   const pick = useCallback(
     (tileId: number, syllable: string): Verdict => {
       if (locked.current) return "reject";
@@ -96,17 +103,21 @@ export function AssembleExercise({ exercise, mode, level, onBack }: Props) {
 
       const nextEmpty = slots.findIndex((s) => s === null);
       if (nextEmpty < 0) return "reject";
-      if (syllable !== round.word.syllables[nextEmpty]) {
-        audio.nudge();
-        return "reject";
-      }
 
       const filled = slots.slice();
       filled[nextEmpty] = syllable;
       setSlots(filled);
+      setSlotTile((prev) => {
+        const n = prev.slice();
+        n[nextEmpty] = tileId;
+        return n;
+      });
       setUsed((prev) => new Set(prev).add(tileId));
 
-      if (filled.every((s) => s !== null)) {
+      if (!filled.every((s) => s !== null)) return "accept";
+
+      // Row complete — judge the whole order at once.
+      if (filled.every((s, i) => s === round.word.syllables[i])) {
         locked.current = true;
         setMood("happy");
         audio.success();
@@ -125,10 +136,49 @@ export function AssembleExercise({ exercise, mode, level, onBack }: Props) {
             loadRound(session[nextIdx]);
           }
         }, 1500);
+      } else {
+        // Wrong order: "Oh non", then wipe the tray tiles back out so the child
+        // retries the same word. Pre-revealed (locked) slots stay put.
+        locked.current = true;
+        audio.oops();
+        audio.speak("Oh non ! On recommence.");
+        window.setTimeout(() => {
+          setSlots(round.slots.slice());
+          setSlotTile(round.slots.map(() => null));
+          setUsed(new Set());
+          locked.current = false;
+        }, 900);
       }
       return "accept";
     },
     [audio, award, exercise, fire, idx, level, loadRound, round, session, slots]
+  );
+
+  // Tap a filled slot to send its tile back to the tray — lets a child undo a
+  // misplacement before the row is complete. Locked (pre-revealed) slots ignore.
+  const removeAt = useCallback(
+    (i: number) => {
+      if (locked.current || round.locked[i]) return;
+      const tileId = slotTile[i];
+      if (tileId == null) return;
+      audio.pop();
+      setSlots((prev) => {
+        const n = prev.slice();
+        n[i] = null;
+        return n;
+      });
+      setSlotTile((prev) => {
+        const n = prev.slice();
+        n[i] = null;
+        return n;
+      });
+      setUsed((prev) => {
+        const n = new Set(prev);
+        n.delete(tileId);
+        return n;
+      });
+    },
+    [audio, round, slotTile]
   );
 
   return (
@@ -150,27 +200,42 @@ export function AssembleExercise({ exercise, mode, level, onBack }: Props) {
             🔊 Écouter
           </button>
 
-          {/* Assembly slots */}
+          {/* Assembly slots — a filled, non-locked one is a button that pops its
+              tile back to the tray so a misplacement can be fixed mid-row. */}
           <div className="mb-6 flex flex-wrap items-center justify-center gap-2">
-            {slots.map((s, i) => (
-              <div
-                key={i}
-                className="flex items-center justify-center font-black"
-                style={{
-                  minWidth: "clamp(56px,16vw,84px)",
-                  height: "clamp(56px,16vw,84px)",
-                  padding: "0 10px",
-                  fontSize: "clamp(22px,6vw,40px)",
-                  borderRadius: 20,
-                  color: "#5A3A1E",
-                  background: s ? "#FFFFFF" : "transparent",
-                  border: s ? "none" : round.locked[i] ? "3px dashed #C9A87A" : "3px dashed #E4A15E",
-                  boxShadow: s ? "0 6px 14px rgba(0,0,0,0.12)" : "none",
-                }}
-              >
-                {s ?? ""}
-              </div>
-            ))}
+            {slots.map((s, i) => {
+              const removable = s != null && !round.locked[i];
+              const style = {
+                minWidth: "clamp(56px,16vw,84px)",
+                height: "clamp(56px,16vw,84px)",
+                padding: "0 10px",
+                fontSize: "clamp(22px,6vw,40px)",
+                borderRadius: 20,
+                color: "#5A3A1E",
+                background: s ? "#FFFFFF" : "transparent",
+                border: s ? "none" : round.locked[i] ? "3px dashed #C9A87A" : "3px dashed #E4A15E",
+                boxShadow: s ? "0 6px 14px rgba(0,0,0,0.12)" : "none",
+              } as const;
+              return removable ? (
+                <button
+                  key={i}
+                  onPointerDown={() => removeAt(i)}
+                  aria-label={`Retirer ${s}`}
+                  className="flex items-center justify-center border-none font-black [touch-action:none]"
+                  style={{ ...style, cursor: "pointer" }}
+                >
+                  {s}
+                </button>
+              ) : (
+                <div
+                  key={i}
+                  className="flex items-center justify-center font-black"
+                  style={style}
+                >
+                  {s ?? ""}
+                </div>
+              );
+            })}
           </div>
 
           {/* Tray */}
@@ -182,6 +247,11 @@ export function AssembleExercise({ exercise, mode, level, onBack }: Props) {
                 ink={TRAY_COLORS[i % TRAY_COLORS.length].ink}
                 disabled={used.has(t.id)}
                 onPick={() => pick(t.id, t.syllable)}
+                onPreview={() => {
+                  audio.unlock();
+                  audio.speak(t.syllable);
+                }}
+                previewLabel={`Écouter ${t.syllable}`}
                 size="clamp(64px,18vw,100px)"
                 fontSize="clamp(20px,5.5vw,36px)"
                 ariaLabel={`Syllabe ${t.syllable}`}

@@ -137,6 +137,11 @@ export function FirstLetterExercise({
                 highlight={flash === letter}
                 disabled={flash != null}
                 onPick={() => pick(letter)}
+                onPreview={() => {
+                  audio.unlock();
+                  audio.speak(letter);
+                }}
+                previewLabel={`Écouter ${letter}`}
                 ariaLabel={`Lettre ${letter}`}
               >
                 {letter}

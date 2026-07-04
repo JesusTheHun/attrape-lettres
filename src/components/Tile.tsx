@@ -9,6 +9,15 @@ interface TileProps {
   highlight?: boolean;
   /** Runs synchronously on pointerdown; return "reject" to trigger a shake. */
   onPick: () => Verdict;
+  /**
+   * Optional "hear it first" affordance. When set, a separate full-width
+   * Écouter button is stacked BELOW the tile (its own finger-sized target,
+   * gap-separated so it can't be mis-tapped for the pick) that speaks the
+   * tile's sound without committing the pick. Lets a child audition a
+   * letter/syllable before choosing.
+   */
+  onPreview?: () => void;
+  previewLabel?: string;
   size?: number | string;
   fontSize?: number | string;
   ariaLabel?: string;
@@ -27,8 +36,21 @@ const shake: Keyframe[] = [
   { transform: "translateX(0)" },
 ];
 
-export function Tile({ children, bg, ink, disabled, highlight, onPick, size, fontSize, ariaLabel }: TileProps) {
+export function Tile({
+  children,
+  bg,
+  ink,
+  disabled,
+  highlight,
+  onPick,
+  onPreview,
+  previewLabel,
+  size,
+  fontSize,
+  ariaLabel,
+}: TileProps) {
   const ref = useRef<HTMLButtonElement>(null);
+  const listenRef = useRef<HTMLButtonElement>(null);
 
   const handle = useCallback(
     (_e: React.PointerEvent) => {
@@ -42,9 +64,17 @@ export function Tile({ children, bg, ink, disabled, highlight, onPick, size, fon
     [disabled, onPick]
   );
 
+  // A standalone sibling button — no propagation to worry about — so hearing a
+  // tile can never commit its pick. Speaks on pointerdown, same beat as pick.
+  const handlePreview = useCallback(() => {
+    if (disabled) return;
+    listenRef.current?.animate(press, { duration: 130, easing: "ease-out" });
+    onPreview?.();
+  }, [disabled, onPreview]);
+
   const dim = size ?? "clamp(92px, 27vw, 150px)";
 
-  return (
+  const tile = (
     <button
       ref={ref}
       onPointerDown={handle}
@@ -52,8 +82,10 @@ export function Tile({ children, bg, ink, disabled, highlight, onPick, size, fon
       aria-label={ariaLabel}
       className="flex select-none items-center justify-center font-black outline-none [touch-action:none] [-webkit-tap-highlight-color:transparent] disabled:opacity-40"
       style={{
-        width: dim,
+        minWidth: dim,
+        width: "auto",
         height: dim,
+        padding: "0 clamp(10px, 3vw, 20px)",
         fontSize: fontSize ?? "clamp(30px, 9vw, 64px)",
         background: bg,
         color: ink,
@@ -68,5 +100,32 @@ export function Tile({ children, bg, ink, disabled, highlight, onPick, size, fon
     >
       {children}
     </button>
+  );
+
+  if (!onPreview) return tile;
+
+  // Column: big pick tile on top, its own Écouter button below with a real
+  // gap. Both are finger-sized, single-purpose targets that never overlap.
+  return (
+    <div className="flex flex-col items-stretch gap-2" style={{ minWidth: dim }}>
+      {tile}
+      <button
+        ref={listenRef}
+        type="button"
+        onPointerDown={handlePreview}
+        disabled={disabled}
+        aria-label={previewLabel ?? "Écouter"}
+        className="flex select-none items-center justify-center gap-1 rounded-full bg-white font-bold text-[#5A3A1E] outline-none [touch-action:none] [-webkit-tap-highlight-color:transparent] disabled:opacity-40"
+        style={{
+          height: "clamp(40px, 11vw, 52px)",
+          fontSize: "clamp(16px, 4.5vw, 22px)",
+          border: "none",
+          cursor: disabled ? "default" : "pointer",
+          boxShadow: "0 3px 0 rgba(0,0,0,0.10), 0 5px 12px rgba(0,0,0,0.12)",
+        }}
+      >
+        🔊
+      </button>
+    </div>
   );
 }

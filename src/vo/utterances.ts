@@ -16,6 +16,9 @@ export function enumerateUtterances(): string[] {
   out.add("Bravo ! Tu as tout réussi !");
   out.add("Bravo ! Tu as tout trouvé !");
 
+  // Multi-tap miss: the whole row is filled but out of order (Assemble/SpellSound).
+  out.add("Oh non ! On recommence.");
+
   // First-letter: the spoken prompt + the success line, per word.
   for (const w of LETTER_WORDS) {
     out.add(`Trouve la première lettre de ${w.word}.`);
