@@ -58,7 +58,7 @@ export function SpellSoundExercise({ exercise, level, onBack, onNext }: Props) {
   const [done, setDone] = useState(false);
   const [earned, setEarned] = useState(0);
   const locked = useRef(false);
-  const advanceTimer = useRef<number | null>(null);
+  const mountedRef = useRef(true);
 
   const loadRound = useCallback(
     (target: (typeof session)[number]) => {
@@ -68,7 +68,7 @@ export function SpellSoundExercise({ exercise, level, onBack, onNext }: Props) {
       setSlotTile(r.slots.map(() => null));
       setUsed(new Set());
       locked.current = false;
-      audio.speak(soundPrompt(target));
+      void audio.say(soundPrompt(target));
     },
     [audio, cfg.distractors]
   );
@@ -80,16 +80,17 @@ export function SpellSoundExercise({ exercise, level, onBack, onNext }: Props) {
   // Leaving the exercise fades the current line out over 200ms, then cuts.
   useEffect(() => () => audio.stop(), [audio]);
 
-  // Never leave a pending advance running past unmount.
-  useEffect(
-    () => () => {
-      if (advanceTimer.current !== null) window.clearTimeout(advanceTimer.current);
-    },
-    []
-  );
+  // Async celebrate/retry steps below bail if the exercise unmounted mid-line.
+  // Set true on mount too, so StrictMode's dev remount doesn't leave it false.
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
-    const t = window.setTimeout(() => audio.speak(soundPrompt(session[0])), 350);
+    const t = window.setTimeout(() => void audio.say(soundPrompt(session[0])), 350);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -124,42 +125,37 @@ export function SpellSoundExercise({ exercise, level, onBack, onNext }: Props) {
         setMood("happy");
         audio.success();
         fire();
-        // Advance only once the success line has finished — the clips run 2–4.5s,
-        // so a fixed timer used to cut them off. The fallback rescues a stalled
-        // clip (backgrounded tab, media error) so the child is never stranded.
+        // Advance only after the success line has played in full. `ok` is false
+        // if it was cut short (child left, watchdog) — then we don't advance.
         const nextIdx = idx + 1;
-        let advanced = false;
-        const advance = () => {
-          if (advanced) return;
-          advanced = true;
-          if (advanceTimer.current !== null) {
-            window.clearTimeout(advanceTimer.current);
-            advanceTimer.current = null;
-          }
+        void (async () => {
+          const ok = await audio.say(soundSuccess(round.target), { rate: 0.98 });
+          if (!ok || !mountedRef.current) return;
           if (nextIdx >= session.length) {
             setMood("cheer");
             setEarned(award(exercise, level));
             setDone(true);
-            audio.speak("Bravo ! Tu as tout réussi !");
+            void audio.say("Bravo ! Tu as tout réussi !");
           } else {
             setMood("idle");
             setIdx(nextIdx);
             loadRound(session[nextIdx]);
           }
-        };
-        audio.speak(soundSuccess(round.target), { rate: 0.98, onEnd: advance });
-        advanceTimer.current = window.setTimeout(advance, 6000);
+        })();
       } else {
-        // Wrong spelling: "Oh non", then wipe the letters out to retry.
+        // Wrong spelling: "Oh non", then — once it has finished speaking — wipe
+        // the letters out to retry. Waiting on the line means the reset (and
+        // re-enabling taps) can't cut "Oh non" off.
         locked.current = true;
         audio.oops();
-        audio.speak("Oh non ! On recommence.");
-        window.setTimeout(() => {
+        void (async () => {
+          await audio.say("Oh non ! On recommence.");
+          if (!mountedRef.current) return;
           setSlots(round.slots.slice());
           setSlotTile(round.slots.map(() => null));
           setUsed(new Set());
           locked.current = false;
-        }, 900);
+        })();
       }
       return "accept";
     },
@@ -214,7 +210,7 @@ export function SpellSoundExercise({ exercise, level, onBack, onNext }: Props) {
           <button
             onPointerDown={() => {
               if (locked.current) return; // don't cut the success line mid-celebration
-              audio.speak(soundPrompt(target));
+              void audio.say(soundPrompt(target));
             }}
             aria-label="Réécouter le son"
             className="mb-5 rounded-full bg-white/70 px-5 py-2 text-lg font-bold text-[#5A3A1E] shadow [touch-action:none]"
@@ -271,7 +267,7 @@ export function SpellSoundExercise({ exercise, level, onBack, onNext }: Props) {
                 onPreview={() => {
                   if (locked.current) return; // don't cut the success line mid-celebration
                   audio.unlock();
-                  audio.speak(t.letter);
+                  void audio.say(t.letter);
                 }}
                 previewLabel={`Écouter ${t.letter}`}
                 size="clamp(60px,17vw,92px)"

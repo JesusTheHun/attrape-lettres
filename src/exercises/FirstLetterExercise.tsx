@@ -48,12 +48,12 @@ export function FirstLetterExercise({
   const [done, setDone] = useState(false);
   const [earned, setEarned] = useState(0);
   const locked = useRef(false);
-  const advanceTimer = useRef<number | null>(null);
+  const mountedRef = useRef(true);
 
   const round = session[idx];
 
   const prompt = useCallback(
-    (word: string) => audio.speak(`Trouve la première lettre de ${word}.`),
+    (word: string) => void audio.say(`Trouve la première lettre de ${word}.`),
     [audio]
   );
 
@@ -64,13 +64,14 @@ export function FirstLetterExercise({
   // Leaving the exercise fades the current line out over 200ms, then cuts.
   useEffect(() => () => audio.stop(), [audio]);
 
-  // Never leave a pending advance running past unmount.
-  useEffect(
-    () => () => {
-      if (advanceTimer.current !== null) window.clearTimeout(advanceTimer.current);
-    },
-    []
-  );
+  // The async celebrate step below bails if the exercise unmounted mid-line.
+  // Set true on mount too, so StrictMode's dev remount doesn't leave it false.
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (done || !round) return;
@@ -94,32 +95,25 @@ export function FirstLetterExercise({
       setMood("happy");
       audio.success();
       fire();
-      // Advance only once the success line has finished — the clips run 2–4.5s,
-      // so a fixed timer used to cut them off. The fallback rescues a stalled
-      // clip (backgrounded tab, media error) so the child is never stranded.
+      // Advance only after the success line has played in full. `ok` is false if
+      // it was cut short (child left, watchdog) — then we don't advance. The next
+      // prompt is announced by the idx-change effect above.
       const next = idx + 1;
-      let advanced = false;
-      const advance = () => {
-        if (advanced) return;
-        advanced = true;
-        if (advanceTimer.current !== null) {
-          window.clearTimeout(advanceTimer.current);
-          advanceTimer.current = null;
-        }
+      void (async () => {
+        const ok = await audio.say(`Oui ! ${round.target.letter}. ${round.target.word}.`, { rate: 0.98 });
+        if (!ok || !mountedRef.current) return;
         setFlash(null);
         locked.current = false;
         if (next >= session.length) {
           setMood("cheer");
           setEarned(award(exercise, level));
           setDone(true);
-          audio.speak("Bravo ! Tu as tout trouvé !");
+          void audio.say("Bravo ! Tu as tout trouvé !");
         } else {
           setMood("idle");
           setIdx(next);
         }
-      };
-      audio.speak(`Oui ! ${round.target.letter}. ${round.target.word}.`, { rate: 0.98, onEnd: advance });
-      advanceTimer.current = window.setTimeout(advance, 6000);
+      })();
       return "accept";
     },
     [audio, award, exercise, fire, idx, level, round, session.length]
@@ -156,7 +150,7 @@ export function FirstLetterExercise({
                 onPick={() => pick(letter)}
                 onPreview={() => {
                   audio.unlock();
-                  audio.speak(letter);
+                  void audio.say(letter);
                 }}
                 previewLabel={`Écouter ${letter}`}
                 ariaLabel={`Lettre ${letter}`}

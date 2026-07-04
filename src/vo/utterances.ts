@@ -6,7 +6,7 @@ import { soundPrompt, soundSuccess } from "../levels.ts";
 /* Shared by the runtime (clips.ts) and the generator (scripts/generate-vo.ts): */
 /* both derive the same filename via voKey(), so a baked clip is found by the    */
 /* exact utterance string. Keep these strings byte-identical to what the         */
-/* exercises pass to audio.speak(), or the lookup misses and it falls back.      */
+/* exercises pass to audio.say(), or the lookup misses and it falls back.        */
 /* -------------------------------------------------------------------------- */
 
 export function enumerateUtterances(): string[] {

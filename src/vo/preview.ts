@@ -12,7 +12,7 @@ import { LETTER_WORDS, SYLLABLE_BANK, SOUND_TARGETS, SOUND_LETTER_BANK } from ".
 /* hence the split — bake syllables, keep letters droppable.                     */
 /*                                                                            */
 /* The strings must stay byte-identical (CASE included) to what the exercises   */
-/* pass to audio.speak(): Assemble speaks the UPPERCASE syllable tile,           */
+/* pass to audio.say(): Assemble speaks the UPPERCASE syllable tile,             */
 /* FirstLetter / SpellSound speak the UPPERCASE letter tile. preview.test.ts     */
 /* pins that against the real round builders so a content edit can't silently    */
 /* drift a tile out of the baked set (which would fall back to the robot voice). */

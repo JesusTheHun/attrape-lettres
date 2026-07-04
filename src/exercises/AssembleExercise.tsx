@@ -58,7 +58,7 @@ export function AssembleExercise({ exercise, mode, level, onBack, onNext }: Prop
   const [done, setDone] = useState(false);
   const [earned, setEarned] = useState(0);
   const locked = useRef(false);
-  const advanceTimer = useRef<number | null>(null);
+  const mountedRef = useRef(true);
 
   const loadRound = useCallback(
     (word: (typeof session)[number]) => {
@@ -68,7 +68,7 @@ export function AssembleExercise({ exercise, mode, level, onBack, onNext }: Prop
       setSlotTile(r.slots.map(() => null));
       setUsed(new Set());
       locked.current = false;
-      audio.speak(word.word);
+      void audio.say(word.word);
     },
     [audio, mode]
   );
@@ -80,16 +80,17 @@ export function AssembleExercise({ exercise, mode, level, onBack, onNext }: Prop
   // Leaving the exercise fades the current line out over 200ms, then cuts.
   useEffect(() => () => audio.stop(), [audio]);
 
-  // Never leave a pending advance running past unmount.
-  useEffect(
-    () => () => {
-      if (advanceTimer.current !== null) window.clearTimeout(advanceTimer.current);
-    },
-    []
-  );
+  // Async celebrate/retry steps below bail if the exercise unmounted mid-line.
+  // Set true on mount too, so StrictMode's dev remount doesn't leave it false.
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
-    const t = window.setTimeout(() => audio.speak(session[0].word), 350);
+    const t = window.setTimeout(() => void audio.say(session[0].word), 350);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -124,43 +125,38 @@ export function AssembleExercise({ exercise, mode, level, onBack, onNext }: Prop
         setMood("happy");
         audio.success();
         fire();
-        // Advance only once the success line has finished — the clips run 2–4.5s,
-        // so a fixed timer used to cut them off. The fallback rescues a stalled
-        // clip (backgrounded tab, media error) so the child is never stranded.
+        // Advance only after the success line has played in full. `ok` is false
+        // if it was cut short (child left, watchdog) — then we don't advance.
         const nextIdx = idx + 1;
-        let advanced = false;
-        const advance = () => {
-          if (advanced) return;
-          advanced = true;
-          if (advanceTimer.current !== null) {
-            window.clearTimeout(advanceTimer.current);
-            advanceTimer.current = null;
-          }
+        void (async () => {
+          const ok = await audio.say(`Oui ! ${round.word.word}.`, { rate: 0.98 });
+          if (!ok || !mountedRef.current) return;
           if (nextIdx >= session.length) {
             setMood("cheer");
             setEarned(award(exercise, level));
             setDone(true);
-            audio.speak("Bravo ! Tu as tout réussi !");
+            void audio.say("Bravo ! Tu as tout réussi !");
           } else {
             setMood("idle");
             setIdx(nextIdx);
             loadRound(session[nextIdx]);
           }
-        };
-        audio.speak(`Oui ! ${round.word.word}.`, { rate: 0.98, onEnd: advance });
-        advanceTimer.current = window.setTimeout(advance, 6000);
+        })();
       } else {
-        // Wrong order: "Oh non", then wipe the tray tiles back out so the child
-        // retries the same word. Pre-revealed (locked) slots stay put.
+        // Wrong order: "Oh non", then — once it has finished speaking — wipe the
+        // tray tiles back out so the child retries. Waiting on the line means the
+        // reset (and re-enabling taps) can't cut "Oh non" off. Pre-revealed
+        // (locked) slots stay put.
         locked.current = true;
         audio.oops();
-        audio.speak("Oh non ! On recommence.");
-        window.setTimeout(() => {
+        void (async () => {
+          await audio.say("Oh non ! On recommence.");
+          if (!mountedRef.current) return;
           setSlots(round.slots.slice());
           setSlotTile(round.slots.map(() => null));
           setUsed(new Set());
           locked.current = false;
-        }, 900);
+        })();
       }
       return "accept";
     },
@@ -208,7 +204,7 @@ export function AssembleExercise({ exercise, mode, level, onBack, onNext }: Prop
           <button
             onPointerDown={() => {
               if (locked.current) return; // don't cut the success line mid-celebration
-              audio.speak(round.word.word);
+              void audio.say(round.word.word);
             }}
             aria-label="Répéter le mot"
             className="mb-5 rounded-full bg-white/70 px-5 py-2 text-lg font-bold text-[#5A3A1E] shadow [touch-action:none]"
@@ -266,7 +262,7 @@ export function AssembleExercise({ exercise, mode, level, onBack, onNext }: Prop
                 onPreview={() => {
                   if (locked.current) return; // don't cut the success line mid-celebration
                   audio.unlock();
-                  audio.speak(t.syllable);
+                  void audio.say(t.syllable);
                 }}
                 previewLabel={`Écouter ${t.syllable}`}
                 size="clamp(64px,18vw,100px)"
