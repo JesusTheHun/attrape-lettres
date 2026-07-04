@@ -6,7 +6,6 @@ import { Dashboard } from "./components/Dashboard";
 import { WhoIsPlaying } from "./components/WhoIsPlaying";
 import { Mascot } from "./mascot/Mascot";
 import { MascotGallery } from "./dev/MascotGallery";
-import { GrowthLab } from "./dev/GrowthLab";
 import { Shop } from "./shop/Shop";
 import { Picker } from "./shop/Picker";
 import { useProfile } from "./hooks/useProfile";
@@ -29,8 +28,6 @@ export default function App() {
   }, []);
   if (hash === "#stages")
     return <MascotGallery onClose={() => (window.location.hash = "")} />;
-  if (hash === "#growth-lab")
-    return <GrowthLab onClose={() => (window.location.hash = "")} />;
 
   // Who's-playing gate: siblings share the device. No active player ⇒ the
   // welcome screen (pick a child or create one). selectChild/createChild set

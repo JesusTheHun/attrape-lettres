@@ -1,7 +1,7 @@
 import type { RigProps } from "./growth";
 import { INK, pick } from "./growth";
 import { COLOR_SLOT, STYLE_SLOT, ACCESSORY } from "./ids";
-import { Aura, Bow, Burst, Cheeks, Crown, Eyes, Flower, FoldedLegs, GroundGlow, Halo, Leg, Mouth, Plume, Sparkles, fourStar } from "./parts";
+import { Aura, Bow, Cheeks, Crown, Eyes, Flower, FoldedLegs, GroundGlow, Halo, Leg, Mouth, Plume, Sparkles, fourStar } from "./parts";
 
 /**
  * Unicorn — "Céleste" timeline. Every stade 3→9 adds ONE clearly visible,
@@ -167,9 +167,20 @@ export function Unicorn({ config, layout, stage, mood, uid }: RigProps) {
         <Leg key={`f${i}`} spec={l} w={legW} color={body} hoof={hoof} />
       ))}
 
+      {/* halo (glowing ring behind the head) */}
+      {spec.halo && <Halo id={`${uid}-halo`} cx={headCX} cy={headCY} r={headR * 1.7} opacity={spec.halo} />}
+
       {/* mane behind head + top crest */}
       <Plume x={headCX + headR * 0.22} y={headCY - headR * 0.05} color={maneCol} len={headR * 1.2} wide={headR * 0.65} rot={22} n={4} />
       {spec.horn > 0 && <Plume x={headCX - headR * 0.15} y={headCY - headR * 0.85} color={maneCol} len={headR * 0.55} wide={headR * 0.35} rot={-6} n={2} />}
+      {/* flowing mane crest → rainbow at the top stages */}
+      {spec.rainbow
+        ? RAINBOW.map((c, i) => (
+            <Plume key={i} x={headCX + headR * 0.24} y={headCY - headR * 0.08 + (i / 4) * headR} color={c} len={headR * 1.5} wide={headR * 0.5} rot={26 + i * 5} n={3} />
+          ))
+        : spec.maneFlow && (
+            <Plume x={headCX + headR * 0.24} y={headCY - headR * 0.08} color={maneCol} len={headR * spec.maneFlow} wide={headR * 0.62} rot={24} n={4} />
+          )}
 
       {/* head */}
       <ellipse cx={headCX} cy={headCY} rx={headR} ry={headR * 0.98} fill={body} />
@@ -192,7 +203,17 @@ export function Unicorn({ config, layout, stage, mood, uid }: RigProps) {
 
       {/* horn (on top, centred between the forelock tufts) */}
       <Horn h={spec.horn} x={headCX} baseY={hornBaseY} color={hornCol} spiral={spiralHorn} shineId={spec.shine ? `${uid}-horn` : undefined} />
-      {spec.shine && <Sparkles points={[[headCX, hornBaseY - spec.horn - 1.5, 3]]} />}
+      {spec.shine && <Sparkles points={[[headCX, apexY - 1.5, 3]]} />}
+      {/* horn light beam (majestic) */}
+      {spec.beam && (
+        <g>
+          <path d={`M${headCX - 5} ${apexY} L${headCX} ${apexY - 26} L${headCX + 5} ${apexY} Z`} fill="#FFF6C4" opacity={0.5} />
+          <path d={fourStar(headCX, apexY - 2, 4.2)} fill="#FFF3C4" />
+        </g>
+      )}
+
+      {/* star crown */}
+      {spec.crown && <Crown cx={headCX} cy={headCY - headR * 0.5} r={headR * 0.95} band={hornCol} gem="#FF7EA8" />}
 
       {/* face */}
       <Eyes cx={headCX} y={headCY + headR * 0.06} dx={headR * 0.42} r={eyeR} mood={mood} sleepy={stage === 0} />

@@ -1,40 +1,76 @@
 import type { RigProps } from "./growth";
 import { mix, pick, ramp } from "./growth";
 import { COLOR_SLOT, STYLE_SLOT, ACCESSORY } from "./ids";
-import { Aura, Bow, Cheeks, Eyes, FoldedLegs, Leg, Mouth, Plume, Sparkles } from "./parts";
+import { Aura, Bow, Cheeks, Crown, Eyes, FoldedLegs, GroundGlow, Halo, Leg, Mouth, Plume, Sparkles } from "./parts";
 
 /**
- * Cat timeline:
- *  curled-up newborn kitten (can't stand) → 1 lifting head → 2-6 each a distinct
- *  beat (legs lengthen, ears grow & sharpen, tail carriage rises) → 7-8 lynx
- *  ear-tufts + aura → 9 majestic cat: dramatically lush, glowing, fur-clump tail.
+ * Cat — "Lynx Royal" timeline. Each stade 3→9 adds a clear, high-contrast beat
+ * on the way to a majestic big-cat:
+ *  0-2 (untouched) curled newborn → lifting head → first steps
+ *  3 cheek tufts · 4 lynx ear-tufts · 5 neck ruff starts
+ *  6 growing mane + sparkle · 7 big mane · 8 aura + XL mane + halo
+ *  9 lion mane, gold crown, ground glow, sparkle burst.
+ * The mane is a DARKER amber with an outline halo so it never melts into the
+ * same-coloured head.
  */
 
-export type Tuft = "none" | "small" | "big";
-export interface CSpec {
+type Tuft = "none" | "small" | "big";
+interface CSpec {
   /** tail length/bushiness multiplier. */
   tail: number;
   tuft: Tuft;
   aura: number;
   sparkle: number;
+  /** lion-mane plume length; undefined/0 = none. */
+  mane?: number;
+  /** always-on lynx cheek tufts. */
+  cheek?: boolean;
+  /** head halo opacity 0..1. */
+  halo?: number;
+  /** royal crown. */
+  crown?: boolean;
+  /** pool of light under the paws. */
+  ground?: boolean;
 }
 
-export const C_STAGES: CSpec[] = [
+const MANE = "#E0872F";
+const MANE_EDGE = "#A85A16";
+
+const STAGES: CSpec[] = [
   { tail: 0.5, tuft: "none", aura: 0, sparkle: 0 }, // 0
   { tail: 0.6, tuft: "none", aura: 0, sparkle: 0 }, // 1
   { tail: 0.8, tuft: "none", aura: 0, sparkle: 0 }, // 2
-  { tail: 0.95, tuft: "none", aura: 0, sparkle: 0 }, // 3
-  { tail: 1.05, tuft: "none", aura: 0, sparkle: 0 }, // 4
-  { tail: 1.15, tuft: "none", aura: 0, sparkle: 0 }, // 5
-  { tail: 1.25, tuft: "small", aura: 0, sparkle: 0 }, // 6
-  { tail: 1.4, tuft: "small", aura: 0.35, sparkle: 2 }, // 7
-  { tail: 1.65, tuft: "big", aura: 0.75, sparkle: 3 }, // 8
-  { tail: 2.0, tuft: "big", aura: 1, sparkle: 5 }, // 9
+  { tail: 1.05, tuft: "none", aura: 0, sparkle: 0, cheek: true }, // 3 cheek tufts
+  { tail: 1.2, tuft: "small", aura: 0, sparkle: 0, cheek: true }, // 4 lynx ear-tufts
+  { tail: 1.4, tuft: "small", aura: 0, sparkle: 0, cheek: true, mane: 5 }, // 5 ruff
+  { tail: 1.55, tuft: "small", aura: 0.15, sparkle: 1, cheek: true, mane: 7 }, // 6 mane + sparkle
+  { tail: 1.7, tuft: "big", aura: 0.4, sparkle: 2, cheek: true, mane: 9 }, // 7 big mane
+  { tail: 1.95, tuft: "big", aura: 0.7, sparkle: 3, cheek: true, mane: 11, halo: 0.6 }, // 8 XL mane + halo
+  { tail: 2.4, tuft: "big", aura: 1, sparkle: 6, cheek: true, mane: 14, halo: 0.6, crown: true, ground: true }, // 9 lion king
 ];
 
 const TUFT_LEN: Record<Tuft, number> = { none: 0, small: 4, big: 7 };
 
-export function Cat({ config, layout, stage, mood, uid, spec: specOverride }: RigProps & { spec?: CSpec }) {
+/** Lion mane — a ring of plumes with a darker outline underlay so the spikes
+ * read against the same-coloured head. */
+function Mane({ cx, cy, r, size }: { cx: number; cy: number; r: number; size: number }) {
+  const n = 15;
+  const ring = (len: number, col: string, prefix: string) =>
+    Array.from({ length: n }).map((_, i) => {
+      const a = (i / n) * Math.PI * 2;
+      const x = cx + Math.cos(a) * r;
+      const y = cy + Math.sin(a) * r + r * 0.28;
+      return <Plume key={`${prefix}${i}`} x={x} y={y} color={col} len={len} wide={size * 0.6} rot={90 - (a * 180) / Math.PI} n={2} />;
+    });
+  return (
+    <g>
+      {ring(size + 2.2, MANE_EDGE, "e")}
+      {ring(size, MANE, "f")}
+    </g>
+  );
+}
+
+export function Cat({ config, layout, stage, mood, uid }: RigProps) {
   const C = COLOR_SLOT.cat;
   const S = STYLE_SLOT.cat;
   const A = ACCESSORY.cat;
@@ -46,7 +82,7 @@ export function Cat({ config, layout, stage, mood, uid, spec: specOverride }: Ri
   const has = (id: string) => config.accessories.includes(id);
   const furEdge = mix(body, "#FFFFFF", 0.34); // lighter fluff so scallops are visible
 
-  const spec = specOverride ?? C_STAGES[Math.max(0, Math.min(9, stage))];
+  const spec = STAGES[Math.max(0, Math.min(9, stage))];
   const tailF = spec.tail * (longTail ? 1 : 0.62);
   const raise = ramp(stage, [[0, 0], [2, 0.1], [4, 0.4], [6, 0.75], [9, 1]]);
   const earScale = ramp(stage, [[0, 0.44], [2, 0.5], [4, 0.58], [6, 0.64], [9, 0.68]]);
@@ -75,6 +111,7 @@ export function Cat({ config, layout, stage, mood, uid, spec: specOverride }: Ri
 
   return (
     <g>
+      {spec.ground && <GroundGlow id={`${uid}-ground`} cx={50} y={layout.feetY + 2} rx={bodyRX + 18} color="#FFE29A" opacity={0.85} />}
       {spec.aura > 0 && <Aura id={`${uid}-tailglow`} cx={tipX} cy={tipY} r={rB * 1.5} color="#FFE6B0" opacity={spec.aura} />}
 
       {/* tail behind body — core + fur clumps + fluffy tip */}
@@ -105,6 +142,10 @@ export function Cat({ config, layout, stage, mood, uid, spec: specOverride }: Ri
       {layout.legs.filter((l) => !l.back).map((l, i) => (
         <Leg key={`f${i}`} spec={l} w={legW} color={body} hoof={body} />
       ))}
+
+      {/* halo + lion mane (behind the head) */}
+      {spec.halo && <Halo id={`${uid}-halo`} cx={headCX} cy={headCY} r={headR * 1.7} opacity={spec.halo} />}
+      {spec.mane && <Mane cx={headCX} cy={headCY} r={headR * 1.02} size={spec.mane} />}
 
       {/* fluffy: lighter fur halo around the head */}
       {fluffy &&
@@ -142,6 +183,12 @@ export function Cat({ config, layout, stage, mood, uid, spec: specOverride }: Ri
         </g>
       )}
 
+      {/* lynx cheek tufts (light, always-on from stade 3) */}
+      {spec.cheek &&
+        ([-1, 1] as const).map((d) => (
+          <Plume key={d} x={headCX + d * headR * 0.9} y={headCY + headR * 0.24} color="#FFE0C4" len={7} wide={5} rot={d * 72} n={3} />
+        ))}
+
       {/* face */}
       <Eyes cx={headCX} y={headCY} dx={headR * 0.4} r={eyeR} mood={mood} sleepy={stage === 0} />
       <Cheeks cx={headCX} y={headCY + headR * 0.36} dx={headR * 0.58} r={headR * 0.14} />
@@ -153,6 +200,9 @@ export function Cat({ config, layout, stage, mood, uid, spec: specOverride }: Ri
           <line x1={headCX + d * headR * 0.35} y1={headCY + headR * 0.48} x2={headCX + d * headR} y2={headCY + headR * 0.5} />
         </g>
       ))}
+
+      {/* royal crown (majestic) */}
+      {spec.crown && <Crown cx={headCX} cy={headCY - headR * 0.5} r={headR * 0.95} band="#FFD54F" gem="#E0533B" />}
 
       {/* accessories */}
       {has(A.bellCollar) && (

@@ -1,37 +1,97 @@
 import type { RigProps } from "./growth";
 import { INK, pick, ramp } from "./growth";
 import { COLOR_SLOT, STYLE_SLOT, ACCESSORY } from "./ids";
-import { Aura, Cheeks, Eyes, FoldedLegs, Leg, Mouth, Plume, Sparkles } from "./parts";
+import { Aura, Cheeks, Eyes, FoldedLegs, GroundGlow, Halo, Leg, Mouth, Plume, Sparkles, fourStar } from "./parts";
 
 /**
- * Fox timeline:
- *  curled fox-kit (can't stand) → 1 lifting head → 2-6 distinct beats (legs
- *  lengthen, ruff fills, ear-tufts sprout) → 7-8 aura → 9 majestic fox: huge
- *  bushy tail ending in a tapering, fur-textured, recolourable TIP + sparkles.
+ * Fox — "Kitsune" timeline. Each stade 3→9 sprouts a clearly visible beat on
+ * the way to a many-tailed fire-spirit:
+ *  0-2 (untouched) curled kit → lifting head → first steps
+ *  3 ear-tufts + ruff · 4 a 2nd tail · 5 a 3rd tail
+ *  6 sparkle + flame-tipped tails · 7 five tails · 8 forehead mark + halo
+ *  9 seven glowing tails, flame tips, halo, ground glow, sparkle burst.
+ * The extra tails are a DEEPER orange with a dark outline + cream tips, so they
+ * separate from the same-coloured body instead of merging into one mass.
  */
 
-export interface FSpec {
+interface FSpec {
   tail: number;
   ruff: number;
   tuft: boolean;
   aura: number;
   sparkle: number;
+  /** number of extra fanned kitsune tails (on top of the base tail). */
+  extraTails?: number;
+  /** flame tips on the fanned tails. */
+  flames?: boolean;
+  /** forehead spirit-mark. */
+  mark?: boolean;
+  /** head halo opacity 0..1. */
+  halo?: number;
+  /** pool of light under the paws. */
+  ground?: boolean;
 }
 
-export const F_STAGES: FSpec[] = [
+const TAIL_DEEP = "#F26B3C";
+const TAIL_EDGE = "#B8431C";
+const TAIL_TIP = "#FFF6EE";
+
+const STAGES: FSpec[] = [
   { tail: 0.55, ruff: 0.4, tuft: false, aura: 0, sparkle: 0 }, // 0
   { tail: 0.65, ruff: 0.45, tuft: false, aura: 0, sparkle: 0 }, // 1
   { tail: 0.8, ruff: 0.55, tuft: false, aura: 0, sparkle: 0 }, // 2
-  { tail: 0.92, ruff: 0.65, tuft: false, aura: 0, sparkle: 0 }, // 3
-  { tail: 1.05, ruff: 0.75, tuft: false, aura: 0, sparkle: 0 }, // 4
-  { tail: 1.18, ruff: 0.85, tuft: false, aura: 0, sparkle: 0 }, // 5
-  { tail: 1.3, ruff: 0.95, tuft: true, aura: 0, sparkle: 0 }, // 6
-  { tail: 1.45, ruff: 1.05, tuft: true, aura: 0.4, sparkle: 2 }, // 7
-  { tail: 1.6, ruff: 1.15, tuft: true, aura: 0.7, sparkle: 3 }, // 8
-  { tail: 1.85, ruff: 1.3, tuft: true, aura: 1, sparkle: 5 }, // 9
+  { tail: 0.95, ruff: 0.7, tuft: true, aura: 0, sparkle: 0 }, // 3 ear tufts + ruff
+  { tail: 1.05, ruff: 0.8, tuft: true, aura: 0, sparkle: 0, extraTails: 1 }, // 4 2nd tail
+  { tail: 1.15, ruff: 0.9, tuft: true, aura: 0, sparkle: 0, extraTails: 2 }, // 5 3 tails
+  { tail: 1.25, ruff: 1.0, tuft: true, aura: 0.2, sparkle: 1, extraTails: 2, flames: true }, // 6 flame tips
+  { tail: 1.4, ruff: 1.1, tuft: true, aura: 0.4, sparkle: 2, extraTails: 4, flames: true }, // 7 5 tails
+  { tail: 1.55, ruff: 1.2, tuft: true, aura: 0.7, sparkle: 3, extraTails: 4, flames: true, mark: true, halo: 0.55 }, // 8
+  { tail: 1.8, ruff: 1.3, tuft: true, aura: 1, sparkle: 6, extraTails: 6, flames: true, mark: true, halo: 0.55, ground: true }, // 9 kitsune
 ];
 
-export function Fox({ config, layout, stage, mood, uid, spec: specOverride }: RigProps & { spec?: FSpec }) {
+/** Small two-tone flame. */
+function Flame({ x, y, s }: { x: number; y: number; s: number }) {
+  return (
+    <g transform={`translate(${x} ${y}) scale(${s})`}>
+      <path d="M0 0 C-6 -6 -5 -15 0 -22 C5 -15 6 -6 0 0 Z" fill="#FF7043" />
+      <path d="M0 -3 C-3 -7 -3 -13 0 -17 C3 -13 3 -7 0 -3 Z" fill="#FFE082" />
+    </g>
+  );
+}
+
+/** One fanned kitsune tail — a bushy fur-clump curve with an outline underlay
+ * + a deeper fill + cream tip, so it reads apart from the body and its siblings. */
+function FanTail({ rootX, rootY, angleDeg, length, rB, flame, ki }: { rootX: number; rootY: number; angleDeg: number; length: number; rB: number; flame: boolean; ki: number }) {
+  const a = (angleDeg * Math.PI) / 180;
+  const perp = a + Math.PI / 2;
+  const ex = rootX + Math.cos(a) * length;
+  const ey = rootY + Math.sin(a) * length;
+  const cx = rootX + Math.cos(a) * length * 0.5 + Math.cos(perp) * length * 0.16;
+  const cy = rootY + Math.sin(a) * length * 0.5 + Math.sin(perp) * length * 0.16;
+  const bez = (t: number): [number, number] => [
+    (1 - t) * (1 - t) * rootX + 2 * (1 - t) * t * cx + t * t * ex,
+    (1 - t) * (1 - t) * rootY + 2 * (1 - t) * t * cy + t * t * ey,
+  ];
+  const clumps = Array.from({ length: 6 }).map((_, i) => {
+    const t = i / 5;
+    const [px, py] = bez(t);
+    return { px, py, r: rB * (0.55 + 0.5 * Math.sin(Math.PI * (0.12 + 0.8 * t))), tip: t > 0.72 };
+  });
+  const [tx, ty] = bez(1);
+  return (
+    <g key={ki}>
+      {clumps.map((b, i) => (
+        <circle key={`o${i}`} cx={b.px} cy={b.py} r={b.r + 1.1} fill={TAIL_EDGE} />
+      ))}
+      {clumps.map((b, i) => (
+        <circle key={i} cx={b.px} cy={b.py} r={b.r} fill={b.tip ? TAIL_TIP : TAIL_DEEP} />
+      ))}
+      {flame && <Flame x={tx} y={ty} s={0.6} />}
+    </g>
+  );
+}
+
+export function Fox({ config, layout, stage, mood, uid }: RigProps) {
   const C = COLOR_SLOT.fox;
   const S = STYLE_SLOT.fox;
   const A = ACCESSORY.fox;
@@ -43,7 +103,7 @@ export function Fox({ config, layout, stage, mood, uid, spec: specOverride }: Ri
   const longTail = pick(config.styles, S.tail, "long") === "long";
   const has = (id: string) => config.accessories.includes(id);
 
-  const spec = specOverride ?? F_STAGES[Math.max(0, Math.min(9, stage))];
+  const spec = STAGES[Math.max(0, Math.min(9, stage))];
   const tailF = spec.tail * (longTail ? 1 : 0.66);
   const { bodyCX, bodyCY, bodyRX, bodyRY, headCX, headCY, headR, neckX, neckY, eyeR } = layout;
   const legW = 7;
@@ -72,8 +132,29 @@ export function Fox({ config, layout, stage, mood, uid, spec: specOverride }: Ri
     return { px, py, r: rB * (0.62 - 0.36 * (i / 3)) };
   });
 
+  const extra = spec.extraTails ?? 0;
+
   return (
     <g>
+      {spec.ground && <GroundGlow id={`${uid}-ground`} cx={50} y={layout.feetY + 2} rx={bodyRX + 18} color="#FFD59A" opacity={0.85} />}
+
+      {/* extra kitsune tails, fanned symmetrically behind the body */}
+      {Array.from({ length: extra }).map((_, i) => {
+        const spread = extra === 1 ? 0 : i / (extra - 1) - 0.5;
+        return (
+          <FanTail
+            key={i}
+            ki={i}
+            rootX={bodyCX}
+            rootY={bodyCY + bodyRY * 0.02}
+            angleDeg={270 + spread * 132}
+            length={bodyRX * (1.12 + 0.42 * tailF)}
+            rB={4 + 3 * tailF}
+            flame={spec.flames === true}
+          />
+        );
+      })}
+
       {/* bushy tail behind body; recolourable tapering tip */}
       {spec.aura > 0 && <Aura id={`${uid}-tail`} cx={endX} cy={endY} r={rB * 1.3} color="#FFF1C4" opacity={spec.aura} />}
       {bodyClumps.map((b, i) => <circle key={`bu${i}`} cx={b.px} cy={b.py} r={b.r} fill={body} />)}
@@ -117,6 +198,9 @@ export function Fox({ config, layout, stage, mood, uid, spec: specOverride }: Ri
       {/* chest ruff */}
       <path d={`M${headCX - headR * 0.5 * spec.ruff} ${headCY + headR * 0.7} Q${headCX} ${headCY + headR * 1.5 * spec.ruff} ${headCX + headR * 0.5 * spec.ruff} ${headCY + headR * 0.7} Z`} fill={belly} />
 
+      {/* halo (behind the head) */}
+      {spec.halo && <Halo id={`${uid}-halo`} cx={headCX} cy={headCY} r={headR * 1.7} opacity={spec.halo} color="#FFD59A" />}
+
       {/* head */}
       <ellipse cx={headCX} cy={headCY} rx={headR} ry={headR * 0.96} fill={body} />
 
@@ -149,6 +233,9 @@ export function Fox({ config, layout, stage, mood, uid, spec: specOverride }: Ri
       <Eyes cx={headCX} y={headCY - headR * 0.02} dx={headR * 0.4} r={eyeR * 1.05} mood={mood} sleepy={stage === 0} />
       <Cheeks cx={headCX} y={headCY + headR * 0.32} dx={headR * 0.62} r={headR * 0.13} />
       <Mouth cx={headCX} y={headCY + headR * 0.5} w={headR * 0.14} mood={mood} />
+
+      {/* forehead spirit-mark (kitsune) */}
+      {spec.mark && <path d={fourStar(headCX, headCY - headR * 0.55, 2.6)} fill="#FFF3C4" />}
 
       {/* accessories */}
       {has(A.scarf) && (
