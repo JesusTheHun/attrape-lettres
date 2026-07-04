@@ -7,12 +7,20 @@ import { createServer } from "vite";
 /* -------------------------------------------------------------------------- */
 /* Bake the finite, authored VO vocabulary to audio with Gemini TTS.            */
 /*                                                                            */
-/*   GEMINI_API_KEY=xxx pnpm run vo:build            # batch (default)           */
-/*   GEMINI_API_KEY=xxx pnpm run vo:build -- --sync   # one call per clip         */
+/*   GEMINI_API_KEY=xxx pnpm run vo:build                     # everything, batch */
+/*   GEMINI_API_KEY=xxx pnpm run vo:build -- --sync            # one call per clip */
+/*   GEMINI_API_KEY=xxx pnpm run vo:build -- --group=syllables # only that group  */
+/*   pnpm run vo:build -- --list=letters                       # keys, no API call */
 /*                                                                            */
 /* Default = Gemini Batch Mode: separate quota from the sync API, ~50% cheaper, */
 /* async. The job id is stored in src/vo/clips/.vo-batch.json so a stopped run   */
 /* resumes polling instead of resubmitting. Use --sync to top up a few clips.   */
+/*                                                                            */
+/* Groups (--group=): all (default) | phrases (words + sentences) | preview      */
+/* (letters + syllables) | letters | syllables. Preview = the "hear the tile      */
+/* before you tap it" vocabulary (src/vo/preview.ts); it's a separate group so it */
+/* can be baked or deleted on its own. --list=<group> prints each key + filename  */
+/* (✓ present / · missing) and exits — the rollback map for `rm`-ing a group.     */
 /*                                                                            */
 /* Plain .mjs so it runs on ANY Node (no native-TS reliance). The authored      */
 /* vocabulary lives in TypeScript (src/vo/utterances.ts → src/content.ts); we   */
@@ -40,6 +48,17 @@ const VOICE = process.env.GEMINI_TTS_VOICE ?? "Leda"; // warm, youthful; try Aoe
 const STYLE =
   process.env.GEMINI_TTS_STYLE ??
   "Tu aides un enfant de six ans à apprendre à lire en français. Lis ce texte français à voix haute, d'une voix douce, chaleureuse et enjouée :";
+// Per-kind styles for the preview vocabulary (src/vo/preview.ts). A syllable must
+// blend into ONE sound, never be spelled out; a lone letter is NAMED. Both keep
+// the "apprendre à lire" framing so the safety classifier reads short syllables
+// (nu, tu, …) as French phonics, not flagged English words.
+const STYLE_SYLLABLE =
+  process.env.GEMINI_TTS_STYLE_SYLLABLE ??
+  "Tu aides un enfant de six ans à apprendre à lire en français. Lis à voix haute cette syllabe française comme un seul son fluide, jamais lettre par lettre, lentement et distinctement, d'une voix douce, chaleureuse et enjouée :";
+const STYLE_LETTER =
+  process.env.GEMINI_TTS_STYLE_LETTER ??
+  "Tu aides un enfant de six ans à apprendre à lire en français. Prononce à voix haute le nom de cette seule lettre de l'alphabet français, clairement et lentement, d'une voix douce, chaleureuse et enjouée :";
+const STYLE_BY_KIND = { phrase: STYLE, syllable: STYLE_SYLLABLE, letter: STYLE_LETTER };
 const DELAY_MS = Number(process.env.GEMINI_TTS_DELAY_MS ?? 1500); // between API calls
 const MAX_RETRIES = Number(process.env.GEMINI_TTS_RETRIES ?? 6);
 const MAX_WAIT_MS = Number(process.env.GEMINI_TTS_MAX_WAIT_MS ?? 300000); // fail fast past this (5 min)
@@ -51,7 +70,9 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, "..");
 const OUT_DIR = resolve(ROOT, "src/vo/clips");
 
-if (!API_KEY) {
+// --list only reads the local catalog + disk, so it doesn't need a key.
+const LISTING = process.argv.some((a) => a.startsWith("--list"));
+if (!API_KEY && !LISTING) {
   console.error("Missing GEMINI_API_KEY (or GOOGLE_API_KEY) in the environment.");
   process.exit(1);
 }
@@ -125,7 +146,18 @@ async function loadVocab() {
     logLevel: "error",
   });
   try {
-    return await vite.ssrLoadModule("/src/vo/utterances.ts");
+    // enumerateUtterances + voKey live in utterances.ts; the separate preview
+    // catalog (letters/syllables) in preview.ts. The preview module is OPTIONAL
+    // by design: deleting src/vo/preview.ts fully rolls the feature back without
+    // breaking the phrase bake — we just fall back to no preview vocabulary.
+    const utter = await vite.ssrLoadModule("/src/vo/utterances.ts");
+    let preview = {};
+    try {
+      preview = await vite.ssrLoadModule("/src/vo/preview.ts");
+    } catch {
+      console.warn("No src/vo/preview.ts — baking phrases only (preview vocabulary rolled back).");
+    }
+    return { ...utter, ...preview };
   } finally {
     await vite.close();
   }
@@ -170,10 +202,11 @@ function quotaHint(body) {
   return m ? ` (limit: ${m[1]})` : "";
 }
 
-/** The GenerateContentRequest body for one utterance — shared by sync + batch. */
-function ttsRequest(text) {
+/** The GenerateContentRequest body for one utterance — shared by sync + batch.
+ *  `style` is the per-kind instruction prefix (phrase / syllable / letter). */
+function ttsRequest(text, style = STYLE) {
   return {
-    contents: [{ parts: [{ text: `${STYLE} ${text}` }] }],
+    contents: [{ parts: [{ text: `${style} ${text}` }] }],
     generationConfig: {
       responseModalities: ["AUDIO"],
       speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: VOICE } } },
@@ -200,9 +233,9 @@ async function bakeClip(item, wavBuffer, encoder) {
 }
 
 /** Call Gemini TTS synchronously → WAV buffer, with 429/5xx backoff. */
-async function synthesize(text) {
+async function synthesize(text, style = STYLE) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
-  const payload = JSON.stringify(ttsRequest(text));
+  const payload = JSON.stringify(ttsRequest(text, style));
 
   for (let attempt = 0; ; attempt++) {
     const res = await fetch(url, {
@@ -393,7 +426,7 @@ async function runBatch(todo, encoder, ext) {
     }
     try {
       console.log(`Submitting batch job for ${todo.length} clips…`);
-      const fileName = await uploadJsonl(todo.map((t) => JSON.stringify({ key: t.key, request: ttsRequest(t.text) })).join("\n") + "\n");
+      const fileName = await uploadJsonl(todo.map((t) => JSON.stringify({ key: t.key, request: ttsRequest(t.text, t.style) })).join("\n") + "\n");
       const name = await createBatch(fileName, todo.length);
       job = { name, count: todo.length };
       await writeJob(job);
@@ -457,7 +490,7 @@ async function runSync(todo, encoder, ext) {
     let calledApi = false;
     try {
       if (!(await fileExists(wav))) {
-        await writeFile(wav, await synthesize(item.text)); // API → WAV (reused on re-runs)
+        await writeFile(wav, await synthesize(item.text, item.style)); // API → WAV (reused on re-runs)
         calledApi = true;
       }
       await bakeClip(item, await readFile(wav), encoder);
@@ -482,28 +515,99 @@ async function runSync(todo, encoder, ext) {
   }
 }
 
+const GROUPS = ["all", "phrases", "preview", "letters", "syllables"];
+
+/** Does an item of this kind belong to the requested group? */
+function inGroup(kind, group) {
+  switch (group) {
+    case "all": return true;
+    case "phrases": return kind === "phrase";
+    case "preview": return kind !== "phrase";
+    case "letters": return kind === "letter";
+    case "syllables": return kind === "syllable";
+    default: return true;
+  }
+}
+
+/** Value after `--flag=` in argv, or null. */
+function flagValue(name) {
+  const hit = process.argv.find((a) => a.startsWith(`${name}=`));
+  return hit ? hit.slice(name.length + 1) : null;
+}
+
+/** First baked extension found on disk for this key, or null. */
+async function clipExt(key) {
+  for (const e of ["m4a", "mp3", "wav"]) {
+    if (await fileExists(join(OUT_DIR, `${key}.${e}`))) return e;
+  }
+  return null;
+}
+
+/** Combined, deduped catalog: phrases first (they win a key collision), then the
+ *  separate preview vocabulary, each item tagged with kind + its per-kind style. */
+function buildCatalog(enumerateUtterances, enumeratePreviewUtterances) {
+  const phrases = enumerateUtterances().map((text) => ({ text, kind: "phrase" }));
+  const preview = (enumeratePreviewUtterances?.() ?? []).map((it) => ({ text: it.text, kind: it.kind }));
+  const seen = new Set();
+  const out = [];
+  for (const it of [...phrases, ...preview]) {
+    if (seen.has(it.text)) continue;
+    seen.add(it.text);
+    out.push({ ...it, style: STYLE_BY_KIND[it.kind] ?? STYLE });
+  }
+  return out;
+}
+
 async function main() {
   const sync = process.argv.includes("--sync");
-  const { enumerateUtterances, voKey } = await loadVocab();
+  const group = flagValue("--group") ?? "all";
+  const listGroup = LISTING ? flagValue("--list") ?? "all" : null;
+  if (!GROUPS.includes(group)) {
+    console.error(`Unknown --group=${group}. Use one of: ${GROUPS.join(", ")}.`);
+    process.exit(1);
+  }
+
+  const { enumerateUtterances, voKey, enumeratePreviewUtterances } = await loadVocab();
   await mkdir(OUT_DIR, { recursive: true });
 
   const encoder = await detectEncoder();
   const ext = encoder ? FORMAT : "wav";
+
+  const catalog = buildCatalog(enumerateUtterances, enumeratePreviewUtterances);
+
+  // --list: print the rollback map (key → filename, presence) for a group, no API.
+  if (listGroup) {
+    if (!GROUPS.includes(listGroup)) {
+      console.error(`Unknown --list=${listGroup}. Use one of: ${GROUPS.join(", ")}.`);
+      process.exit(1);
+    }
+    const rows = catalog.filter((it) => inGroup(it.kind, listGroup));
+    let have = 0;
+    for (const it of rows) {
+      const key = voKey(it.text);
+      const found = await clipExt(key);
+      if (found) have++;
+      console.log(`${found ? "✓" : "·"} ${it.kind.padEnd(8)} clips/${key}.${found ?? ext}  "${it.text}"`);
+    }
+    console.log(`\n${have}/${rows.length} present in group "${listGroup}".`);
+    return;
+  }
+
   if (!encoder) {
     console.warn("No ffmpeg/afconvert found — keeping uncompressed .wav. Install ffmpeg for smaller clips.\n");
   }
 
-  const items = enumerateUtterances();
-  console.log(`  mode=${sync ? "sync" : "batch"} model=${MODEL} voice=${VOICE} format=${ext}${encoder ? ` @${BITRATE} (${encoder})` : ""}`);
+  const items = catalog.filter((it) => inGroup(it.kind, group));
+  console.log(`  mode=${sync ? "sync" : "batch"} group=${group} model=${MODEL} voice=${VOICE} format=${ext}${encoder ? ` @${BITRATE} (${encoder})` : ""}`);
 
   // Pre-pass: split into already-present vs to-do so we can report a total up front.
   const todo = [];
   let present = 0;
-  for (const text of items) {
-    const key = voKey(text);
+  for (const it of items) {
+    const key = voKey(it.text);
     const out = join(OUT_DIR, `${key}.${ext}`);
     if (await fileExists(out)) present++;
-    else todo.push({ text, key, out });
+    else todo.push({ text: it.text, key, out, kind: it.kind, style: it.style });
   }
   console.log(`${present}/${items.length} audio samples exist, creating the ${todo.length} missing…\n`);
 
