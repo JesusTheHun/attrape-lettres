@@ -34,6 +34,7 @@ export function useAudio(): AudioApi {
   const ctxRef = useRef<AudioContext | null>(null);
   const voiceRef = useRef<SpeechSynthesisVoice | null>(null);
   const clipRef = useRef<HTMLAudioElement | null>(null);
+  const seqRef = useRef(0);
 
   useEffect(() => {
     const resolve = () => (voiceRef.current = pickBestFr(speechSynthesis.getVoices()));
@@ -106,6 +107,7 @@ export function useAudio(): AudioApi {
   // interrupts the previous one, same as speechSynthesis.cancel().
   const speak = useCallback(
     (text: string, { rate = 0.94, pitch = 1.1 } = {}) => {
+      const seq = ++seqRef.current;
       const url = clipUrl(text);
       if (url) {
         try {
@@ -114,12 +116,20 @@ export function useAudio(): AudioApi {
           el.pause();
           el.src = url;
           el.currentTime = 0;
-          void el.play().catch(() => speakTts(text, rate, pitch));
+          void el.play().catch(() => {
+            // A newer speak() interrupted this clip (by design), which rejects the
+            // pending play() with an AbortError. Only fall back to TTS when THIS call
+            // is still the latest — otherwise the fallback would play over the newer
+            // clip, doubling the audio at exercise start (two announces race there).
+            if (seq === seqRef.current) speakTts(text, rate, pitch);
+          });
           return;
         } catch {
           /* fall through to on-device speech */
         }
       }
+      // No baked clip: stop any in-flight clip so it can't overlap the TTS line.
+      clipRef.current?.pause();
       speakTts(text, rate, pitch);
     },
     [speakTts]

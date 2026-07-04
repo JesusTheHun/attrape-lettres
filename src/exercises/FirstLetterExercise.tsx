@@ -58,7 +58,11 @@ export function FirstLetterExercise({
   }, [audio]);
 
   useEffect(() => {
-    if (!done && round) prompt(round.target.word);
+    if (done || !round) return;
+    // Settle the new round before announcing (matches Assemble/SpellSound). The
+    // clearTimeout cleanup also collapses StrictMode's double-mount to one announce.
+    const t = window.setTimeout(() => prompt(round.target.word), 350);
+    return () => window.clearTimeout(t);
   }, [idx, done, round, prompt]);
 
   const restart = useCallback(() => {
