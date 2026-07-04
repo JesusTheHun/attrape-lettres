@@ -1,4 +1,4 @@
-import { access, mkdir, unlink, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -7,7 +7,12 @@ import { createServer } from "vite";
 /* -------------------------------------------------------------------------- */
 /* Bake the finite, authored VO vocabulary to audio with Gemini TTS.            */
 /*                                                                            */
-/*   GEMINI_API_KEY=xxx pnpm run vo:build                                       */
+/*   GEMINI_API_KEY=xxx pnpm run vo:build            # batch (default)           */
+/*   GEMINI_API_KEY=xxx pnpm run vo:build -- --sync   # one call per clip         */
+/*                                                                            */
+/* Default = Gemini Batch Mode: separate quota from the sync API, ~50% cheaper, */
+/* async. The job id is stored in src/vo/clips/.vo-batch.json so a stopped run   */
+/* resumes polling instead of resubmitting. Use --sync to top up a few clips.   */
 /*                                                                            */
 /* Plain .mjs so it runs on ANY Node (no native-TS reliance). The authored      */
 /* vocabulary lives in TypeScript (src/vo/utterances.ts → src/content.ts); we   */
@@ -22,7 +27,8 @@ import { createServer } from "vite";
 /* encoder exists we keep the .wav and warn (the runtime globs both).           */
 /*                                                                            */
 /* Env: GEMINI_TTS_MODEL, GEMINI_TTS_VOICE, GEMINI_TTS_STYLE, GEMINI_TTS_DELAY_MS,*/
-/*      GEMINI_TTS_RETRIES, VO_FORMAT (m4a|mp3), VO_BITRATE (e.g. 48k), FFMPEG.   */
+/*      GEMINI_TTS_RETRIES, GEMINI_TTS_MAX_WAIT_MS (fail-fast cap), VO_FORMAT     */
+/*      (m4a|mp3), VO_BITRATE (e.g. 48k), FFMPEG.                                */
 /* -------------------------------------------------------------------------- */
 
 const API_KEY = process.env.GEMINI_API_KEY ?? process.env.GOOGLE_API_KEY;
@@ -33,6 +39,7 @@ const STYLE =
   "Dis d'une voix douce, chaleureuse et enjouée, comme pour un enfant de six ans :";
 const DELAY_MS = Number(process.env.GEMINI_TTS_DELAY_MS ?? 1500); // between API calls
 const MAX_RETRIES = Number(process.env.GEMINI_TTS_RETRIES ?? 6);
+const MAX_WAIT_MS = Number(process.env.GEMINI_TTS_MAX_WAIT_MS ?? 300000); // fail fast past this (5 min)
 const FFMPEG = process.env.FFMPEG ?? "ffmpeg";
 const FORMAT = (process.env.VO_FORMAT ?? "m4a").toLowerCase(); // m4a (aac) | mp3
 const BITRATE = process.env.VO_BITRATE ?? "48k"; // speech: 48k mono is plenty
@@ -154,16 +161,45 @@ function retryDelayMs(res, body, attempt) {
   return Math.min(60000, 2 ** attempt * 2000) + Math.floor(Math.random() * 1000);
 }
 
-/** Call Gemini TTS → WAV buffer, with 429/5xx backoff. */
-async function synthesize(text) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
-  const payload = JSON.stringify({
+/** Pull the quota name out of a 429 body so the abort message says WHICH limit. */
+function quotaHint(body) {
+  const m = /"quotaId":\s*"([^"]+)"/.exec(body) || /"quotaMetric":\s*"([^"]+)"/.exec(body);
+  return m ? ` (limit: ${m[1]})` : "";
+}
+
+/** The GenerateContentRequest body for one utterance — shared by sync + batch. */
+function ttsRequest(text) {
+  return {
     contents: [{ parts: [{ text: `${STYLE} ${text}` }] }],
     generationConfig: {
       responseModalities: ["AUDIO"],
       speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: VOICE } } },
     },
-  });
+  };
+}
+
+/** Dig the audio out of a GenerateContentResponse → WAV buffer (throws if none). */
+function responseToWav(json) {
+  const part = json?.candidates?.[0]?.content?.parts?.find((p) => p?.inlineData?.data);
+  const data = part?.inlineData?.data;
+  if (!data) throw new Error(`no audio in response: ${JSON.stringify(json).slice(0, 200)}`);
+  return pcmToWav(Buffer.from(data, "base64"), sampleRateFromMime(part.inlineData.mimeType));
+}
+
+/** Write WAV → encode to final clip (or keep WAV if no encoder). */
+async function bakeClip(item, wavBuffer, encoder) {
+  const wav = join(OUT_DIR, `${item.key}.wav`);
+  await writeFile(wav, wavBuffer);
+  if (encoder) {
+    await encode(wav, item.out, encoder); // item.out already carries the final ext
+    await unlink(wav);
+  }
+}
+
+/** Call Gemini TTS synchronously → WAV buffer, with 429/5xx backoff. */
+async function synthesize(text) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
+  const payload = JSON.stringify(ttsRequest(text));
 
   for (let attempt = 0; ; attempt++) {
     const res = await fetch(url, {
@@ -172,15 +208,18 @@ async function synthesize(text) {
       body: payload,
     });
     if (res.ok) {
-      const json = await res.json();
-      const part = json?.candidates?.[0]?.content?.parts?.find((p) => p?.inlineData?.data);
-      const data = part?.inlineData?.data;
-      if (!data) throw new Error(`no audio in response: ${JSON.stringify(json).slice(0, 300)}`);
-      return pcmToWav(Buffer.from(data, "base64"), sampleRateFromMime(part.inlineData.mimeType));
+      return responseToWav(await res.json());
     }
     const body = await res.text();
     if ((res.status === 429 || res.status >= 500) && attempt < MAX_RETRIES) {
       const wait = retryDelayMs(res, body, attempt);
+      if (wait > MAX_WAIT_MS) {
+        const err = new Error(
+          `${res.status}: API wants a ${Math.round(wait / 1000)}s wait (> ${Math.round(MAX_WAIT_MS / 1000)}s cap) — quota exhausted${quotaHint(body)}`,
+        );
+        err.fatal = true; // stop the whole run; retrying other items just burns more 429s
+        throw err;
+      }
       console.log(`    … ${res.status}; waiting ${Math.round(wait / 1000)}s (retry ${attempt + 1}/${MAX_RETRIES})`);
       await sleep(wait);
       continue;
@@ -189,7 +228,242 @@ async function synthesize(text) {
   }
 }
 
+/* --------------------------------- batch ---------------------------------- */
+/* Default path. Gemini Batch Mode has its OWN quota (separate from the sync    */
+/* API) and costs ~50% less — the right tool for baking hundreds of clips. It's */
+/* async (minutes → up to 24h), so we persist the job id to .vo-batch.json and  */
+/* resume polling on re-run instead of resubmitting if the script is stopped.   */
+const API = "https://generativelanguage.googleapis.com";
+const JOB_FILE = join(OUT_DIR, ".vo-batch.json");
+
+async function readJob() {
+  try {
+    return JSON.parse(await readFile(JOB_FILE, "utf8"));
+  } catch {
+    return null;
+  }
+}
+const writeJob = (job) => writeFile(JOB_FILE, JSON.stringify(job, null, 2));
+const clearJob = () => unlink(JOB_FILE).catch(() => {});
+
+/** Upload the request JSONL via the resumable File API → returns "files/…". */
+async function uploadJsonl(jsonl) {
+  const bytes = Buffer.from(jsonl, "utf8");
+  const start = await fetch(`${API}/upload/v1beta/files`, {
+    method: "POST",
+    headers: {
+      "x-goog-api-key": API_KEY,
+      "X-Goog-Upload-Protocol": "resumable",
+      "X-Goog-Upload-Command": "start",
+      "X-Goog-Upload-Header-Content-Length": String(bytes.length),
+      "X-Goog-Upload-Header-Content-Type": "application/jsonl",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ file: { display_name: "attrape-lettres-vo-batch" } }),
+  });
+  if (!start.ok) throw new Error(`upload start ${start.status}: ${(await start.text()).slice(0, 200)}`);
+  const uploadUrl = start.headers.get("x-goog-upload-url");
+  if (!uploadUrl) throw new Error("File API returned no upload URL");
+
+  const up = await fetch(uploadUrl, {
+    method: "POST",
+    headers: {
+      "x-goog-api-key": API_KEY,
+      "X-Goog-Upload-Command": "upload, finalize",
+      "X-Goog-Upload-Offset": "0",
+      "Content-Length": String(bytes.length),
+    },
+    body: bytes,
+  });
+  if (!up.ok) throw new Error(`upload finalize ${up.status}: ${(await up.text()).slice(0, 200)}`);
+  const name = (await up.json())?.file?.name;
+  if (!name) throw new Error("upload response had no file name");
+  return name;
+}
+
+/** Kick off a batch over the uploaded file → returns "batches/…". */
+async function createBatch(fileName, count) {
+  const res = await fetch(`${API}/v1beta/models/${MODEL}:batchGenerateContent`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-goog-api-key": API_KEY },
+    body: JSON.stringify({
+      batch: { display_name: `attrape-lettres-vo ${count}`, input_config: { file_name: fileName } },
+    }),
+  });
+  if (!res.ok) {
+    // 400 here most likely means this preview TTS model isn't batch-eligible.
+    throw new Error(`create batch ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  }
+  const name = (await res.json())?.name;
+  if (!name) throw new Error("batch response had no name");
+  return name;
+}
+
+/** Poll until the job reaches a terminal state; returns the final job object. */
+async function pollBatch(name) {
+  let wait = 8000;
+  for (;;) {
+    const res = await fetch(`${API}/v1beta/${name}`, { headers: { "x-goog-api-key": API_KEY } });
+    if (!res.ok) throw new Error(`poll ${res.status}: ${(await res.text()).slice(0, 200)}`);
+    const job = await res.json();
+    const state = job?.state ?? job?.metadata?.state ?? "?";
+    const stats = job?.batchStats ?? job?.metadata?.batchStats;
+    const progress = stats ? ` ${stats.completedRequestCount ?? stats.successfulRequestCount ?? "?"}/${stats.requestCount ?? "?"}` : "";
+    console.log(`  … ${state}${progress}`);
+    // The API returns BATCH_STATE_* (docs say JOB_STATE_*); match the suffix so
+    // either prefix terminates the loop instead of polling a finished job forever.
+    const terminal = state.replace(/^(JOB|BATCH)_STATE_/, "");
+    if (terminal === "SUCCEEDED") return job;
+    if (["FAILED", "CANCELLED", "EXPIRED"].includes(terminal)) {
+      throw new Error(`batch ${state}: ${JSON.stringify(job?.error ?? job).slice(0, 300)}`);
+    }
+    await sleep(wait);
+    wait = Math.min(60000, Math.round(wait * 1.4)); // ramp 8s → 60s
+  }
+}
+
+/** Turn a finished job into result JSONL text (download file, or inline). */
+async function fetchResults(job, todo) {
+  const outFile = job?.dest?.fileName ?? job?.metadata?.dest?.fileName ?? job?.response?.responsesFile;
+  if (outFile) {
+    console.log(`\nDownloading results (${outFile})…`);
+    const res = await fetch(`${API}/download/v1beta/${outFile}:download?alt=media`, {
+      headers: { "x-goog-api-key": API_KEY },
+    });
+    if (!res.ok) throw new Error(`download ${res.status}: ${(await res.text()).slice(0, 200)}`);
+    return await res.text();
+  }
+  const inlined = job?.dest?.inlinedResponses?.inlinedResponses ?? job?.response?.inlinedResponses;
+  if (inlined) {
+    // Normalise inline responses into the same {key,response} line shape as file output.
+    return inlined.map((r, i) => JSON.stringify({ key: r.key ?? todo[i]?.key, response: r.response ?? r })).join("\n");
+  }
+  // If neither path matched, dump the whole job so we can see the real field name.
+  throw new Error(`finished job exposed no results — full job:\n${JSON.stringify(job, null, 2)}`);
+}
+
+/** Parse result JSONL and bake each clip. Matches by `key`, falls back to order. */
+async function bakeResults(jsonl, todo, encoder, ext) {
+  const byKey = new Map(todo.map((t) => [t.key, t]));
+  const lines = jsonl.split("\n").filter((l) => l.trim());
+  let made = 0;
+  let failed = 0;
+  for (let i = 0; i < lines.length; i++) {
+    let obj;
+    try {
+      obj = JSON.parse(lines[i]);
+    } catch {
+      failed++;
+      continue;
+    }
+    // Match by key. A key absent from `todo` means that clip was already baked on
+    // an earlier (interrupted) run — skip it. Never fall back to position when a
+    // key exists, or we'd write this audio under a different word's filename.
+    const item = obj.key ? byKey.get(obj.key) : todo[i];
+    if (!item) continue; // already present, or an unkeyed line we can't place
+
+    const resp = obj.response ?? obj;
+    const errored = obj.error ?? resp?.error;
+    if (errored) {
+      failed++;
+      console.error(`  ✗ ${item.key} — ${JSON.stringify(errored).slice(0, 150)}`);
+      continue;
+    }
+    try {
+      await bakeClip(item, responseToWav(resp), encoder);
+      made++;
+      console.log(`  ✓ [${made}/${todo.length}] ${item.key}.${ext}  "${item.text}"`);
+    } catch (e) {
+      failed++;
+      console.error(`  ✗ ${item.key} — ${e.message}`);
+    }
+  }
+  return { made, failed };
+}
+
+async function runBatch(todo, encoder, ext) {
+  let job = await readJob();
+  if (!job) {
+    if (todo.length === 0) {
+      console.log("All clips present — nothing to submit.");
+      return;
+    }
+    try {
+      console.log(`Submitting batch job for ${todo.length} clips…`);
+      const fileName = await uploadJsonl(todo.map((t) => JSON.stringify({ key: t.key, request: ttsRequest(t.text) })).join("\n") + "\n");
+      const name = await createBatch(fileName, todo.length);
+      job = { name, count: todo.length };
+      await writeJob(job);
+      console.log(`  submitted → ${name}`);
+      console.log(`  job saved to .vo-batch.json — safe to Ctrl-C; re-run to resume polling.\n`);
+    } catch (e) {
+      console.error(`\nCould not submit batch: ${e.message}`);
+      console.error("If this preview TTS model rejects batch, bake sync instead: pnpm run vo:build -- --sync");
+      return;
+    }
+  } else {
+    console.log(`Resuming batch job ${job.name} (re-run of a submitted batch)…\n`);
+  }
+
+  let finished;
+  try {
+    finished = await pollBatch(job.name);
+  } catch (e) {
+    console.error(`\nBatch did not complete: ${e.message}`);
+    await clearJob();
+    console.error("Cleared saved job. Re-run to submit a fresh batch, or use --sync for a few clips.");
+    return;
+  }
+
+  console.log("\nBaking clips…\n");
+  let made, failed;
+  try {
+    ({ made, failed } = await bakeResults(await fetchResults(finished, todo), todo, encoder, ext));
+  } catch (e) {
+    // Batch is done server-side; keep the job file so a re-run re-downloads
+    // instead of resubmitting. Only a completed download + conversion clears it.
+    console.error(`\nBatch finished but download/conversion failed: ${e.message}`);
+    console.error("Job kept — re-run to retry the download (no resubmit).");
+    return;
+  }
+  await clearJob(); // download + conversion done → drop the saved job
+  console.log(`\nDone. ${made} baked${failed ? `, ${failed} failed (re-run to retry)` : ""}.`);
+}
+
+/* ---------------------------------- sync ---------------------------------- */
+/* One request per clip. Slower + smaller per-minute quota, but immediate —     */
+/* use --sync when topping up a handful of new words.                          */
+async function runSync(todo, encoder, ext) {
+  let made = 0;
+  let failed = 0;
+  for (let i = 0; i < todo.length; i++) {
+    const item = todo[i];
+    const n = `[${i + 1}/${todo.length}]`;
+    const wav = join(OUT_DIR, `${item.key}.wav`);
+    let calledApi = false;
+    try {
+      if (!(await fileExists(wav))) {
+        await writeFile(wav, await synthesize(item.text)); // API → WAV (reused on re-runs)
+        calledApi = true;
+      }
+      await bakeClip(item, await readFile(wav), encoder);
+      made++;
+      console.log(`  ✓ ${n} ${item.key}.${ext}  "${item.text}"`);
+    } catch (e) {
+      failed++;
+      console.error(`  ✗ ${n} "${item.text}" — ${e.message}`);
+      if (e.fatal) {
+        console.error(`\nAborting: quota reached after ${made} baked. Re-run later to resume where it stopped.`);
+        break;
+      }
+    }
+    if (calledApi && DELAY_MS > 0) await sleep(DELAY_MS);
+  }
+  console.log(`\nDone. ${made} baked${failed ? `, ${failed} failed` : ""}.`);
+}
+
 async function main() {
+  const sync = process.argv.includes("--sync");
   const { enumerateUtterances, voKey } = await loadVocab();
   await mkdir(OUT_DIR, { recursive: true });
 
@@ -200,38 +474,21 @@ async function main() {
   }
 
   const items = enumerateUtterances();
-  console.log(`${items.length} utterances → ${OUT_DIR}`);
-  console.log(`  model=${MODEL} voice=${VOICE} format=${ext}${encoder ? ` @${BITRATE} (${encoder})` : ""}\n`);
+  console.log(`  mode=${sync ? "sync" : "batch"} model=${MODEL} voice=${VOICE} format=${ext}${encoder ? ` @${BITRATE} (${encoder})` : ""}`);
 
-  let made = 0;
-  let skipped = 0;
+  // Pre-pass: split into already-present vs to-do so we can report a total up front.
+  const todo = [];
+  let present = 0;
   for (const text of items) {
     const key = voKey(text);
     const out = join(OUT_DIR, `${key}.${ext}`);
-    if (await fileExists(out)) {
-      skipped++;
-      continue;
-    }
-
-    const wav = join(OUT_DIR, `${key}.wav`);
-    let calledApi = false;
-    try {
-      if (!(await fileExists(wav))) {
-        await writeFile(wav, await synthesize(text)); // API → WAV (reused on re-runs)
-        calledApi = true;
-      }
-      if (encoder) {
-        await encode(wav, out, encoder);
-        await unlink(wav); // drop the uncompressed original
-      }
-      made++;
-      console.log(`  ✓ ${key}.${ext}  "${text}"`);
-    } catch (e) {
-      console.error(`  ✗ "${text}" — ${e.message}`);
-    }
-    if (calledApi && DELAY_MS > 0) await sleep(DELAY_MS);
+    if (await fileExists(out)) present++;
+    else todo.push({ text, key, out });
   }
-  console.log(`\nDone. ${made} baked, ${skipped} already present.`);
+  console.log(`${present}/${items.length} audio samples exist, creating the ${todo.length} missing…\n`);
+
+  if (sync) await runSync(todo, encoder, ext);
+  else await runBatch(todo, encoder, ext);
 }
 
 await main();
