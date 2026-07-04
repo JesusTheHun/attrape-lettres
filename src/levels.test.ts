@@ -7,6 +7,7 @@ import {
   syllableTier,
   syllablePool,
   buildSyllableRound,
+  repeatSession,
   soundLevel,
   soundPool,
   buildSoundRound,
@@ -113,6 +114,53 @@ describe("soundLevel / soundPool", () => {
     SOUND_LEVELS.forEach((_, i) =>
       expect(soundPool(i + 1).length).toBeGreaterThanOrEqual(SOUND_PICK)
     );
+  });
+});
+
+describe("repeatSession", () => {
+  // Exactly the configs the app ships: every first-letter level + syllable tier.
+  const CONFIGS: { pool: readonly unknown[]; pick: number; repeats: number }[] = [
+    ...FIRST_LETTER_LEVELS.map((l, i) => ({
+      pool: firstLetterPool(i + 1),
+      pick: l.pick,
+      repeats: l.repeats,
+    })),
+    ...SYLLABLE_TIERS.map((t) => ({ pool: syllablePool(t), pick: t.pick, repeats: t.repeats })),
+  ];
+
+  it("every shipped pool is big enough for a full pick", () => {
+    CONFIGS.forEach(({ pool, pick }) => expect(pool.length).toBeGreaterThanOrEqual(pick));
+  });
+
+  it("picks distinct items, replays `repeats` of them, never back-to-back", () => {
+    CONFIGS.forEach(({ pool, pick, repeats }) => {
+      for (let n = 0; n < 40; n++) {
+        const run = repeatSession(pool, pick, repeats);
+        expect(run).toHaveLength(pick + repeats);
+        const counts = new Map<unknown, number>();
+        run.forEach((x) => counts.set(x, (counts.get(x) ?? 0) + 1));
+        expect(counts.size).toBe(pick);
+        expect([...counts.values()].filter((c) => c === 2)).toHaveLength(repeats);
+        expect([...counts.values()].every((c) => c <= 2)).toBe(true);
+        run.forEach((x, i) => {
+          if (i > 0) expect(run[i - 1]).not.toBe(x);
+        });
+      }
+    });
+  });
+
+  it("clamps pick/repeats to a short pool and stays collision-free", () => {
+    const run = repeatSession(["a", "b", "c"], 8, 4); // pick→3, repeats→3
+    expect(run).toHaveLength(6);
+    run.forEach((x, i) => {
+      if (i > 0) expect(run[i - 1]).not.toBe(x);
+    });
+  });
+
+  it("returns a plain shuffle when repeats is 0", () => {
+    const run = repeatSession(["a", "b", "c", "d"], 3, 0);
+    expect(run).toHaveLength(3);
+    expect(new Set(run).size).toBe(3);
   });
 });
 

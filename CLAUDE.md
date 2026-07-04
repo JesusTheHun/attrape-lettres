@@ -63,11 +63,21 @@ syllable words, author the split. That's it — pools derive automatically.
 **Add a syllable-style exercise:** add a `SyllableMode`, branch it in
 `buildSyllableRound`, add an `EXERCISES` row with that `mode`. No new component.
 
-**Tune progression:** edit `SYLLABLE_TIERS` (syllable count + poolSize) or
-`FIRST_LETTER_LEVELS` (letter catalog). Pure data; no component changes.
+**Tune progression:** edit `SYLLABLE_TIERS` (syllable count + `pick`/`repeats`),
+`FIRST_LETTER_LEVELS` (letter catalog + `pick`/`repeats`), or `SOUND_LEVELS`
+(distractor count). Pure data; no component changes.
+
+**Run shape:** every exercise seeds a run through `repeatSession(pool, pick,
+repeats)` — pick N distinct items, replay `repeats` of them, never two rounds in
+a row. Run length = `pick + repeats`; both clamp to the pool.
 
 ## Known follow-ups
 
 - `useProgress` mastery hook keyed by `(exerciseId, level)` for spaced repetition.
 - Adaptive distractors by confusability (`b/d/p/q`, `m/n`).
 - Recorded VO sprite to replace `speechSynthesis` (device-consistent, lower latency).
+
+## Git
+
+Commit on `main` unless asked otherwise.
+Never co-author commits

@@ -19,6 +19,10 @@ export interface LetterWord {
 export interface FirstLetterLevel {
   /** First-letter catalog for this level. `null` = full catalog. */
   letters: string[] | null;
+  /** Distinct words drawn from the pool at the start of a run. */
+  pick: number;
+  /** How many of those words come back a second time (spaced apart). */
+  repeats: number;
 }
 
 export interface FirstLetterRound {
@@ -40,8 +44,10 @@ export type SyllableMode = "fill-blank" | "order" | "order-distractor";
 export interface SyllableTier {
   minSyllables: number;
   maxSyllables: number;
-  /** Words available (and session length) at this tier. */
-  poolSize: number;
+  /** Distinct words drawn from the tier pool at the start of a run. */
+  pick: number;
+  /** How many of those words come back a second time (spaced apart). */
+  repeats: number;
 }
 
 /** Spell-the-sound exercise ------------------------------------------------*/

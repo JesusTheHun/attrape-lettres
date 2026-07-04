@@ -8,7 +8,7 @@ import { useConfetti } from "../hooks/useConfetti";
 import {
   buildSyllableRound,
   MODE_HINT,
-  shuffle,
+  repeatSession,
   syllablePool,
   syllableTier,
   type SyllableRound,
@@ -42,7 +42,9 @@ export function AssembleExercise({ exercise, mode, level, onBack }: Props) {
   const { canvasRef, fire } = useConfetti();
   const { award, profile } = useProfile();
 
-  const [session, setSession] = useState(() => shuffle(syllablePool(tier)).slice(0, tier.poolSize));
+  const [session, setSession] = useState(() =>
+    repeatSession(syllablePool(tier), tier.pick, tier.repeats)
+  );
   const [idx, setIdx] = useState(0);
   const [round, setRound] = useState<SyllableRound>(() => buildSyllableRound(session[0], mode));
   const [slots, setSlots] = useState<(string | null)[]>(round.slots);
@@ -75,7 +77,7 @@ export function AssembleExercise({ exercise, mode, level, onBack }: Props) {
   }, []);
 
   const restart = useCallback(() => {
-    const next = shuffle(syllablePool(tier)).slice(0, tier.poolSize);
+    const next = repeatSession(syllablePool(tier), tier.pick, tier.repeats);
     setSession(next);
     setIdx(0);
     setMood("idle");

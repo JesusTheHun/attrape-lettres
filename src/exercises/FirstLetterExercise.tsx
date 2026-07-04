@@ -6,7 +6,7 @@ import { Tile } from "../components/Tile";
 import { useAudio } from "../hooks/useAudio";
 import { useConfetti } from "../hooks/useConfetti";
 import { useProfile } from "../hooks/useProfile";
-import { FIRST_LETTER_LEVELS, FIRST_LETTER_SESSION, firstLetterPool, shuffle } from "../levels";
+import { FIRST_LETTER_LEVELS, firstLetterPool, repeatSession, shuffle } from "../levels";
 import type { ExerciseId, FirstLetterRound, Mood, Verdict } from "../types";
 
 const TILE_COLORS = [
@@ -16,11 +16,11 @@ const TILE_COLORS = [
 ];
 
 function buildSession(level: number): FirstLetterRound[] {
+  const cfg = FIRST_LETTER_LEVELS[level - 1];
   const pool = firstLetterPool(level);
-  const catalog = FIRST_LETTER_LEVELS[level - 1].letters ?? pool.map((w) => w.letter);
-  // Sample with replacement so small early levels repeat and reinforce.
-  return Array.from({ length: FIRST_LETTER_SESSION }, () => {
-    const target = pool[(Math.random() * pool.length) | 0];
+  const catalog = cfg.letters ?? [...new Set(pool.map((w) => w.letter))];
+  // Pick distinct words, replay a few (spaced) to reinforce — never back-to-back.
+  return repeatSession(pool, cfg.pick, cfg.repeats).map((target) => {
     const distractors = shuffle(catalog.filter((l) => l !== target.letter)).slice(0, 2);
     return { target, choices: shuffle([target.letter, ...distractors]) };
   });

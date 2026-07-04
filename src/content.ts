@@ -27,6 +27,28 @@ export const LETTER_WORDS: LetterWord[] = [
   { letter: "T", word: "Tortue", emoji: "🐢" },
   { letter: "V", word: "Vache", emoji: "🐮" },
   { letter: "Z", word: "Zèbre", emoji: "🦓" },
+  // A second clean word per letter — bigger pools ⇒ more variety in a run.
+  { letter: "A", word: "Abeille", emoji: "🐝" },
+  { letter: "B", word: "Banane", emoji: "🍌" },
+  { letter: "C", word: "Carotte", emoji: "🥕" },
+  { letter: "D", word: "Dé", emoji: "🎲" },
+  { letter: "E", word: "Éléphant", emoji: "🐘" },
+  { letter: "F", word: "Fraise", emoji: "🍓" },
+  { letter: "G", word: "Girafe", emoji: "🦒" },
+  { letter: "H", word: "Hélicoptère", emoji: "🚁" },
+  { letter: "I", word: "Île", emoji: "🏝️" },
+  { letter: "J", word: "Jupe", emoji: "👗" },
+  { letter: "K", word: "Kiwi", emoji: "🥝" },
+  { letter: "L", word: "Lion", emoji: "🦁" },
+  { letter: "M", word: "Moto", emoji: "🏍️" },
+  { letter: "N", word: "Nid", emoji: "🪺" },
+  { letter: "O", word: "Ours", emoji: "🐻" },
+  { letter: "P", word: "Poisson", emoji: "🐟" },
+  { letter: "R", word: "Renard", emoji: "🦊" },
+  { letter: "S", word: "Serpent", emoji: "🐍" },
+  { letter: "T", word: "Tigre", emoji: "🐯" },
+  { letter: "V", word: "Voiture", emoji: "🚗" },
+  { letter: "Z", word: "Zéro", emoji: "0️⃣" },
 ];
 
 /**
@@ -68,6 +90,24 @@ export const SYLLABLE_WORDS: SyllableWord[] = [
   { word: "ORDINATEUR", syllables: ["OR", "DI", "NA", "TEUR"], emoji: "💻" },
   { word: "TÉLÉVISION", syllables: ["TÉ", "LÉ", "VI", "SION"], emoji: "📺" },
   { word: "HÉLICOPTÈRE", syllables: ["HÉ", "LI", "COP", "TÈRE"], emoji: "🚁" },
+  // --- Bigger pools: more words per tier for variety in a run. ---
+  // 2 syllables
+  { word: "PANDA", syllables: ["PAN", "DA"], emoji: "🐼" },
+  { word: "FUSÉE", syllables: ["FU", "SÉE"], emoji: "🚀" },
+  // 3 syllables
+  { word: "PYJAMA", syllables: ["PY", "JA", "MA"], emoji: "🛌" },
+  { word: "CINÉMA", syllables: ["CI", "NÉ", "MA"], emoji: "🎬" },
+  { word: "KANGOUROU", syllables: ["KAN", "GOU", "ROU"], emoji: "🦘" },
+  { word: "PANTALON", syllables: ["PAN", "TA", "LON"], emoji: "👖" },
+  { word: "ANANAS", syllables: ["A", "NA", "NAS"], emoji: "🍍" },
+  { word: "HÔPITAL", syllables: ["HÔ", "PI", "TAL"], emoji: "🏥" },
+  { word: "MACARON", syllables: ["MA", "CA", "RON"], emoji: "🧁" },
+  // 4 syllables
+  { word: "LOCOMOTIVE", syllables: ["LO", "CO", "MO", "TIVE"], emoji: "🚂" },
+  { word: "ANNIVERSAIRE", syllables: ["AN", "NI", "VER", "SAIRE"], emoji: "🎂" },
+  { word: "HIPPOPOTAME", syllables: ["HIP", "PO", "PO", "TAME"], emoji: "🦛" },
+  { word: "SUPERMARCHÉ", syllables: ["SU", "PER", "MAR", "CHÉ"], emoji: "🛒" },
+  { word: "AQUARIUM", syllables: ["A", "QUA", "RI", "UM"], emoji: "🐠" },
 ];
 
 /** Every distinct syllable in the corpus — the source for wrong-answer tiles. */

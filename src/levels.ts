@@ -23,19 +23,19 @@ import type {
 /* -------------------------------------------------------------------------- */
 
 export const FIRST_LETTER_LEVELS: FirstLetterLevel[] = [
-  { letters: ["A", "B", "C", "M", "P"] },
-  { letters: ["A", "B", "C", "D", "M", "P", "R", "S", "T"] },
-  { letters: ["A", "B", "C", "D", "F", "L", "M", "N", "P", "R", "S", "T"] },
+  { letters: ["A", "B", "C", "M", "P"], pick: 5, repeats: 3 },
+  { letters: ["A", "B", "C", "D", "M", "P", "R", "S", "T"], pick: 6, repeats: 3 },
+  { letters: ["A", "B", "C", "D", "F", "L", "M", "N", "P", "R", "S", "T"], pick: 7, repeats: 4 },
   {
     letters: [
       "A", "B", "C", "D", "F", "G", "H", "L", "M",
       "N", "O", "P", "R", "S", "T", "V",
     ],
+    pick: 8,
+    repeats: 4,
   },
-  { letters: null }, // full catalog
+  { letters: null, pick: 8, repeats: 4 }, // full catalog
 ];
-
-export const FIRST_LETTER_SESSION = 6;
 
 export interface FirstLetterRound {
   target: LetterWord;
@@ -60,10 +60,10 @@ export function firstLetterPool(level: number): LetterWord[] {
 /* -------------------------------------------------------------------------- */
 
 export const SYLLABLE_TIERS: SyllableTier[] = [
-  { minSyllables: 2, maxSyllables: 2, poolSize: 4 },
-  { minSyllables: 2, maxSyllables: 3, poolSize: 6 },
-  { minSyllables: 3, maxSyllables: 3, poolSize: 8 },
-  { minSyllables: 3, maxSyllables: 4, poolSize: 10 },
+  { minSyllables: 2, maxSyllables: 2, pick: 6, repeats: 3 },
+  { minSyllables: 2, maxSyllables: 3, pick: 7, repeats: 3 },
+  { minSyllables: 3, maxSyllables: 3, pick: 6, repeats: 3 },
+  { minSyllables: 3, maxSyllables: 4, pick: 8, repeats: 4 },
 ];
 
 export const SYLLABLE_LEVEL_COUNT = SYLLABLE_TIERS.length;
@@ -138,30 +138,8 @@ export function soundPool(level: number): SoundTarget[] {
   return SOUND_TARGETS[clampLevel(level)];
 }
 
-/**
- * One run's ordered sound list: pick SOUND_PICK distinct sounds from the level
- * pool, show SOUND_REPEATS of them a second time (so 12 rounds from 8 sounds),
- * and arrange them so the same sound is never two rounds in a row — the gap is
- * what turns a repeat into memory practice. Falls back to a plain shuffle if the
- * pool is somehow too small to pick a full set.
- */
 export function buildSoundSession(level: number): SoundTarget[] {
-  const pool = soundPool(level);
-  if (pool.length < SOUND_PICK) return shuffle(pool);
-
-  const picks = shuffle(pool).slice(0, SOUND_PICK);
-  const doubles = shuffle(picks).slice(0, SOUND_REPEATS);
-  const singles = picks.filter((p) => !doubles.includes(p));
-
-  // Group each repeated sound as an adjacent pair, singles after. Distributing
-  // this list across even indices then odd indices keeps every pair ≥2 apart —
-  // guaranteed collision-free because no sound appears more than twice.
-  const grouped = [...doubles.flatMap((d) => [d, d]), ...singles];
-  const out: SoundTarget[] = new Array(grouped.length);
-  let k = 0;
-  for (let i = 0; i < out.length; i += 2) out[i] = grouped[k++];
-  for (let i = 1; i < out.length; i += 2) out[i] = grouped[k++];
-  return out;
+  return repeatSession(soundPool(level), SOUND_PICK, SOUND_REPEATS);
 }
 
 /** What the child hears: the bare sound, or "sound, comme dans word." on levels with context. */
@@ -203,6 +181,32 @@ export function shuffle<T>(arr: readonly T[]): T[] {
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
+}
+
+/**
+ * One run's ordered item list: pick `pick` distinct items from `pool`, replay
+ * `repeats` of them a second time, and arrange so no item ever lands two rounds
+ * in a row — the gap is what turns a repeat into memory practice. Both counts are
+ * clamped to the pool, so a short pool just yields a shorter (still valid) run.
+ *
+ * Construction: group each repeated item as an adjacent pair (doubles first,
+ * singles after), then deal that list across even indices, then odd. With no
+ * item appearing more than twice and a run of ≥3, this is always collision-free.
+ */
+export function repeatSession<T>(pool: readonly T[], pick: number, repeats: number): T[] {
+  const p = Math.min(pick, pool.length);
+  const r = Math.min(repeats, p);
+  const picks = shuffle(pool).slice(0, p);
+  if (r === 0) return picks;
+
+  const doubles = shuffle(picks).slice(0, r);
+  const singles = picks.filter((x) => !doubles.includes(x));
+  const grouped = [...doubles.flatMap((d) => [d, d]), ...singles];
+  const out = new Array<T>(grouped.length);
+  let k = 0;
+  for (let i = 0; i < out.length; i += 2) out[i] = grouped[k++];
+  for (let i = 1; i < out.length; i += 2) out[i] = grouped[k++];
+  return out;
 }
 
 export function pickDistractorSyllable(exclude: Set<string>): string {
