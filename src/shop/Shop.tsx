@@ -2,8 +2,9 @@ import { useRef, type ReactNode } from "react";
 import { useProfile } from "../hooks/useProfile";
 import { CATALOG, DEFAULT_LOOKS, type DefaultLook } from "../mascot/catalog";
 import { Mascot } from "../mascot/Mascot";
-import type { CustomizationOption } from "../types";
+import type { CustomizationOption, Species } from "../types";
 import { GrowthCard } from "./GrowthCard";
+import { ItemPreview } from "./ItemPreview";
 import { ShopItem } from "./ShopItem";
 import { growBurst, pop, press } from "./anim";
 
@@ -50,18 +51,19 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
  * Selecting it clears the slot, so the rig falls back to this exact look. */
 function DefaultTile({
   look,
+  species,
   active,
   locked,
   onTap,
 }: {
   look: DefaultLook;
+  species: Species;
   active: boolean;
   locked: boolean;
   onTap: () => void;
 }) {
   const ref = useRef<HTMLButtonElement>(null);
   const minStage = look.minStage ?? 0;
-  const thumb = look.category === "color" ? null : look.emoji ?? "✨";
   const badge = locked ? `🌱 niv. ${minStage + 1}` : active ? "Équipé ✓" : "À toi";
   const stateLabel = locked
     ? `à débloquer au niveau ${minStage + 1}`
@@ -90,22 +92,7 @@ function DefaultTile({
           : "0 6px 14px rgba(0,0,0,0.10)",
       }}
     >
-      {thumb === null ? (
-        <span
-          aria-hidden
-          className="inline-block rounded-full"
-          style={{
-            width: 30,
-            height: 30,
-            background: look.value,
-            boxShadow: "inset 0 0 0 2px rgba(0,0,0,0.12)",
-          }}
-        />
-      ) : (
-        <span aria-hidden style={{ fontSize: 30, lineHeight: 1 }}>
-          {thumb}
-        </span>
-      )}
+      <ItemPreview species={species} category={look.category} slot={look.slot} value={look.value} />
       <span className="text-sm font-bold leading-tight">{look.name}</span>
       <span className="text-xs font-black" style={{ color: active ? "#3E7B3E" : "#9A7A5A" }}>
         {badge}
@@ -210,6 +197,7 @@ export function Shop({ onBack }: { onBack: () => void }) {
                   {look && (
                     <DefaultTile
                       look={look}
+                      species={config.species}
                       active={config[kind][g.slot] === undefined}
                       locked={config.stage < (look.minStage ?? 0)}
                       onTap={() => clearSlot(kind, g.slot)}

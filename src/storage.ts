@@ -14,6 +14,16 @@ import type { PersistedProfile, Roster } from "./types";
  *   v1  single mascot: { chosen, config, balance, ledger, owned }
  *   v2  per-species progress for ONE child (PersistedProfile)
  *   v3  a Roster of named children (siblings share the device)  ← current
+ *
+ * PWA / service-worker note (see scripts/gen-sw.mjs): the SW caches *code*, not
+ * data — localStorage is a separate store the cache wipe on update never touches,
+ * so deploys never lose profiles. But the SW auto-updates silently: new code
+ * lands on the *next* launch, and a device can keep running the previous app
+ * version until it relaunches (and a rollback re-runs old code against new data).
+ * So a format change MUST be a forward, additive migration, never a rename/reshape
+ * in place: bump KEY to :vN, add a loadV(N-1) reader below, migrate old→new in
+ * useProfile, and KEEP the old-version key + reader intact. Then even a not-yet-
+ * updated (or rolled-back) launch reads a blob it still understands.
  */
 
 const KEY = "attrape-lettres:roster:v3";

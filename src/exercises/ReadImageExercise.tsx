@@ -1,44 +1,39 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { GameFrame } from "../components/GameFrame";
 import { EarnBadge } from "../components/EarnBadge";
 import { EndButtons } from "../components/EndButtons";
 import { Mascot } from "../mascot/Mascot";
 import { Tile } from "../components/Tile";
+import { WordIcon } from "../components/WordIcon";
 import { useAudio } from "../hooks/useAudio";
 import { useConfetti } from "../hooks/useConfetti";
 import { useProfile } from "../hooks/useProfile";
-import {
-  buildLetterMatchSession,
-  letterMatchPrompt,
-  letterMatchSuccess,
-} from "../levels";
-import { SCRIPT_FONT, faceLabel } from "../letterForms";
-import type { ExerciseId, LetterFace, LetterMatchKind, Mood, Verdict } from "../types";
+import { READ_IMAGE_PROMPT, buildReadImageSession } from "../levels";
+import type { ExerciseId, LetterWord, Mood, ReadImageRound, Verdict } from "../types";
 
 const TILE_COLORS = [
   { bg: "#FF8A65", ink: "#4A2317" },
   { bg: "#FFD54F", ink: "#4A3B00" },
   { bg: "#4FC3F7", ink: "#062E3D" },
   { bg: "#AED581", ink: "#213606" },
+  { bg: "#BA9EE8", ink: "#2C1846" },
 ];
 
 /**
- * Match a letter to its counterpart FORM. `case` pairs majuscule ⇄ minuscule;
- * `script` pairs printed ⇄ cursive at the same case. Same forgiving single-pick
- * loop as FirstLetter (feedback on pointerdown, WAAPI shake, canvas confetti) —
- * only the target is a rendered glyph, not an emoji, and the tiles show the
- * counterpart form. The prompt never names the target, so the child must read
- * the shape; the name is spoken only on success as reinforcement.
+ * The mirror of FirstLetter: the WORD is written and the child taps the picture
+ * that matches it — so reading the word IS the task. Same forgiving single-pick
+ * loop (feedback on pointerdown, WAAPI shake, canvas confetti); the target is a
+ * printed word, the tiles are illustrations. The consigne never names the word
+ * (that would give the answer away); the word is spoken only on success. A tile
+ * can be auditioned (« hear this picture ») without committing the pick.
  */
-export function LetterMatchExercise({
+export function ReadImageExercise({
   exercise,
-  kind,
   level,
   onBack,
   onNext,
 }: {
   exercise: ExerciseId;
-  kind: LetterMatchKind;
   level: number;
   onBack: () => void;
   onNext: () => void;
@@ -46,7 +41,7 @@ export function LetterMatchExercise({
   const audio = useAudio();
   const { canvasRef, fire } = useConfetti();
   const { award, profile } = useProfile();
-  const [session] = useState(() => buildLetterMatchSession(kind, level));
+  const [session] = useState<ReadImageRound[]>(() => buildReadImageSession(level));
   const [idx, setIdx] = useState(0);
   const [mood, setMood] = useState<Mood>("idle");
   const [flash, setFlash] = useState<string | null>(null);
@@ -56,13 +51,8 @@ export function LetterMatchExercise({
   const mountedRef = useRef(true);
 
   const round = session[idx];
-  // Both directions live in one run; the line to speak is read off this round.
-  const line = useMemo(
-    () => (round ? letterMatchPrompt(round.prompt, round.choices[0]) : ""),
-    [round]
-  );
 
-  const prompt = useCallback(() => void audio.say(line), [audio, line]);
+  const prompt = useCallback(() => void audio.say(READ_IMAGE_PROMPT), [audio]);
 
   useEffect(() => {
     audio.unlock();
@@ -89,16 +79,16 @@ export function LetterMatchExercise({
   }, [idx, done, round, prompt]);
 
   const pick = useCallback(
-    (face: LetterFace): Verdict => {
+    (choice: LetterWord): Verdict => {
       if (locked.current) return "reject";
       audio.unlock();
       audio.pop();
-      if (face.base !== round.prompt.base) {
+      if (choice.word !== round.target.word) {
         audio.nudge();
         return "reject";
       }
       locked.current = true;
-      setFlash(face.base);
+      setFlash(choice.word);
       setMood("happy");
       audio.success();
       fire();
@@ -107,7 +97,7 @@ export function LetterMatchExercise({
       // prompt is announced by the idx-change effect above.
       const next = idx + 1;
       void (async () => {
-        const ok = await audio.say(letterMatchSuccess(round.prompt.base), { rate: 0.98 });
+        const ok = await audio.say(`Oui ! ${round.target.word}.`, { rate: 0.98 });
         if (!ok || !mountedRef.current) return;
         setFlash(null);
         locked.current = false;
@@ -132,18 +122,17 @@ export function LetterMatchExercise({
         <Finished onMenu={onBack} onNext={onNext} count={session.length} earned={earned} />
       ) : (
         <div className="relative z-[41] flex w-full flex-1 flex-col items-center px-4 pb-8 pt-2">
+          <p className="m-0 mb-1 text-base font-bold text-[#7A5A3A]">
+            Lis le mot et touche la bonne image
+          </p>
           <Mascot config={profile.config} mood={mood} />
+          {/* The word to READ — the whole task. Never spoken, so the child works
+              from the letters, not the ear. */}
           <div
-            aria-label={faceLabel(round.prompt)}
-            className="font-black text-[#5A3A1E]"
-            style={{
-              fontFamily: SCRIPT_FONT[round.prompt.script],
-              fontSize: "clamp(80px,28vw,150px)",
-              lineHeight: 1.1,
-              margin: "6px 0",
-            }}
+            className="text-center font-black text-[#5A3A1E]"
+            style={{ fontSize: "clamp(38px,11vw,68px)", lineHeight: 1.1, margin: "6px 0" }}
           >
-            {round.prompt.glyph}
+            {round.target.word}
           </div>
           <button
             onPointerDown={() => {
@@ -153,25 +142,26 @@ export function LetterMatchExercise({
             aria-label="Répéter la consigne"
             className="mb-6 rounded-full bg-white/70 px-5 py-2 text-lg font-bold text-[#5A3A1E] shadow [touch-action:none]"
           >
-            🔊 {line}
+            🔊 {READ_IMAGE_PROMPT}
           </button>
           <div className="flex flex-wrap items-center justify-center gap-4">
-            {round.choices.map((face, i) => (
+            {round.choices.map((choice, i) => (
               <Tile
-                key={face.base}
+                key={choice.word}
                 bg={TILE_COLORS[i % TILE_COLORS.length].bg}
                 ink={TILE_COLORS[i % TILE_COLORS.length].ink}
-                highlight={flash === face.base}
+                highlight={flash === choice.word}
                 disabled={flash != null}
-                onPick={() => pick(face)}
+                onPick={() => pick(choice)}
                 onPreview={() => {
+                  if (locked.current) return; // don't cut the success line mid-celebration
                   audio.unlock();
-                  void audio.say(face.base);
+                  void audio.say(choice.word);
                 }}
-                previewLabel={`Écouter ${face.base}`}
-                ariaLabel={faceLabel(face)}
+                previewLabel={`Écouter ${choice.word}`}
+                ariaLabel={`Image : ${choice.word}`}
               >
-                <span style={{ fontFamily: SCRIPT_FONT[face.script] }}>{face.glyph}</span>
+                <WordIcon emoji={choice.emoji} img={choice.img} size="clamp(60px,19vw,104px)" />
               </Tile>
             ))}
           </div>

@@ -4,6 +4,7 @@ import { EarnBadge } from "../components/EarnBadge";
 import { EndButtons } from "../components/EndButtons";
 import { Mascot } from "../mascot/Mascot";
 import { Tile } from "../components/Tile";
+import { WordIcon } from "../components/WordIcon";
 import { useAudio } from "../hooks/useAudio";
 import { useConfetti } from "../hooks/useConfetti";
 import {
@@ -198,8 +199,12 @@ export function AssembleExercise({ exercise, mode, level, onBack, onNext }: Prop
         <div className="relative z-[41] flex w-full flex-1 flex-col items-center px-4 pb-8 pt-2">
           <p className="m-0 mb-1 text-base font-bold text-[#7A5A3A]">{MODE_HINT[mode]}</p>
           <Mascot config={profile.config} mood={mood} />
-          <div style={{ fontSize: "clamp(64px,22vw,120px)", lineHeight: 1.1, margin: "2px 0" }}>
-            {round.word.emoji}
+          <div style={{ margin: "2px 0" }}>
+            <WordIcon
+              emoji={round.word.emoji}
+              img={round.word.img}
+              size="clamp(64px,22vw,120px)"
+            />
           </div>
           <button
             onPointerDown={() => {

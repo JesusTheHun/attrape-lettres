@@ -426,7 +426,7 @@ async function runBatch(todo, encoder, ext) {
     }
     try {
       console.log(`Submitting batch job for ${todo.length} clips…`);
-      const fileName = await uploadJsonl(todo.map((t) => JSON.stringify({ key: t.key, request: ttsRequest(t.text, t.style) })).join("\n") + "\n");
+      const fileName = await uploadJsonl(todo.map((t) => JSON.stringify({ key: t.key, request: ttsRequest(t.prompt ?? t.text, t.style) })).join("\n") + "\n");
       const name = await createBatch(fileName, todo.length);
       job = { name, count: todo.length };
       await writeJob(job);
@@ -490,7 +490,7 @@ async function runSync(todo, encoder, ext) {
     let calledApi = false;
     try {
       if (!(await fileExists(wav))) {
-        await writeFile(wav, await synthesize(item.text, item.style)); // API → WAV (reused on re-runs)
+        await writeFile(wav, await synthesize(item.prompt ?? item.text, item.style)); // API → WAV (reused on re-runs)
         calledApi = true;
       }
       await bakeClip(item, await readFile(wav), encoder);
@@ -543,6 +543,38 @@ async function clipExt(key) {
   return null;
 }
 
+/* Authored per-token pronunciation overrides — the ROBUST control here, because
+ * gemini-flash-tts is a prose reader with NO phoneme/SSML control: a natural-
+ * language "don't spell it" instruction competes with the model's own text
+ * front-end and can lose (STYLE_SYLLABLE already says « jamais lettre par lettre »
+ * and "CO" was still spelled « cé-o »). So instead of arguing with the model we
+ * hand it a spoken form it can't misread. Key = the UPPERCASE tile text (what the
+ * exercise passes to speak(), and what voKey() hashes for the clip name); value =
+ * the exact string fed to the TTS. This WINS over the default transform below.
+ *
+ * The default already lowercases syllables (uppercase is the acronym trigger),
+ * which covers most tokens — so only add a row when lowercase is wrong or STILL
+ * misreads by ear. Escalation for a stubborn one: pin the vowel with its accent
+ * ("co" → "cô") or respell the sound so it reads as one blend. This backend is
+ * NON-deterministic: a code change is a hypothesis until you bake and LISTEN.
+ * Workflow per straggler → add/adjust its row, delete its clip (name = voKey of
+ * the UPPERCASE text), re-run `pnpm vo:build -- --group=syllables --sync`. */
+const SAY_AS = {
+  // "CO" reads as the acronym « cé-o »; "ko" spells the /ko/ blend most directly
+  // (k is /k/ unambiguously in fr). Listen once: guard against the « K.O. »
+  // knockout reading — if it trips, fall back to "cô" (as in « côté »).
+  CO: "ko",
+};
+
+/** What we actually FEED the TTS for an item — which can differ from the clip's
+ *  identity text. An explicit SAY_AS override wins; otherwise a syllable is spoken
+ *  lowercase (uppercase reads as an acronym) and everything else verbatim. The key
+ *  is still derived from the original `text`, so the runtime lookup in clips.ts is
+ *  unchanged; only the audio content improves. Letters stay uppercase (STYLE_LETTER
+ *  wants the letter NAMED, e.g. "B" → « bé »). */
+const promptText = (it) =>
+  SAY_AS[it.text] ?? (it.kind === "syllable" ? it.text.toLowerCase() : it.text);
+
 /** Combined, deduped catalog: phrases first (they win a key collision), then the
  *  separate preview vocabulary, each item tagged with kind + its per-kind style. */
 function buildCatalog(enumerateUtterances, enumeratePreviewUtterances) {
@@ -553,7 +585,7 @@ function buildCatalog(enumerateUtterances, enumeratePreviewUtterances) {
   for (const it of [...phrases, ...preview]) {
     if (seen.has(it.text)) continue;
     seen.add(it.text);
-    out.push({ ...it, style: STYLE_BY_KIND[it.kind] ?? STYLE });
+    out.push({ ...it, style: STYLE_BY_KIND[it.kind] ?? STYLE, prompt: promptText(it) });
   }
   return out;
 }
@@ -574,6 +606,13 @@ async function main() {
   const ext = encoder ? FORMAT : "wav";
 
   const catalog = buildCatalog(enumerateUtterances, enumeratePreviewUtterances);
+
+  // A SAY_AS key that matches no utterance is a typo that silently does nothing —
+  // surface it so an override can't quietly rot when a syllable is renamed/removed.
+  const known = new Set(catalog.map((it) => it.text));
+  for (const k of Object.keys(SAY_AS)) {
+    if (!known.has(k)) console.warn(`  ! SAY_AS override "${k}" matches no utterance — typo or stale? (no effect)`);
+  }
 
   // --list: print the rollback map (key → filename, presence) for a group, no API.
   if (listGroup) {
@@ -607,7 +646,7 @@ async function main() {
     const key = voKey(it.text);
     const out = join(OUT_DIR, `${key}.${ext}`);
     if (await fileExists(out)) present++;
-    else todo.push({ text: it.text, key, out, kind: it.kind, style: it.style });
+    else todo.push({ text: it.text, key, out, kind: it.kind, style: it.style, prompt: it.prompt });
   }
   console.log(`${present}/${items.length} audio samples exist, creating the ${todo.length} missing…\n`);
 

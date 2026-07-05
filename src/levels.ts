@@ -13,7 +13,9 @@ import type {
   LetterFace,
   LetterMatchKind,
   LetterMatchRound,
+  LetterScript,
   LetterWord,
+  ReadImageRound,
   SoundLevel,
   SoundTarget,
   SpellSyllableMode,
@@ -54,6 +56,68 @@ export function firstLetterPool(level: number): LetterWord[] {
   const allowed = new Set(cfg.letters);
   return LETTER_WORDS.filter((w) => allowed.has(w.letter));
 }
+
+/* -------------------------------------------------------------------------- */
+/* Read-the-word — 4 explicit levels                                          */
+/* The mirror of first-letter: the WORD is shown, the child reads it and taps  */
+/* the matching picture. Reading IS the task, so the word is never spoken; the  */
+/* only difficulty axis is how many pictures crowd the choice (2 → 4 distractors */
+/* around the answer). Draws from the same curated LETTER_WORDS nouns.          */
+/* -------------------------------------------------------------------------- */
+
+export interface ReadImageLevel {
+  /** Distinct words drawn from the pool at the start of a run. */
+  pick: number;
+  /** How many of those words come back a second time (spaced apart). */
+  repeats: number;
+  /** Wrong-picture tiles shown beside the correct one. */
+  distractors: number;
+}
+
+export const READ_IMAGE_LEVELS: ReadImageLevel[] = [
+  { pick: 5, repeats: 3, distractors: 2 },
+  { pick: 6, repeats: 3, distractors: 2 },
+  { pick: 7, repeats: 4, distractors: 3 },
+  { pick: 8, repeats: 4, distractors: 4 },
+];
+
+export const READ_IMAGE_LEVEL_COUNT = READ_IMAGE_LEVELS.length;
+
+export function readImageLevel(level: number): ReadImageLevel {
+  return READ_IMAGE_LEVELS[Math.min(Math.max(level, 1), READ_IMAGE_LEVEL_COUNT) - 1];
+}
+
+/** The picture pool: every curated noun. Reading practice, so all levels see all. */
+export function readImagePool(): LetterWord[] {
+  return LETTER_WORDS;
+}
+
+/**
+ * One read-the-word round: the target plus `distractors` other words, shuffled.
+ * Distractors are picked by DISTINCT emoji so no two tiles ever show the same
+ * picture (a few nouns share a glyph), which would make the choice ambiguous.
+ */
+export function buildReadImageRound(target: LetterWord, distractors: number): ReadImageRound {
+  const seen = new Set([target.emoji]);
+  const pool: LetterWord[] = [];
+  for (const w of shuffle(LETTER_WORDS)) {
+    if (seen.has(w.emoji)) continue;
+    seen.add(w.emoji);
+    pool.push(w);
+    if (pool.length >= distractors) break;
+  }
+  return { target, choices: shuffle([target, ...pool]) };
+}
+
+export function buildReadImageSession(level: number): ReadImageRound[] {
+  const cfg = readImageLevel(level);
+  return repeatSession(readImagePool(), cfg.pick, cfg.repeats).map((target) =>
+    buildReadImageRound(target, cfg.distractors)
+  );
+}
+
+/** What the child hears: never the word (that would give the answer away). */
+export const READ_IMAGE_PROMPT = "Trouve la bonne image.";
 
 /* -------------------------------------------------------------------------- */
 /* Letter-form matching — 4 explicit levels, shared by both kinds (case+script) */
@@ -327,8 +391,12 @@ export function buildSpellSyllableSession(level: number): SyllableWord[] {
 }
 
 export interface SpellCell {
-  /** The correct letter at this position. */
+  /** The correct letter at this position, canonical UPPERCASE (answer + VO). */
   letter: string;
+  /** The exact glyph to render, cased for the round's form (e.g. "A"/"a"/"a"). */
+  glyph: string;
+  /** print / cursive for the round's form (drives the font). */
+  script: LetterScript;
   /** True = a slot the child fills; false = already written (locked). */
   fill: boolean;
   /** Index among fill cells in reading order, or -1 when shown. */
@@ -339,21 +407,57 @@ export interface SpellCell {
 
 export interface SpellLetterTile {
   id: number;
+  /** Canonical UPPERCASE letter — VO name + answer identity. */
   letter: string;
+  /** The exact glyph to render (cased). In plain rounds glyph === letter. */
+  glyph: string;
+  script: LetterScript;
 }
 
 export interface SpellSyllableRound {
   word: SyllableWord;
   /** The whole word, letter by letter: shown letters + the gap's slots, in order. */
   cells: SpellCell[];
-  /** The gap letters in reading order — what the filled slots must equal. */
+  /** The gap letters (base, uppercase) in reading order. */
   answer: string[];
+  /**
+   * The gap FACES in reading order — what a filled slot must equal. In plain
+   * rounds a face is just the uppercase print letter; in "mixed" rounds it also
+   * pins the case + script, so the child must match the writing, not only the
+   * letter.
+   */
+  answerFaces: LetterFace[];
   /** Shuffled letter tiles the child taps. */
   tray: SpellLetterTile[];
 }
 
+/** One writing the word can take: a case + a script. */
+interface SpellForm {
+  upper: boolean;
+  script: LetterScript;
+}
+/** Plain siblings always print big uppercase — the letter is never in question. */
+const PLAIN_FORM: SpellForm = { upper: true, script: "print" };
+/** The three writings the "écritures mêlées" twins shuffle between per round. */
+const MIXED_FORMS: SpellForm[] = [
+  { upper: true, script: "print" }, // GRANDE
+  { upper: false, script: "print" }, // petite
+  { upper: false, script: "cursive" }, // attachée
+];
+
+function spellFace(base: string, form: SpellForm): LetterFace {
+  return { base, glyph: form.upper ? base : base.toLowerCase(), script: form.script };
+}
+/** Two faces render identically iff they share this key (glyph already encodes the case). */
+const faceKey = (f: LetterFace) => `${f.glyph}|${f.script}`;
+
 let _spellTileId = 0;
-const spellTile = (letter: string): SpellLetterTile => ({ id: _spellTileId++, letter });
+const spellTile = (f: LetterFace): SpellLetterTile => ({
+  id: _spellTileId++,
+  letter: f.base,
+  glyph: f.glyph,
+  script: f.script,
+});
 
 /**
  * Blank out 1 (or 2, for `letters-two`) whole syllables into per-letter slots and
@@ -361,35 +465,91 @@ const spellTile = (letter: string): SpellLetterTile => ({ id: _spellTileId++, le
  * whole task); the other two add intruders. At least one syllable always stays
  * written, so there's a printed anchor to read the word from. Hidden syllables
  * are chosen at random — the gap can sit anywhere in the word.
+ *
+ * `mixed` adds a second axis: the whole word (anchors + answer) is drawn in ONE
+ * random writing (grande / petite / attachée), and the intruders become the SAME
+ * gap letters in the OTHER two writings — so a tile with the right letter but the
+ * wrong case or script is a trap. The child must match the writing, not just the
+ * letter. Plain rounds keep the exact old shape (uppercase print, letter-only).
  */
 export function buildSpellSyllableRound(
   word: SyllableWord,
   mode: SpellSyllableMode,
-  distractors: number
+  distractors: number,
+  mixed = false
 ): SpellSyllableRound {
   const syl = word.syllables;
   const hideCount = Math.min(mode === "letters-two" ? 2 : 1, syl.length - 1);
   const hidden = new Set(shuffle(syl.map((_, i) => i)).slice(0, hideCount));
+  const form = mixed ? MIXED_FORMS[(Math.random() * MIXED_FORMS.length) | 0] : PLAIN_FORM;
 
   const cells: SpellCell[] = [];
   const answer: string[] = [];
+  const answerFaces: LetterFace[] = [];
   syl.forEach((s, si) => {
     const gap = hidden.has(si);
     [...s].forEach((ch, ci) => {
+      const face = spellFace(ch, form);
       cells.push({
         letter: ch,
+        glyph: face.glyph,
+        script: face.script,
         fill: gap,
         slotIndex: gap ? answer.length : -1,
         syllableStart: ci === 0,
       });
-      if (gap) answer.push(ch);
+      if (gap) {
+        answer.push(ch);
+        answerFaces.push(face);
+      }
     });
   });
 
   const extra = mode === "letters-exact" ? 0 : distractors;
-  const need = new Set(answer);
-  const intruders = shuffle(SOUND_LETTER_BANK.filter((l) => !need.has(l))).slice(0, extra);
-  return { word, cells, answer, tray: shuffle([...answer, ...intruders]).map(spellTile) };
+  const trayFaces = [...answerFaces, ...spellIntruders(answer, form, extra, mixed)];
+  return { word, cells, answer, answerFaces, tray: shuffle(trayFaces).map(spellTile) };
+}
+
+/**
+ * `extra` distractor faces for the tray. Plain: wrong LETTERS in the same writing
+ * (the classic intrus). Mixed: prefer the SAME gap letters in the two OTHER
+ * writings (the point of the game), then top up with wrong letters in random
+ * writings. Deduped against the answer + each other so no tile is a valid answer.
+ */
+function spellIntruders(
+  answer: string[],
+  form: SpellForm,
+  extra: number,
+  mixed: boolean
+): LetterFace[] {
+  if (extra <= 0) return [];
+  if (!mixed) {
+    const need = new Set(answer);
+    return shuffle(SOUND_LETTER_BANK.filter((l) => !need.has(l)))
+      .slice(0, extra)
+      .map((l) => spellFace(l, form));
+  }
+
+  const seen = new Set(answer.map((l) => faceKey(spellFace(l, form))));
+  const take = (face: LetterFace, into: LetterFace[]) => {
+    const k = faceKey(face);
+    if (seen.has(k)) return;
+    seen.add(k);
+    into.push(face);
+  };
+
+  // Same letters, wrong writings — the traps that make "the right case" matter.
+  const wrongForm: LetterFace[] = [];
+  for (const base of new Set(answer))
+    for (const f of MIXED_FORMS) take(spellFace(base, f), wrongForm);
+
+  // Wrong letters, random writings — fill any remainder.
+  const others: LetterFace[] = [];
+  const answerSet = new Set(answer);
+  for (const base of shuffle(SOUND_LETTER_BANK).filter((l) => !answerSet.has(l)))
+    take(spellFace(base, MIXED_FORMS[(Math.random() * MIXED_FORMS.length) | 0]), others);
+
+  return [...shuffle(wrongForm), ...others].slice(0, extra);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -398,6 +558,7 @@ export function buildSpellSyllableRound(
 
 export const EXERCISES: ExerciseMeta[] = [
   { id: "first-letter", name: "La première lettre", emoji: "🔤", levelCount: FIRST_LETTER_LEVELS.length },
+  { id: "read-image", name: "Lis le mot", emoji: "🖼️", levelCount: READ_IMAGE_LEVEL_COUNT },
   { id: "fill-blank", name: "Complète le mot", emoji: "🧩", levelCount: SYLLABLE_LEVEL_COUNT, mode: "fill-blank" },
   { id: "order-syllables", name: "Range les syllabes", emoji: "🔀", levelCount: SYLLABLE_LEVEL_COUNT, mode: "order" },
   { id: "find-intruder", name: "Trouve l’intrus", emoji: "🕵️", levelCount: SYLLABLE_LEVEL_COUNT, mode: "order-distractor" },
@@ -407,7 +568,16 @@ export const EXERCISES: ExerciseMeta[] = [
   { id: "spell-two-syllables", name: "Écris deux syllabes", emoji: "📝", levelCount: SPELL_SYLLABLE_LEVEL_COUNT, spell: "letters-two" },
   { id: "match-case", name: "Grande et petite lettre", emoji: "🔠", levelCount: LETTER_MATCH_LEVEL_COUNT, match: "case" },
   { id: "match-script", name: "Lettres attachées", emoji: "✍️", levelCount: LETTER_MATCH_LEVEL_COUNT, match: "script" },
+  // The "écritures mêlées" twins: the two intruder spellers again, but now the
+  // word takes one of three writings and the tray mixes forms — same letter in
+  // the wrong case/script is a trap. They come LAST, after the child has met
+  // majuscule↔minuscule (match-case) and l'attaché (match-script) on their own.
+  { id: "spell-syllable-plus-mixed", name: "La syllabe et les intrus mêlés", emoji: "🎭", levelCount: SPELL_SYLLABLE_LEVEL_COUNT, spell: "letters-extra", mixed: true },
+  { id: "spell-two-syllables-mixed", name: "Deux syllabes, écritures mêlées", emoji: "🖋️", levelCount: SPELL_SYLLABLE_LEVEL_COUNT, spell: "letters-two", mixed: true },
 ];
+
+/** Extra hub chip for the "écritures mêlées" twins — names the twist plainly. */
+export const MIXED_HINT = "GRANDE, petite ou attachée — trouve la bonne";
 
 export const MODE_HINT: Record<SyllableMode, string> = {
   "fill-blank": "Trouve la syllabe manquante",

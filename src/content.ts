@@ -1,4 +1,10 @@
 import type { LetterWord, SoundTarget, SyllableWord } from "./types";
+// Dedicated illustrations for words whose closest emoji is wrong (see WordIcon):
+// no glyph is a true igloo/skirt, and 🧁/🛌 read as cupcake/person-in-bed.
+import iglooImg from "./img/igloo.svg";
+import jupeImg from "./img/jupe.svg";
+import macaronImg from "./img/macaron.svg";
+import pyjamaImg from "./img/pyjama.svg";
 
 /**
  * First-letter dataset: exactly one clean, unambiguous word per letter.
@@ -14,7 +20,7 @@ export const LETTER_WORDS: LetterWord[] = [
   { letter: "F", word: "Fleur", emoji: "🌸" },
   { letter: "G", word: "Gâteau", emoji: "🍰" },
   { letter: "H", word: "Hibou", emoji: "🦉" },
-  { letter: "I", word: "Igloo", emoji: "🛖" },
+  { letter: "I", word: "Igloo", emoji: "🛖", img: iglooImg },
   { letter: "J", word: "Jus", emoji: "🧃" },
   { letter: "K", word: "Koala", emoji: "🐨" },
   { letter: "L", word: "Lune", emoji: "🌙" },
@@ -37,7 +43,7 @@ export const LETTER_WORDS: LetterWord[] = [
   { letter: "G", word: "Girafe", emoji: "🦒" },
   { letter: "H", word: "Hélicoptère", emoji: "🚁" },
   { letter: "I", word: "Île", emoji: "🏝️" },
-  { letter: "J", word: "Jupe", emoji: "👗" },
+  { letter: "J", word: "Jupe", emoji: "👗", img: jupeImg },
   { letter: "K", word: "Kiwi", emoji: "🥝" },
   { letter: "L", word: "Lion", emoji: "🦁" },
   { letter: "M", word: "Moto", emoji: "🏍️" },
@@ -105,13 +111,13 @@ export const SYLLABLE_WORDS: SyllableWord[] = [
   { word: "PANDA", syllables: ["PAN", "DA"], emoji: "🐼" },
   { word: "FUSÉE", syllables: ["FU", "SÉE"], emoji: "🚀" },
   // 3 syllables
-  { word: "PYJAMA", syllables: ["PY", "JA", "MA"], emoji: "🛌" },
+  { word: "PYJAMA", syllables: ["PY", "JA", "MA"], emoji: "🛌", img: pyjamaImg },
   { word: "CINÉMA", syllables: ["CI", "NÉ", "MA"], emoji: "🎬" },
   { word: "KANGOUROU", syllables: ["KAN", "GOU", "ROU"], emoji: "🦘" },
   { word: "PANTALON", syllables: ["PAN", "TA", "LON"], emoji: "👖" },
   { word: "ANANAS", syllables: ["A", "NA", "NAS"], emoji: "🍍" },
   { word: "HÔPITAL", syllables: ["HÔ", "PI", "TAL"], emoji: "🏥" },
-  { word: "MACARON", syllables: ["MA", "CA", "RON"], emoji: "🧁" },
+  { word: "MACARON", syllables: ["MA", "CA", "RON"], emoji: "🧁", img: macaronImg },
   // 4 syllables
   { word: "LOCOMOTIVE", syllables: ["LO", "CO", "MO", "TIVE"], emoji: "🚂" },
   { word: "ANNIVERSAIRE", syllables: ["AN", "NI", "VER", "SAIRE"], emoji: "🎂" },

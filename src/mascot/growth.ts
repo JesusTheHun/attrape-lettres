@@ -96,6 +96,8 @@ export interface RigProps {
   mood: Mood;
   /** Instance-unique prefix for <defs> gradient ids (many mascots per page). */
   uid: string;
+  /** Shop-thumbnail mode: strip per-stage magic so only the sold part shows. */
+  preview?: boolean;
 }
 
 export function poseFor(stage: number): Pose {

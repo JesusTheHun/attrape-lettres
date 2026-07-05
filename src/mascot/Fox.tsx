@@ -92,7 +92,7 @@ function FanTail({ rootX, rootY, angleDeg, length, rB, flame, ki }: { rootX: num
   );
 }
 
-export function Fox({ config, layout, stage, mood, uid }: RigProps) {
+export function Fox({ config, layout, stage, mood, uid, preview }: RigProps) {
   const C = COLOR_SLOT.fox;
   const S = STYLE_SLOT.fox;
   const A = ACCESSORY.fox;
@@ -104,7 +104,11 @@ export function Fox({ config, layout, stage, mood, uid }: RigProps) {
   const longTail = pick(config.styles, S.tail, "long") === "long";
   const has = (id: string) => config.accessories.includes(id);
 
-  const spec = STAGES[Math.max(0, Math.min(9, stage))];
+  let spec = STAGES[Math.max(0, Math.min(9, stage))];
+  // Shop thumbnail: keep the base tail + ruff (sold parts) but drop the extra
+  // kitsune tails, flames, spirit-mark, halo and glow so a ghost fox shows ONLY
+  // what this tile changes.
+  if (preview) spec = { ...spec, tuft: false, aura: 0, sparkle: 0, extraTails: 0, flames: false, mark: false, halo: undefined, ground: false };
   const tailF = spec.tail * (longTail ? 1 : 0.66);
   const { bodyCX, bodyCY, bodyRX, bodyRY, headCX, headCY, headR, eyeR } = layout;
   const anchor = accessoryAnchors("fox", layout);

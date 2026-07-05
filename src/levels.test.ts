@@ -27,6 +27,11 @@ import {
   spellSyllablePool,
   buildSpellSyllableRound,
   buildSpellSyllableSession,
+  READ_IMAGE_LEVELS,
+  readImageLevel,
+  readImagePool,
+  buildReadImageRound,
+  buildReadImageSession,
 } from "./levels";
 import { LETTER_WORDS, LETTER_MATCH_ALPHABET, SOUND_LETTER_BANK } from "./content";
 import type { LetterMatchKind, SpellSyllableMode } from "./types";
@@ -42,6 +47,59 @@ describe("firstLetterPool", () => {
 
   it("returns the full catalog for the null (final) level", () => {
     expect(firstLetterPool(FIRST_LETTER_LEVELS.length)).toEqual(LETTER_WORDS);
+  });
+});
+
+describe("readImageLevel", () => {
+  it("clamps out-of-range levels to the ladder ends", () => {
+    expect(readImageLevel(0)).toBe(READ_IMAGE_LEVELS[0]);
+    expect(readImageLevel(999)).toBe(READ_IMAGE_LEVELS[READ_IMAGE_LEVELS.length - 1]);
+  });
+
+  it("has a pool big enough to pick a full run + distractors at every level", () => {
+    READ_IMAGE_LEVELS.forEach((cfg) => {
+      expect(readImagePool().length).toBeGreaterThanOrEqual(cfg.pick);
+      // one target + its distractors must all fit, by DISTINCT emoji.
+      const distinctEmoji = new Set(readImagePool().map((w) => w.emoji)).size;
+      expect(distinctEmoji).toBeGreaterThanOrEqual(cfg.distractors + 1);
+    });
+  });
+});
+
+describe("buildReadImageRound", () => {
+  // Every level's distractor count, many runs on many targets.
+  const runs = READ_IMAGE_LEVELS.flatMap((cfg) =>
+    readImagePool().flatMap((target) =>
+      Array.from({ length: 8 }, () => ({ cfg, round: buildReadImageRound(target, cfg.distractors) }))
+    )
+  );
+
+  it("offers the target plus exactly `distractors` choices", () => {
+    runs.forEach(({ cfg, round }) => {
+      expect(round.choices).toHaveLength(cfg.distractors + 1);
+      expect(round.choices.filter((c) => c.word === round.target.word)).toHaveLength(1);
+    });
+  });
+
+  it("never shows two tiles with the same picture (distinct emoji)", () => {
+    runs.forEach(({ round }) => {
+      const emojis = round.choices.map((c) => c.emoji);
+      expect(new Set(emojis).size).toBe(emojis.length);
+    });
+  });
+});
+
+describe("buildReadImageSession", () => {
+  it("seeds pick + repeats rounds, spaced so no word repeats back-to-back", () => {
+    READ_IMAGE_LEVELS.forEach((cfg, i) => {
+      for (let n = 0; n < 40; n++) {
+        const run = buildReadImageSession(i + 1);
+        expect(run).toHaveLength(cfg.pick + cfg.repeats);
+        run.forEach((r, k) => {
+          if (k > 0) expect(run[k - 1].target.word).not.toBe(r.target.word);
+        });
+      }
+    });
   });
 });
 
@@ -336,6 +394,86 @@ describe("buildSpellSyllableRound", () => {
     runs.forEach(({ round }) => {
       const ids = round.tray.map((t) => t.id);
       expect(new Set(ids).size).toBe(ids.length);
+    });
+  });
+});
+
+describe("buildSpellSyllableRound — écritures mêlées (mixed)", () => {
+  // Only the two intruder spellers get a mixed twin; -exact never does.
+  const MODES: SpellSyllableMode[] = ["letters-extra", "letters-two"];
+  const key = (t: { glyph: string; script: string }) => `${t.glyph}|${t.script}`;
+  const isUpper = (g: string) => g === g.toUpperCase();
+  // Writing signature = case + script; exactly the three MIXED_FORMS are legal.
+  const sig = (t: { glyph: string; script: string }) => `${isUpper(t.glyph)}|${t.script}`;
+  const LEGAL = new Set(["true|print", "false|print", "false|cursive"]);
+
+  const runs = MODES.flatMap((mode) =>
+    SPELL_SYLLABLE_LEVELS.flatMap((_, i) => {
+      const cfg = spellSyllableLevel(i + 1);
+      return spellSyllablePool(i + 1).flatMap((word) =>
+        Array.from({ length: 12 }, () => ({
+          mode,
+          word,
+          round: buildSpellSyllableRound(word, mode, cfg.distractors, true),
+          distractors: cfg.distractors,
+        }))
+      );
+    })
+  );
+
+  it("draws the WHOLE word in one legal writing (grande / petite / attachée)", () => {
+    runs.forEach(({ round }) => {
+      const sigs = new Set(round.cells.map(sig));
+      expect(sigs.size).toBe(1);
+      expect(LEGAL.has([...sigs][0])).toBe(true);
+      // Its glyphs are the correct case for that writing.
+      round.cells.forEach((c) =>
+        expect(c.glyph).toBe(isUpper(c.glyph) ? c.letter : c.letter.toLowerCase())
+      );
+    });
+  });
+
+  it("stays solvable: every gap face has a matching tray tile (case + script)", () => {
+    runs.forEach(({ round }) => {
+      const trayLeft = new Map<string, number>();
+      round.tray.forEach((t) => trayLeft.set(key(t), (trayLeft.get(key(t)) ?? 0) + 1));
+      round.answerFaces.forEach((f) => {
+        const k = key(f);
+        expect(trayLeft.get(k) ?? 0).toBeGreaterThan(0);
+        trayLeft.set(k, (trayLeft.get(k) ?? 0) - 1);
+      });
+    });
+  });
+
+  it("adds exactly `distractors` traps, none a valid answer, all distinct forms", () => {
+    runs.forEach(({ round, distractors }) => {
+      expect(round.tray).toHaveLength(round.answerFaces.length + distractors);
+      // Strip one tray tile per answer face; what's left are the distractors.
+      const need = new Map<string, number>();
+      round.answerFaces.forEach((f) => need.set(key(f), (need.get(key(f)) ?? 0) + 1));
+      const extras = round.tray.filter((t) => {
+        const n = need.get(key(t)) ?? 0;
+        if (n > 0) {
+          need.set(key(t), n - 1);
+          return false;
+        }
+        return true;
+      });
+      expect(extras).toHaveLength(distractors);
+      const answerKeys = new Set(round.answerFaces.map(key));
+      const extraKeys = extras.map(key);
+      expect(new Set(extraKeys).size).toBe(extraKeys.length); // distinct
+      extraKeys.forEach((k) => expect(answerKeys.has(k)).toBe(false)); // never a right tile
+    });
+  });
+
+  it("always plants at least one same-letter, wrong-writing trap", () => {
+    runs.forEach(({ round }) => {
+      const answerKeys = new Set(round.answerFaces.map(key));
+      const answerBases = new Set(round.answerFaces.map((f) => f.base));
+      // A tile whose LETTER is needed but whose exact face isn't a valid answer.
+      const trap = round.tray.some((t) => answerBases.has(t.letter) && !answerKeys.has(key(t)));
+      expect(trap).toBe(true);
     });
   });
 });

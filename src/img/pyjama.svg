@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="pyjama-t">
+  <title id="pyjama-t">Pyjama</title>
+  <defs>
+    <linearGradient id="py-fab" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#B7E8DD"/>
+      <stop offset="1" stop-color="#83CCBD"/>
+    </linearGradient>
+    <linearGradient id="py-cuf" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6FC2B3"/>
+      <stop offset="1" stop-color="#4EA494"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="64" cy="107" rx="40" ry="6" fill="#000000" fill-opacity="0.10"/>
+  <path d="M50 33 L28 43 Q25 45 25 49 L26 55 Q26 58 30 57 L40 53 L50 47 Z" fill="url(#py-fab)" stroke="#4EA494" stroke-width="1.3"/>
+  <path d="M78 33 L100 43 Q103 45 103 49 L102 55 Q102 58 98 57 L88 53 L78 47 Z" fill="url(#py-fab)" stroke="#4EA494" stroke-width="1.3"/>
+  <path d="M47 35 Q47 32 50 32 L78 32 Q81 32 81 35 L82 60 Q82 63 79 63 L49 63 Q46 63 46 60 Z" fill="url(#py-fab)" stroke="#4EA494" stroke-width="1.3"/>
+  <path d="M58 31 L70 31 L68 38 L60 38 Z" fill="url(#py-cuf)" stroke="#4EA494" stroke-width="1"/>
+  <path d="M24 50 L32 47 L35 55 L27 58 Q24 58 24 55 Z" fill="url(#py-cuf)"/>
+  <path d="M104 50 L96 47 L93 55 L101 58 Q104 58 104 55 Z" fill="url(#py-cuf)"/>
+  <path d="M46 58 L82 58 L82 60 Q82 63 79 63 L49 63 Q46 63 46 60 Z" fill="url(#py-cuf)"/>
+  <line x1="64" y1="39" x2="64" y2="57" stroke="#4EA494" stroke-width="1.2"/>
+  <circle cx="64" cy="42" r="1.8" fill="#FDF6E7" stroke="#4EA494" stroke-width="0.7"/>
+  <circle cx="64" cy="49" r="1.8" fill="#FDF6E7" stroke="#4EA494" stroke-width="0.7"/>
+  <circle cx="64" cy="56" r="1.8" fill="#FDF6E7" stroke="#4EA494" stroke-width="0.7"/>
+  <g fill="#FFFFFF" fill-opacity="0.8">
+    <circle cx="55" cy="45" r="1.6"/>
+    <circle cx="73" cy="47" r="1.6"/>
+    <circle cx="58" cy="54" r="1.6"/>
+    <circle cx="74" cy="55" r="1.6"/>
+  </g>
+  <path d="M48 68 Q48 66 51 66 L77 66 Q80 66 80 68 L80 73 L48 73 Z" fill="url(#py-cuf)" stroke="#4EA494" stroke-width="1.2"/>
+  <path d="M48 73 L45 99 Q45 102 49 102 L59 102 Q62 102 62 99 L64 84 L66 99 Q66 102 69 102 L79 102 Q83 102 82 99 L80 73 Z" fill="url(#py-fab)" stroke="#4EA494" stroke-width="1.3"/>
+  <path d="M45 97 L59 97 L59 99 Q59 102 56 102 L49 102 Q45 102 45 99 Z" fill="url(#py-cuf)"/>
+  <path d="M66 97 L80 97 L80 99 Q80 102 77 102 L69 102 Q66 102 66 99 Z" fill="url(#py-cuf)"/>
+  <g fill="#FFFFFF" fill-opacity="0.8">
+    <circle cx="53" cy="82" r="1.6"/>
+    <circle cx="74" cy="84" r="1.6"/>
+    <circle cx="51" cy="92" r="1.6"/>
+    <circle cx="75" cy="93" r="1.6"/>
+    <circle cx="58" cy="90" r="1.6"/>
+    <circle cx="71" cy="92" r="1.6"/>
+  </g>
+  <ellipse cx="56" cy="42" rx="13" ry="7" transform="rotate(-18 56 42)" fill="#FFFFFF" fill-opacity="0.28"/>
+</svg>

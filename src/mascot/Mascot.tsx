@@ -39,13 +39,15 @@ const cheer: Keyframe[] = [
   { transform: "scale(1) rotate(0deg)" },
 ];
 
-export function Mascot({ config, mood, size = 88 }: MascotProps) {
+export function Mascot({ config, mood, size = 88, preview = false }: MascotProps) {
   const ref = useRef<SVGSVGElement>(null);
   const uid = useId().replace(/:/g, "");
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+    // Shop thumbnails never bob — a grid of jittering mascots is noise, not signal.
+    if (preview) return;
     const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
     if (reduced) return;
     el.style.transformOrigin = "50% 82%";
@@ -56,16 +58,16 @@ export function Mascot({ config, mood, size = 88 }: MascotProps) {
           ? el.animate(cheer, { duration: 680, easing: "ease-out" })
           : el.animate(pop, { duration: 480, easing: "ease-out" });
     return () => anim.cancel();
-  }, [mood]);
+  }, [mood, preview]);
 
   const layout = layoutFor(config.stage);
   const rig =
     config.species === "cat" ? (
-      <Cat config={config} layout={layout} stage={config.stage} mood={mood} uid={uid} />
+      <Cat config={config} layout={layout} stage={config.stage} mood={mood} uid={uid} preview={preview} />
     ) : config.species === "fox" ? (
-      <Fox config={config} layout={layout} stage={config.stage} mood={mood} uid={uid} />
+      <Fox config={config} layout={layout} stage={config.stage} mood={mood} uid={uid} preview={preview} />
     ) : (
-      <Unicorn config={config} layout={layout} stage={config.stage} mood={mood} uid={uid} />
+      <Unicorn config={config} layout={layout} stage={config.stage} mood={mood} uid={uid} preview={preview} />
     );
 
   // Per-stage growth scale, pivoted at the feet (see growth.stageScale).

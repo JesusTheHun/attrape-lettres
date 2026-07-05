@@ -71,7 +71,7 @@ function Mane({ cx, cy, r, size }: { cx: number; cy: number; r: number; size: nu
   );
 }
 
-export function Cat({ config, layout, stage, mood, uid }: RigProps) {
+export function Cat({ config, layout, stage, mood, uid, preview }: RigProps) {
   const C = COLOR_SLOT.cat;
   const S = STYLE_SLOT.cat;
   const A = ACCESSORY.cat;
@@ -83,7 +83,10 @@ export function Cat({ config, layout, stage, mood, uid }: RigProps) {
   const has = (id: string) => config.accessories.includes(id);
   const furEdge = mix(body, "#FFFFFF", 0.34); // lighter fluff so scallops are visible
 
-  const spec = STAGES[Math.max(0, Math.min(9, stage))];
+  let spec = STAGES[Math.max(0, Math.min(9, stage))];
+  // Shop thumbnail: keep the tail (a sold part) but drop mane/tufts/halo/crown/
+  // glow so a ghost cat shows ONLY what this tile changes.
+  if (preview) spec = { ...spec, tuft: "none", aura: 0, sparkle: 0, mane: undefined, cheek: false, halo: undefined, crown: false, ground: false };
   const tailF = spec.tail * (longTail ? 1 : 0.62);
   const raise = ramp(stage, [[0, 0], [2, 0.1], [4, 0.4], [6, 0.75], [9, 1]]);
   const earScale = ramp(stage, [[0, 0.44], [2, 0.5], [4, 0.58], [6, 0.64], [9, 0.68]]);

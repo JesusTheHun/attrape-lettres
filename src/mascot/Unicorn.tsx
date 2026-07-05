@@ -2,7 +2,7 @@ import type { RigProps } from "./growth";
 import { INK, pick } from "./growth";
 import { accessoryAnchors } from "./anchors";
 import { COLOR_SLOT, STYLE_SLOT, ACCESSORY } from "./ids";
-import { Aura, Bow, Cheeks, Crown, Eyes, Flower, FoldedLegs, GroundGlow, Halo, Leg, Mouth, Plume, Sparkles, fourStar } from "./parts";
+import { Aura, BodyShimmer, Bow, Cheeks, Crown, Eyes, Flower, FoldedLegs, GroundGlow, Halo, Leg, Mouth, Plume, Sparkles, fourStar } from "./parts";
 
 /**
  * Unicorn — "Céleste" timeline. Every stade 3→9 adds ONE clearly visible,
@@ -126,7 +126,7 @@ function UnicornTail({ x, y, len, color, curly }: { x: number; y: number; len: n
   );
 }
 
-export function Unicorn({ config, layout, stage, mood, uid }: RigProps) {
+export function Unicorn({ config, layout, stage, mood, uid, preview }: RigProps) {
   const C = COLOR_SLOT.unicorn;
   const S = STYLE_SLOT.unicorn;
   const A = ACCESSORY.unicorn;
@@ -139,7 +139,10 @@ export function Unicorn({ config, layout, stage, mood, uid }: RigProps) {
   const has = (id: string) => config.accessories.includes(id);
   const earIn = "#FBE4F1";
 
-  const spec = STAGES[Math.max(0, Math.min(9, stage))];
+  let spec = STAGES[Math.max(0, Math.min(9, stage))];
+  // Shop thumbnail: keep the horn (a sold part) but drop every magical extra so a
+  // ghost unicorn shows ONLY the colour/style/accessory this tile is about.
+  if (preview) spec = { ...spec, shine: false, wing: 0, aura: 0, sparkle: 0, maneFlow: undefined, rainbow: false, halo: undefined, crown: false, beam: false, ground: false };
   const hoof = "#EADAC6";
   const { bodyCX, bodyCY, bodyRX, bodyRY, headCX, headCY, headR, eyeR } = layout;
   const anchor = accessoryAnchors("unicorn", layout);
@@ -242,11 +245,16 @@ export function Unicorn({ config, layout, stage, mood, uid }: RigProps) {
           const palette = ["#FF8FB1", "#FFD54F", "#AED581", "#7FD1D8", "#BA9EE8"];
           return <Flower key={i} x={fx} y={fy} r={3.6} petal={palette[i]} center="#FFF3C4" />;
         })}
+      {/* "Poussière d'étoiles" — the premium reward: a living stardust shimmer
+          over the whole body, not a clip pinned to the head. */}
       {has(A.starClip) && (
-        <g>
-          <Sparkles points={[[anchor.headSide.x, anchor.headSide.y, 6.5]]} color="#FFD54F" />
-          <Sparkles points={[[anchor.headSide.x + headR * 0.3, anchor.headSide.y - headR * 0.26, 3]]} color="#FFF3C4" />
-        </g>
+        <BodyShimmer
+          id={`${uid}-shimmer`}
+          body={[
+            { cx: headCX, cy: headCY, rx: headR, ry: headR * 0.98 },
+            { cx: bodyCX, cy: bodyCY, rx: bodyRX, ry: bodyRY },
+          ]}
+        />
       )}
 
       {/* sparkles (proud/majestic) */}

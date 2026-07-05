@@ -75,7 +75,7 @@ export const CATALOG: CustomizationOption[] = [
   style("unicorn", US.horn, "spiral", "Corne torsadée", "🐚", 45, 3),
   accessory(ACCESSORY.unicorn.ribbon, "unicorn", "Nœud", "🎀", 45),
   accessory(ACCESSORY.unicorn.flowerCrown, "unicorn", "Couronne de fleurs", "🌸", 95, 2),
-  accessory(ACCESSORY.unicorn.starClip, "unicorn", "Étoile scintillante", "✨", 200, 4),
+  accessory(ACCESSORY.unicorn.starClip, "unicorn", "Poussière d'étoiles", "✨", 200, 4),
 
   /* ---- Cat ----------------------------------------------------------- */
   color("cat", CA.body, "gris", "#C9CCD6", "Pelage gris", "🩶", 18),
@@ -85,6 +85,9 @@ export const CATALOG: CustomizationOption[] = [
   // so gate their looks until the kitten sits up at stade 1.
   color("cat", CA.belly, "rose", "#FFE1EC", "Ventre rose", "🌸", 16, 1),
   color("cat", CA.tail, "roux", "#E08A4E", "Queue rousse", "🦊", 18, 1),
+  color("cat", CA.body, "creme", "#F3E4D0", "Pelage crème", "🍦", 18),
+  color("cat", CA.body, "lilas", "#E6DDF5", "Pelage lilas", "💜", 20),
+  color("cat", CA.tail, "grise", "#C9CCD6", "Queue grise", "🌫️", 18, 1),
   style("cat", CS.hair, "fluffy", "Poil touffu", "☁️", 40),
   style("cat", CS.tail, "short", "Petite queue", "🐈", 32, 1),
   accessory(ACCESSORY.cat.bow, "cat", "Nœud", "🎀", 45),
@@ -98,6 +101,7 @@ export const CATALOG: CustomizationOption[] = [
   color("fox", FO.belly, "creme", "#FFDCB4", "Ventre crème", "🤍", 16),
   color("fox", FO.tailTip, "brun", "#5A3A1E", "Bout de queue brun", "🟤", 18),
   color("fox", FO.tailTip, "dore", "#FFD54F", "Bout de queue doré", "⭐", 22),
+  color("fox", FO.body, "arctique", "#EDE7DE", "Pelage arctique", "❄️", 20),
   style("fox", FS.fur, "spots", "Taches", "🐆", 48),
   style("fox", FS.fur, "stripes", "Rayures", "🐯", 48),
   style("fox", FS.tail, "short", "Petite queue", "🦊", 32),

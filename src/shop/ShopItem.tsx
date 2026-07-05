@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import type { CustomizationOption } from "../types";
+import { ItemPreview } from "./ItemPreview";
 import { press } from "./anim";
 
 /* -------------------------------------------------------------------------- */
@@ -57,9 +58,6 @@ export function ShopItem({ option, owned, equipped, locked, affordable, onTap }:
           ? `coûte ${option.cost} points`
           : `coûte ${option.cost} points, pas encore assez`;
 
-  // Colours show a swatch of their hex; everything else its emoji (or a spark).
-  const thumb = option.emoji ?? (option.category === "color" ? null : "✨");
-
   return (
     <button
       ref={ref}
@@ -82,22 +80,12 @@ export function ShopItem({ option, owned, equipped, locked, affordable, onTap }:
           : "0 6px 14px rgba(0,0,0,0.10)",
       }}
     >
-      {thumb === null ? (
-        <span
-          aria-hidden
-          className="inline-block rounded-full"
-          style={{
-            width: 30,
-            height: 30,
-            background: option.value,
-            boxShadow: "inset 0 0 0 2px rgba(0,0,0,0.12)",
-          }}
-        />
-      ) : (
-        <span aria-hidden style={{ fontSize: 30, lineHeight: 1 }}>
-          {thumb}
-        </span>
-      )}
+      <ItemPreview
+        species={option.species}
+        category={option.category}
+        slot={option.slot}
+        value={option.value}
+      />
       <span className="text-sm font-bold leading-tight">{option.name}</span>
       <span
         className="text-xs font-black"

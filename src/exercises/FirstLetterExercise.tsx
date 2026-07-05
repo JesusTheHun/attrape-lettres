@@ -4,6 +4,7 @@ import { EarnBadge } from "../components/EarnBadge";
 import { EndButtons } from "../components/EndButtons";
 import { Mascot } from "../mascot/Mascot";
 import { Tile } from "../components/Tile";
+import { WordIcon } from "../components/WordIcon";
 import { useAudio } from "../hooks/useAudio";
 import { useConfetti } from "../hooks/useConfetti";
 import { useProfile } from "../hooks/useProfile";
@@ -128,8 +129,12 @@ export function FirstLetterExercise({
       ) : (
         <div className="relative z-[41] flex w-full flex-1 flex-col items-center px-4 pb-8 pt-2">
           <Mascot config={profile.config} mood={mood} />
-          <div style={{ fontSize: "clamp(80px,28vw,150px)", lineHeight: 1.1, margin: "6px 0" }}>
-            {round.target.emoji}
+          <div style={{ margin: "6px 0" }}>
+            <WordIcon
+              emoji={round.target.emoji}
+              img={round.target.img}
+              size="clamp(80px,28vw,150px)"
+            />
           </div>
           <button
             onPointerDown={() => {

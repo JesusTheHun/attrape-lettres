@@ -1,5 +1,6 @@
 export type ExerciseId =
   | "first-letter"
+  | "read-image"
   | "match-case"
   | "match-script"
   | "fill-blank"
@@ -8,6 +9,8 @@ export type ExerciseId =
   | "spell-syllable"
   | "spell-syllable-plus"
   | "spell-two-syllables"
+  | "spell-syllable-plus-mixed"
+  | "spell-two-syllables-mixed"
   | "spell-sound";
 
 export type Mood = "idle" | "happy" | "cheer";
@@ -19,6 +22,20 @@ export interface LetterWord {
   letter: string;
   word: string;
   emoji: string;
+  /**
+   * Optional dedicated illustration (imported asset URL) shown INSTEAD of `emoji`
+   * when the emoji misrepresents the word (e.g. no true "igloo"/"jupe" glyph).
+   * `emoji` is kept as the a11y/text fallback. See WordIcon.
+   */
+  img?: string;
+}
+
+/** Read-the-word exercise ---------------------------------------------------*/
+/** The written word is shown; the child taps the picture that matches it. */
+export interface ReadImageRound {
+  target: LetterWord;
+  /** The target word plus distractor words, shuffled — each rendered as a picture. */
+  choices: LetterWord[];
 }
 
 export interface FirstLetterLevel {
@@ -70,6 +87,8 @@ export interface SyllableWord {
   /** Pre-authored orthographic split, in reading order. */
   syllables: string[];
   emoji: string;
+  /** Optional dedicated illustration shown instead of `emoji`. See LetterWord.img / WordIcon. */
+  img?: string;
 }
 
 export type SyllableMode = "fill-blank" | "order" | "order-distractor";
@@ -128,6 +147,12 @@ export interface ExerciseMeta {
   mode?: SyllableMode;
   /** Fill-a-syllable siblings carry which letter mode they run; others leave it undefined. */
   spell?: SpellSyllableMode;
+  /**
+   * Fill-a-syllable "écritures mêlées" twins: the word shows in ONE of three
+   * writings (grande / petite / attachée) and the tray mixes forms, so the child
+   * must pick each letter in the right case AND script. Plain siblings leave it off.
+   */
+  mixed?: boolean;
   /** Letter-form matching exercises carry which form they flip; others leave it undefined. */
   match?: LetterMatchKind;
 }
@@ -251,4 +276,10 @@ export interface MascotProps {
   mood: Mood;
   /** Rendered pixel size (fluid callers pass a clamp-derived number). */
   size?: number;
+  /**
+   * Static shop-thumbnail mode: no idle/pop animation and the per-stage MAGIC
+   * (wings, halo, mane, crown, aura, extra tails, sparkles…) is suppressed, so a
+   * ghost silhouette shows ONLY the part a tile is selling. See ItemPreview.
+   */
+  preview?: boolean;
 }

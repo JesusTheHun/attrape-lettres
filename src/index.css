@@ -66,8 +66,41 @@ textarea {
   }
 }
 
+/* Premium "Poussière d'étoiles" accessory (BodyShimmer): a field of twinkling
+   stars + a slow diagonal sheen sweeping across the mascot's silhouette. Pure
+   CSS so it stays OFF the React render path (invariant #2). Frozen under
+   prefers-reduced-motion — a static scatter of stars remains (invariant #6). */
+@keyframes alTwinkle {
+  0%,
+  100% {
+    opacity: 0.12;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes alSheen {
+  0% {
+    transform: translateX(var(--al-from, -30px));
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.9;
+  }
+  50% {
+    opacity: 0.9;
+  }
+  62%,
+  100% {
+    transform: translateX(var(--al-to, 30px));
+    opacity: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .ollie-anim {
+  .ollie-anim,
+  .al-star,
+  .al-sheen {
     animation: none !important;
   }
 }

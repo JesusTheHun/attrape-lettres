@@ -4,16 +4,19 @@ import { EarnBadge } from "../components/EarnBadge";
 import { EndButtons } from "../components/EndButtons";
 import { Mascot } from "../mascot/Mascot";
 import { Tile } from "../components/Tile";
+import { WordIcon } from "../components/WordIcon";
 import { useAudio } from "../hooks/useAudio";
 import { useConfetti } from "../hooks/useConfetti";
 import {
   buildSpellSyllableRound,
   buildSpellSyllableSession,
   spellSyllableLevel,
+  type SpellLetterTile,
   type SpellSyllableRound,
 } from "../levels";
+import { SCRIPT_FONT, faceLabel } from "../letterForms";
 import { useProfile } from "../hooks/useProfile";
-import type { ExerciseId, Mood, SpellSyllableMode, Verdict } from "../types";
+import type { ExerciseId, LetterFace, Mood, SpellSyllableMode, Verdict } from "../types";
 
 const TRAY_COLORS = [
   { bg: "#4FC3F7", ink: "#062E3D" },
@@ -27,6 +30,8 @@ interface Props {
   exercise: ExerciseId;
   mode: SpellSyllableMode;
   level: number;
+  /** "écritures mêlées" twin: mixed case + script; the child matches the writing. */
+  mixed?: boolean;
   onBack: () => void;
   onNext: () => void;
 }
@@ -37,6 +42,16 @@ const HEADLINE: Record<SpellSyllableMode, string> = {
   "letters-two": "Complète les deux syllabes",
 };
 
+/** Mixed twins swap the headline: matching the writing IS the task now. */
+const MIXED_HEADLINE: Record<SpellSyllableMode, string> = {
+  "letters-exact": "Trouve la bonne écriture",
+  "letters-extra": "La bonne lettre… et la bonne écriture",
+  "letters-two": "Deux syllabes — la bonne écriture",
+};
+
+/** Two faces are the same tile iff they render identically (glyph encodes case). */
+const sameFace = (a: LetterFace, b: LetterFace) => a.glyph === b.glyph && a.script === b.script;
+
 /**
  * Part of the word is already written; one (or two) syllable is blanked into
  * per-letter slots the child fills by tapping letters in the right order. Same
@@ -44,7 +59,7 @@ const HEADLINE: Record<SpellSyllableMode, string> = {
  * canvas confetti, whole-row judgement), but the prompt is the printed word and
  * the target is its missing letters. Mode only changes the tray / gap count.
  */
-export function SpellSyllableExercise({ exercise, mode, level, onBack, onNext }: Props) {
+export function SpellSyllableExercise({ exercise, mode, level, mixed = false, onBack, onNext }: Props) {
   const cfg = useMemo(() => spellSyllableLevel(level), [level]);
   const audio = useAudio();
   const { canvasRef, fire } = useConfetti();
@@ -53,9 +68,11 @@ export function SpellSyllableExercise({ exercise, mode, level, onBack, onNext }:
   const [session] = useState(() => buildSpellSyllableSession(level));
   const [idx, setIdx] = useState(0);
   const [round, setRound] = useState<SpellSyllableRound>(() =>
-    buildSpellSyllableRound(session[0], mode, cfg.distractors)
+    buildSpellSyllableRound(session[0], mode, cfg.distractors, mixed)
   );
-  const [slots, setSlots] = useState<(string | null)[]>(() => round.answer.map(() => null));
+  // Each slot holds the FACE of the tile dropped in it (or null), so a mixed
+  // round can judge the writing, not only the letter, and re-render its glyph.
+  const [slots, setSlots] = useState<(LetterFace | null)[]>(() => round.answerFaces.map(() => null));
   // Which tray tile fills each slot, so a filled slot can be tapped to send its
   // tile back to the tray.
   const [slotTile, setSlotTile] = useState<(number | null)[]>(() => round.answer.map(() => null));
@@ -68,15 +85,15 @@ export function SpellSyllableExercise({ exercise, mode, level, onBack, onNext }:
 
   const loadRound = useCallback(
     (word: (typeof session)[number]) => {
-      const r = buildSpellSyllableRound(word, mode, cfg.distractors);
+      const r = buildSpellSyllableRound(word, mode, cfg.distractors, mixed);
       setRound(r);
-      setSlots(r.answer.map(() => null));
-      setSlotTile(r.answer.map(() => null));
+      setSlots(r.answerFaces.map(() => null));
+      setSlotTile(r.answerFaces.map(() => null));
       setUsed(new Set());
       locked.current = false;
       void audio.say(word.word);
     },
-    [audio, cfg.distractors, mode]
+    [audio, cfg.distractors, mode, mixed]
   );
 
   useEffect(() => {
@@ -105,7 +122,7 @@ export function SpellSyllableExercise({ exercise, mode, level, onBack, onNext }:
   // child spells the whole gap, and only a *complete* row is checked (below).
   // A wrong letter can be tapped back out (removeAt) before the row fills.
   const pick = useCallback(
-    (tileId: number, letter: string): Verdict => {
+    (t: SpellLetterTile): Verdict => {
       if (locked.current) return "reject";
       audio.unlock();
       audio.pop();
@@ -113,20 +130,22 @@ export function SpellSyllableExercise({ exercise, mode, level, onBack, onNext }:
       const nextEmpty = slots.findIndex((s) => s === null);
       if (nextEmpty < 0) return "reject";
 
+      const face: LetterFace = { base: t.letter, glyph: t.glyph, script: t.script };
       const filled = slots.slice();
-      filled[nextEmpty] = letter;
+      filled[nextEmpty] = face;
       setSlots(filled);
       setSlotTile((prev) => {
         const n = prev.slice();
-        n[nextEmpty] = tileId;
+        n[nextEmpty] = t.id;
         return n;
       });
-      setUsed((prev) => new Set(prev).add(tileId));
+      setUsed((prev) => new Set(prev).add(t.id));
 
       if (!filled.every((s) => s !== null)) return "accept";
 
-      // Row complete — judge the whole spelling at once.
-      if (filled.every((s, i) => s === round.answer[i])) {
+      // Row complete — judge the whole spelling at once. In mixed rounds the
+      // case + script must match too; sameFace folds all three into one check.
+      if (filled.every((s, i) => s != null && sameFace(s, round.answerFaces[i]))) {
         locked.current = true;
         setMood("happy");
         audio.success();
@@ -157,8 +176,8 @@ export function SpellSyllableExercise({ exercise, mode, level, onBack, onNext }:
         void (async () => {
           await audio.say("Oh non ! On recommence.");
           if (!mountedRef.current) return;
-          setSlots(round.answer.map(() => null));
-          setSlotTile(round.answer.map(() => null));
+          setSlots(round.answerFaces.map(() => null));
+          setSlotTile(round.answerFaces.map(() => null));
           setUsed(new Set());
           locked.current = false;
         })();
@@ -203,13 +222,12 @@ export function SpellSyllableExercise({ exercise, mode, level, onBack, onNext }:
         <Finished onMenu={onBack} onNext={onNext} count={session.length} earned={earned} />
       ) : (
         <div className="relative z-[41] flex w-full flex-1 flex-col items-center px-4 pb-8 pt-2">
-          <p className="m-0 mb-1 text-base font-bold text-[#7A5A3A]">{HEADLINE[mode]}</p>
+          <p className="m-0 mb-1 text-base font-bold text-[#7A5A3A]">
+            {(mixed ? MIXED_HEADLINE : HEADLINE)[mode]}
+          </p>
           <Mascot config={profile.config} mood={mood} />
-          <div
-            aria-hidden
-            style={{ fontSize: "clamp(48px,15vw,88px)", lineHeight: 1.1, margin: "2px 0" }}
-          >
-            {word.emoji}
+          <div style={{ margin: "2px 0" }}>
+            <WordIcon emoji={word.emoji} img={word.img} size="clamp(48px,15vw,88px)" />
           </div>
           <button
             onPointerDown={() => {
@@ -240,15 +258,15 @@ export function SpellSyllableExercise({ exercise, mode, level, onBack, onNext }:
                 marginLeft: c.syllableStart && i > 0 ? "clamp(8px,2.5vw,16px)" : 0,
               } as const;
               if (!c.fill) {
-                // Already written — a solid, non-interactive letter.
+                // Already written — a solid, non-interactive letter in the round's writing.
                 return (
                   <div
                     key={i}
                     aria-hidden
                     className="flex items-center justify-center font-black text-[#5A3A1E]"
-                    style={{ ...style, background: "#FFF3E0" }}
+                    style={{ ...style, background: "#FFF3E0", fontFamily: SCRIPT_FONT[c.script] }}
                   >
-                    {c.letter}
+                    {c.glyph}
                   </div>
                 );
               }
@@ -259,16 +277,17 @@ export function SpellSyllableExercise({ exercise, mode, level, onBack, onNext }:
                 background: s ? "#FFFFFF" : "transparent",
                 border: s ? "none" : "3px dashed #E4A15E",
                 boxShadow: s ? "0 6px 14px rgba(0,0,0,0.12)" : "none",
+                fontFamily: s ? SCRIPT_FONT[s.script] : undefined,
               } as const;
               return s != null ? (
                 <button
                   key={i}
                   onPointerDown={() => removeAt(c.slotIndex)}
-                  aria-label={`Retirer ${s}`}
+                  aria-label={`Retirer ${s.base}`}
                   className="flex items-center justify-center border-none font-black [touch-action:none]"
                   style={{ ...slotStyle, cursor: "pointer" }}
                 >
-                  {s}
+                  {s.glyph}
                 </button>
               ) : (
                 <div
@@ -291,7 +310,7 @@ export function SpellSyllableExercise({ exercise, mode, level, onBack, onNext }:
                 bg={TRAY_COLORS[i % TRAY_COLORS.length].bg}
                 ink={TRAY_COLORS[i % TRAY_COLORS.length].ink}
                 disabled={used.has(t.id)}
-                onPick={() => pick(t.id, t.letter)}
+                onPick={() => pick(t)}
                 onPreview={() => {
                   if (locked.current) return; // don't cut the success line mid-celebration
                   audio.unlock();
@@ -300,9 +319,9 @@ export function SpellSyllableExercise({ exercise, mode, level, onBack, onNext }:
                 previewLabel={`Écouter ${t.letter}`}
                 size="clamp(60px,17vw,92px)"
                 fontSize="clamp(26px,7vw,48px)"
-                ariaLabel={`Lettre ${t.letter}`}
+                ariaLabel={faceLabel({ base: t.letter, glyph: t.glyph, script: t.script })}
               >
-                {t.letter}
+                <span style={{ fontFamily: SCRIPT_FONT[t.script] }}>{t.glyph}</span>
               </Tile>
             ))}
           </div>
