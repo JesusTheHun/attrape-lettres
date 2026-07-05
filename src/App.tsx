@@ -6,6 +6,7 @@ import { ReadImageExercise } from "./exercises/ReadImageExercise";
 import { SpellSoundExercise } from "./exercises/SpellSoundExercise";
 import { SpellSyllableExercise } from "./exercises/SpellSyllableExercise";
 import { Dashboard } from "./components/Dashboard";
+import { ExerciseIcon } from "./components/ExerciseIcon";
 import { WhoIsPlaying } from "./components/WhoIsPlaying";
 import { Mascot } from "./mascot/Mascot";
 import { MascotGallery } from "./dev/MascotGallery";
@@ -157,7 +158,7 @@ export default function App() {
       {EXERCISES.map((ex) => (
         <section key={ex.id} className="mb-6 w-full max-w-md">
           <div className="mb-2 flex flex-wrap items-center gap-2">
-            <span style={{ fontSize: 26 }}>{ex.emoji}</span>
+            <ExerciseIcon id={ex.id} size={30} />
             <h2 className="m-0 text-xl font-extrabold text-[#5A3A1E]">{ex.name}</h2>
             {ex.mode && <span className="text-sm text-[#9A7A5A]">· {MODE_HINT[ex.mode]}</span>}
             {ex.spell && <span className="text-sm text-[#9A7A5A]">· {ex.mixed ? MIXED_HINT : SPELL_HINT[ex.spell]}</span>}

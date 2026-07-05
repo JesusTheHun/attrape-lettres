@@ -37,6 +37,9 @@ libraries.
 - `exercises/AssembleExercise.tsx` — ONE engine for all three syllable modes. Mode
   only reaches `buildSyllableRound`; the assembly loop is mode-agnostic.
 - `App.tsx` — hub + a 3-line view router (`meta.mode ? Assemble : FirstLetter`).
+- `components/ExerciseIcon.tsx` — the hub's original per-exercise icons (tinted
+  badge + in-house white pictogram, NO emoji). Keyed by `ExerciseId`, so a new
+  exercise fails to compile until it has an icon.
 
 ## Invariants — do not break these
 
@@ -54,6 +57,9 @@ These are why the game feels alive to a child. Changing them silently will regre
 5. **All levels unlocked, always.** No gating/lock logic in navigation.
 6. **Accessibility floor:** big tap targets, `aria-label`s on tiles, and
    `prefers-reduced-motion` respected (mascot + confetti). Maintain it.
+7. **Every exercise has an original drawn icon, never an emoji.** The hub renders
+   `<ExerciseIcon id>`, not `ex.emoji`. Adding an exercise ⇒ add its icon in the
+   SAME change (the `Record<ExerciseId, …>` in `ExerciseIcon.tsx` enforces it).
 
 ## Recipes
 
@@ -62,6 +68,13 @@ syllable words, author the split. That's it — pools derive automatically.
 
 **Add a syllable-style exercise:** add a `SyllableMode`, branch it in
 `buildSyllableRound`, add an `EXERCISES` row with that `mode`. No new component.
+Then add its icon (next recipe) — that step is not optional.
+
+**Add an exercise icon (ALWAYS when adding an exercise):** add a `GLYPHS[<id>]`
+entry in `components/ExerciseIcon.tsx` — a distinct `tint` + an in-house white
+SVG pictogram that says what the game does (letter games get real letterforms;
+the "mêlées" twins wear the `ShuffleChip`). No emoji. The keyed `Record` won't
+compile without it, so this happens in the same change, automatically.
 
 **Tune progression:** edit `SYLLABLE_TIERS` (syllable count + `pick`/`repeats`),
 `FIRST_LETTER_LEVELS` (letter catalog + `pick`/`repeats`), or `SOUND_LEVELS`
