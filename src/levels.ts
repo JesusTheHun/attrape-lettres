@@ -558,7 +558,6 @@ function spellIntruders(
 
 export const EXERCISES: ExerciseMeta[] = [
   { id: "first-letter", name: "La première lettre", emoji: "🔤", levelCount: FIRST_LETTER_LEVELS.length },
-  { id: "read-image", name: "Lis le mot", emoji: "🖼️", levelCount: READ_IMAGE_LEVEL_COUNT },
   { id: "fill-blank", name: "Complète le mot", emoji: "🧩", levelCount: SYLLABLE_LEVEL_COUNT, mode: "fill-blank" },
   { id: "order-syllables", name: "Range les syllabes", emoji: "🔀", levelCount: SYLLABLE_LEVEL_COUNT, mode: "order" },
   { id: "find-intruder", name: "Trouve l’intrus", emoji: "🕵️", levelCount: SYLLABLE_LEVEL_COUNT, mode: "order-distractor" },
@@ -566,6 +565,7 @@ export const EXERCISES: ExerciseMeta[] = [
   { id: "spell-syllable", name: "Écris la syllabe", emoji: "✏️", levelCount: SPELL_SYLLABLE_LEVEL_COUNT, spell: "letters-exact" },
   { id: "spell-syllable-plus", name: "La syllabe et les intrus", emoji: "🎯", levelCount: SPELL_SYLLABLE_LEVEL_COUNT, spell: "letters-extra" },
   { id: "spell-two-syllables", name: "Écris deux syllabes", emoji: "📝", levelCount: SPELL_SYLLABLE_LEVEL_COUNT, spell: "letters-two" },
+  { id: "read-image", name: "Lis le mot", emoji: "🖼️", levelCount: READ_IMAGE_LEVEL_COUNT },
   { id: "match-case", name: "Grande et petite lettre", emoji: "🔠", levelCount: LETTER_MATCH_LEVEL_COUNT, match: "case" },
   { id: "match-script", name: "Lettres attachées", emoji: "✍️", levelCount: LETTER_MATCH_LEVEL_COUNT, match: "script" },
   // The "écritures mêlées" twins: the two intruder spellers again, but now the
