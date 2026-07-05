@@ -75,7 +75,7 @@ export const CATALOG: CustomizationOption[] = [
   style("unicorn", US.horn, "spiral", "Corne torsadée", "🐚", 45, 3),
   accessory(ACCESSORY.unicorn.ribbon, "unicorn", "Nœud", "🎀", 45),
   accessory(ACCESSORY.unicorn.flowerCrown, "unicorn", "Couronne de fleurs", "🌸", 95, 2),
-  accessory(ACCESSORY.unicorn.starClip, "unicorn", "Poussière d'étoiles", "✨", 200, 4),
+  accessory(ACCESSORY.unicorn.starClip, "unicorn", "Aura arc-en-ciel", "🌈", 200, 4),
 
   /* ---- Cat ----------------------------------------------------------- */
   color("cat", CA.body, "gris", "#C9CCD6", "Pelage gris", "🩶", 18),
@@ -87,7 +87,7 @@ export const CATALOG: CustomizationOption[] = [
   color("cat", CA.tail, "roux", "#E08A4E", "Queue rousse", "🦊", 18, 1),
   color("cat", CA.body, "creme", "#F3E4D0", "Pelage crème", "🍦", 18),
   color("cat", CA.body, "lilas", "#E6DDF5", "Pelage lilas", "💜", 20),
-  color("cat", CA.tail, "grise", "#C9CCD6", "Queue grise", "🌫️", 18, 1),
+  color("cat", CA.tail, "noire", "#565660", "Queue noire", "🖤", 18, 1),
   style("cat", CS.hair, "fluffy", "Poil touffu", "☁️", 40),
   style("cat", CS.tail, "short", "Petite queue", "🐈", 32, 1),
   accessory(ACCESSORY.cat.bow, "cat", "Nœud", "🎀", 45),

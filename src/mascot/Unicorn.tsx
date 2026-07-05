@@ -2,7 +2,7 @@ import type { RigProps } from "./growth";
 import { INK, pick } from "./growth";
 import { accessoryAnchors } from "./anchors";
 import { COLOR_SLOT, STYLE_SLOT, ACCESSORY } from "./ids";
-import { Aura, BodyShimmer, Bow, Cheeks, Crown, Eyes, Flower, FoldedLegs, GroundGlow, Halo, Leg, Mouth, Plume, Sparkles, fourStar } from "./parts";
+import { Aura, Bow, Cheeks, Crown, Eyes, Flower, FoldedLegs, GroundGlow, Halo, Leg, Mouth, Plume, Sparkles, fourStar } from "./parts";
 
 /**
  * Unicorn — "Céleste" timeline. Every stade 3→9 adds ONE clearly visible,
@@ -245,17 +245,9 @@ export function Unicorn({ config, layout, stage, mood, uid, preview }: RigProps)
           const palette = ["#FF8FB1", "#FFD54F", "#AED581", "#7FD1D8", "#BA9EE8"];
           return <Flower key={i} x={fx} y={fy} r={3.6} petal={palette[i]} center="#FFF3C4" />;
         })}
-      {/* "Poussière d'étoiles" — the premium reward: a living stardust shimmer
-          over the whole body, not a clip pinned to the head. */}
-      {has(A.starClip) && (
-        <BodyShimmer
-          id={`${uid}-shimmer`}
-          body={[
-            { cx: headCX, cy: headCY, rx: headR, ry: headR * 0.98 },
-            { cx: bodyCX, cy: bodyCY, rx: bodyRX, ry: bodyRY },
-          ]}
-        />
-      )}
+      {/* "Poussière d'étoiles" (A.starClip) is a WHOLE-IMAGE overlay drawn by
+          Mascot.tsx on top of every rig — wings included — so it isn't handled
+          here. */}
 
       {/* sparkles (proud/majestic) */}
       {spec.sparkle > 0 && (

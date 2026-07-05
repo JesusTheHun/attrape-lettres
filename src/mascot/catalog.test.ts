@@ -17,6 +17,7 @@ const EXPECTED_GATES: Record<string, number> = {
   // Cat belly + tail: hidden in the stade-0 curl, shown once it sits up (1).
   "cat.color.bellyColor.rose": 1,
   "cat.color.tailColor.roux": 1,
+  "cat.color.tailColor.noire": 1,
   "cat.style.tailSize.short": 1,
   // Premium accessories gated by maturity.
   "unicorn.accessory.flower-crown": 2,

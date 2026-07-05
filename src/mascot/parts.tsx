@@ -260,118 +260,85 @@ export function Sparkles({
   );
 }
 
-/** One ellipse of the mascot's body mass — the clip region for BodyShimmer. */
-export interface SilhouetteEllipse {
-  cx: number;
-  cy: number;
-  rx: number;
-  ry: number;
-}
+/* -- "Aura arc-en-ciel" premium overlay --------------------------------- */
 
 /**
- * Premium "Poussière d'étoiles" overlay — the ultimate reward. A field of
- * twinkling stars plus a slow diagonal sheen glint, both CLIPPED to the
- * mascot's silhouette (`body` = the head + trunk ellipses) so the WHOLE animal
- * shimmers, not a clip pinned to one spot. Motion is pure CSS (index.css:
- * alTwinkle / alSheen) — off the React render path, frozen under
- * prefers-reduced-motion (a static scatter of stars remains). `id` must be
- * unique per mascot instance (it names the clip + gradient <defs>).
+ * Premium "Aura arc-en-ciel" overlay — the ultimate reward. An iridescent
+ * holo-card effect over the ENTIRE image: a rainbow wash that slowly cycles its
+ * hue (the living "shifting glow") under a bright diagonal sheen that sweeps
+ * across (the "tilt-the-card" highlight). Deliberately STARLESS — the free
+ * growth timeline already owns sparkle-stars, so nothing here can read as
+ * redundant. A radial fade keeps the wash on the creature and off the square's
+ * corners; the whole thing is clipped to the viewBox so it never spills onto
+ * surrounding UI. Motion is pure CSS (index.css: alHue / alSheen) — off the
+ * React render path, frozen under prefers-reduced-motion (a static rainbow wash
+ * remains). `id` must be unique per mascot instance (it names the <defs>).
  */
-export function BodyShimmer({
-  id,
-  body,
-  bloom = "#FFE9A8",
-  star = "#FFF6D0",
-}: {
-  id: string;
-  body: SilhouetteEllipse[];
-  bloom?: string;
-  star?: string;
-}) {
-  if (body.length === 0) return null;
-  const minX = Math.min(...body.map((e) => e.cx - e.rx));
-  const maxX = Math.max(...body.map((e) => e.cx + e.rx));
-  const minY = Math.min(...body.map((e) => e.cy - e.ry));
-  const maxY = Math.max(...body.map((e) => e.cy + e.ry));
-  const w = maxX - minX;
-  const h = maxY - minY;
-  const cx = (minX + maxX) / 2;
-  const cy = (minY + maxY) / 2;
-
-  // Authored scatter: [u, v] in the silhouette bbox, star radius, twinkle delay
-  // + duration (s). Biased to the trunk + head periphery so the face stays
-  // clear; the clip trims anything that spills past the outline.
-  const STARS: Array<[number, number, number, number, number]> = [
-    [0.24, 0.14, 1.3, 0.0, 2.6],
-    [0.78, 0.2, 1.5, 1.3, 2.9],
-    [0.36, 0.47, 1.4, 0.7, 2.2],
-    [0.66, 0.44, 1.8, 1.9, 3.0],
-    [0.5, 0.57, 2.6, 0.3, 2.4],
-    [0.3, 0.63, 2.0, 1.5, 2.7],
-    [0.71, 0.6, 1.9, 0.9, 2.1],
-    [0.42, 0.79, 1.4, 2.0, 2.5],
-    [0.62, 0.82, 2.0, 0.5, 2.8],
-    [0.22, 0.86, 1.3, 1.1, 2.3],
-    [0.8, 0.75, 1.4, 1.7, 2.6],
-    [0.5, 0.93, 1.5, 0.2, 3.1],
-  ];
-
-  const sheenW = 9; // half-width of the bright sheen band, in viewBox units
+export function HoloAura({ id }: { id: string }) {
+  const sheenW = 13; // half-width of the sheen band, in viewBox units
   const sheenStyle = {
-    "--al-from": `${-(w / 2 + sheenW)}px`,
-    "--al-to": `${w / 2 + sheenW}px`,
+    "--al-from": `${-(50 + sheenW)}px`,
+    "--al-to": `${50 + sheenW}px`,
   } as CSSProperties;
 
   return (
-    <g>
+    <g clipPath={`url(#${id}-box)`}>
       <defs>
-        <clipPath id={`${id}-clip`}>
-          {body.map((e, i) => (
-            <ellipse key={i} cx={e.cx} cy={e.cy} rx={e.rx} ry={e.ry} />
-          ))}
+        <clipPath id={`${id}-box`}>
+          <rect x={0} y={0} width={100} height={100} />
         </clipPath>
+        {/* diagonal rainbow; first + last stop match so the hue cycle is seamless */}
+        <linearGradient id={`${id}-rain`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#FF6F91" />
+          <stop offset="22%" stopColor="#FFD24C" />
+          <stop offset="44%" stopColor="#7CE8B0" />
+          <stop offset="66%" stopColor="#5BC8FF" />
+          <stop offset="88%" stopColor="#B98CFF" />
+          <stop offset="100%" stopColor="#FF6F91" />
+        </linearGradient>
+        {/* radial fade: solid at the centre, gone before the square edge */}
+        <radialGradient id={`${id}-fadeg`}>
+          <stop offset="0%" stopColor="#fff" />
+          <stop offset="58%" stopColor="#fff" />
+          <stop offset="100%" stopColor="#000" />
+        </radialGradient>
+        <mask id={`${id}-fade`}>
+          <rect x={0} y={0} width={100} height={100} fill={`url(#${id}-fadeg)`} />
+        </mask>
         <linearGradient id={`${id}-sheen`} x1="0" y1="0" x2="1" y2="0">
           <stop offset="0%" stopColor="#fff" stopOpacity="0" />
           <stop offset="42%" stopColor="#fff" stopOpacity="0" />
-          <stop offset="50%" stopColor="#fff" stopOpacity="0.7" />
+          <stop offset="50%" stopColor="#fff" stopOpacity="0.6" />
           <stop offset="58%" stopColor="#fff" stopOpacity="0" />
           <stop offset="100%" stopColor="#fff" stopOpacity="0" />
         </linearGradient>
-        <radialGradient id={`${id}-bloom`}>
-          <stop offset="0%" stopColor={bloom} stopOpacity="0.9" />
-          <stop offset="100%" stopColor={bloom} stopOpacity="0" />
-        </radialGradient>
       </defs>
 
-      <g clipPath={`url(#${id}-clip)`}>
-        {/* diagonal glint sweeping across the whole silhouette */}
-        <g transform={`rotate(-18 ${cx} ${cy})`}>
-          <rect
-            className="al-sheen"
-            x={cx - sheenW}
-            y={cy - h}
-            width={sheenW * 2}
-            height={h * 2}
-            fill={`url(#${id}-sheen)`}
-            style={sheenStyle}
-          />
-        </g>
+      {/* iridescent wash — the hue slowly cycles for a living holo shimmer */}
+      <g mask={`url(#${id}-fade)`}>
+        <rect
+          className="al-holo"
+          x={0}
+          y={0}
+          width={100}
+          height={100}
+          fill={`url(#${id}-rain)`}
+          opacity={0.5}
+          style={{ mixBlendMode: "overlay" }}
+        />
+      </g>
 
-        {/* twinkling stardust — each star blooms + winks on its own clock */}
-        {STARS.map(([u, v, r, delay, dur], i) => {
-          const x = minX + u * w;
-          const y = minY + v * h;
-          return (
-            <g
-              key={i}
-              className="al-star"
-              style={{ opacity: 0.85, animationDelay: `${delay}s`, animationDuration: `${dur}s` }}
-            >
-              <circle cx={x} cy={y} r={r * 2.4} fill={`url(#${id}-bloom)`} />
-              <path d={fourStar(x, y, r)} fill={star} />
-            </g>
-          );
-        })}
+      {/* bright diagonal glint sweeping across the whole image */}
+      <g transform="rotate(-20 50 50)">
+        <rect
+          className="al-sheen"
+          x={50 - sheenW}
+          y={-40}
+          width={sheenW * 2}
+          height={180}
+          fill={`url(#${id}-sheen)`}
+          style={sheenStyle}
+        />
       </g>
     </g>
   );

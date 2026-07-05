@@ -282,4 +282,10 @@ export interface MascotProps {
    * ghost silhouette shows ONLY the part a tile is selling. See ItemPreview.
    */
   preview?: boolean;
+  /**
+   * Crop the drawing to this viewBox rect (in the 0–100 mascot space) instead of
+   * the full body — used to ZOOM a preview onto a small part/accessory so it fills
+   * the tile. Requires `preview` (clips overflow). Square rects avoid distortion.
+   */
+  focus?: { x: number; y: number; w: number; h: number };
 }

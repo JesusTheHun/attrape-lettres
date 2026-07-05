@@ -4,6 +4,11 @@ import { layoutFor, stageScale } from "./growth";
 import { Unicorn } from "./Unicorn";
 import { Cat } from "./Cat";
 import { Fox } from "./Fox";
+import { ACCESSORY } from "./ids";
+import { HoloAura } from "./parts";
+
+/** Premium accessories rendered as a WHOLE-IMAGE aura (not a worn part). */
+const AURA_IDS: string[] = [ACCESSORY.unicorn.starClip];
 
 /**
  * Parametric, layered inline-SVG mascot — drop-in for <Ollie mood>.
@@ -39,7 +44,7 @@ const cheer: Keyframe[] = [
   { transform: "scale(1) rotate(0deg)" },
 ];
 
-export function Mascot({ config, mood, size = 88, preview = false }: MascotProps) {
+export function Mascot({ config, mood, size = 88, preview = false, focus }: MascotProps) {
   const ref = useRef<SVGSVGElement>(null);
   const uid = useId().replace(/:/g, "");
 
@@ -70,8 +75,9 @@ export function Mascot({ config, mood, size = 88, preview = false }: MascotProps
       <Unicorn config={config} layout={layout} stage={config.stage} mood={mood} uid={uid} preview={preview} />
     );
 
-  // Per-stage growth scale, pivoted at the feet (see growth.stageScale).
-  const k = stageScale(config.stage);
+  // Per-stage growth scale, pivoted at the feet (see growth.stageScale). Previews
+  // pin scale=1 so a `focus` crop lines up with raw layout coordinates.
+  const k = preview ? 1 : stageScale(config.stage);
   const pivot = layout.feetY;
 
   return (
@@ -79,14 +85,17 @@ export function Mascot({ config, mood, size = 88, preview = false }: MascotProps
       ref={ref}
       role="img"
       aria-label={LABELS[config.species]}
-      viewBox="0 0 100 100"
+      viewBox={focus ? `${focus.x} ${focus.y} ${focus.w} ${focus.h}` : "0 0 100 100"}
       width={size}
       height={size}
       className="select-none"
-      style={{ overflow: "visible", display: "block" }}
+      style={{ overflow: preview ? "hidden" : "visible", display: "block" }}
     >
       <ellipse cx={50} cy={layout.feetY + 3.5} rx={layout.bodyRX * 0.92 * k} ry={3.6} fill="#000" opacity={0.1} />
       <g transform={`translate(50 ${pivot}) scale(${k}) translate(-50 ${-pivot})`}>{rig}</g>
+      {/* "Aura arc-en-ciel": a whole-image iridescent holo overlay, drawn on top
+          of the rig (wings included) in unscaled viewBox space. */}
+      {config.accessories.some((a) => AURA_IDS.includes(a)) && <HoloAura id={`${uid}-aura`} />}
     </svg>
   );
 }

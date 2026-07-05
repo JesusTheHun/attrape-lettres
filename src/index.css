@@ -66,17 +66,16 @@ textarea {
   }
 }
 
-/* Premium "Poussière d'étoiles" accessory (BodyShimmer): a field of twinkling
-   stars + a slow diagonal sheen sweeping across the mascot's silhouette. Pure
-   CSS so it stays OFF the React render path (invariant #2). Frozen under
-   prefers-reduced-motion — a static scatter of stars remains (invariant #6). */
-@keyframes alTwinkle {
-  0%,
-  100% {
-    opacity: 0.12;
+/* Premium "Aura arc-en-ciel" accessory (HoloAura): an iridescent rainbow wash
+   that slowly cycles hue + a diagonal sheen sweeping across the whole image.
+   Pure CSS so it stays OFF the React render path (invariant #2). Frozen under
+   prefers-reduced-motion — a static rainbow wash remains (invariant #6). */
+@keyframes alHue {
+  from {
+    filter: hue-rotate(0deg);
   }
-  50% {
-    opacity: 1;
+  to {
+    filter: hue-rotate(360deg);
   }
 }
 @keyframes alSheen {
@@ -96,10 +95,17 @@ textarea {
     opacity: 0;
   }
 }
+/* Bind the keyframes. */
+.al-holo {
+  animation: alHue 7s linear infinite;
+}
+.al-sheen {
+  animation: alSheen 3.6s ease-in-out infinite;
+}
 
 @media (prefers-reduced-motion: reduce) {
   .ollie-anim,
-  .al-star,
+  .al-holo,
   .al-sheen {
     animation: none !important;
   }
