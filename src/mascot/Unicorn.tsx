@@ -217,8 +217,8 @@ export function Unicorn({ config, layout, stage, mood, uid, preview }: RigProps)
         </g>
       )}
 
-      {/* star crown */}
-      {spec.crown && <Crown cx={headCX} cy={headCY - headR * 0.5} r={headR * 0.95} band={hornCol} gem="#FF7EA8" />}
+      {/* star crown — the flower crown accessory replaces it, never stacks on it */}
+      {spec.crown && !has(A.flowerCrown) && <Crown cx={headCX} cy={headCY - headR * 0.5} r={headR * 0.95} band={hornCol} gem="#FF7EA8" />}
 
       {/* face */}
       <Eyes cx={headCX} y={headCY + headR * 0.06} dx={headR * 0.42} r={eyeR} mood={mood} sleepy={stage === 0} />
