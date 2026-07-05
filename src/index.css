@@ -66,46 +66,27 @@ textarea {
   }
 }
 
-/* Premium "Aura arc-en-ciel" accessory (HoloAura): an iridescent rainbow wash
-   that slowly cycles hue + a diagonal sheen sweeping across the whole image.
-   Pure CSS so it stays OFF the React render path (invariant #2). Frozen under
-   prefers-reduced-motion — a static rainbow wash remains (invariant #6). */
-@keyframes alHue {
+/* Premium "Arc-en-ciel magique" accessory (RainbowSheen): a rainbow prism band
+   sweeping diagonally across the pet. Masked to the mascot silhouette (see
+   Mascot.tsx), so the band just translates edge to edge — the wrap happens off
+   the pet where the mask hides it, no fade needed. Pure CSS so it stays OFF the
+   React render path (invariant #2). Frozen under prefers-reduced-motion — the
+   band parks at centre (base transform), a static rainbow remains (invariant #6). */
+@keyframes alSheen {
   from {
-    filter: hue-rotate(0deg);
+    transform: translateX(var(--al-from, -150px));
   }
   to {
-    filter: hue-rotate(360deg);
+    transform: translateX(var(--al-to, 150px));
   }
 }
-@keyframes alSheen {
-  0% {
-    transform: translateX(var(--al-from, -30px));
-    opacity: 0;
-  }
-  12% {
-    opacity: 0.9;
-  }
-  50% {
-    opacity: 0.9;
-  }
-  62%,
-  100% {
-    transform: translateX(var(--al-to, 30px));
-    opacity: 0;
-  }
-}
-/* Bind the keyframes. */
-.al-holo {
-  animation: alHue 7s linear infinite;
-}
+/* Bind the keyframe. */
 .al-sheen {
-  animation: alSheen 3.6s ease-in-out infinite;
+  animation: alSheen 3.6s linear infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .ollie-anim,
-  .al-holo,
   .al-sheen {
     animation: none !important;
   }

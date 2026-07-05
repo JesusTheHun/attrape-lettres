@@ -245,7 +245,7 @@ export function Unicorn({ config, layout, stage, mood, uid, preview }: RigProps)
           const palette = ["#FF8FB1", "#FFD54F", "#AED581", "#7FD1D8", "#BA9EE8"];
           return <Flower key={i} x={fx} y={fy} r={3.6} petal={palette[i]} center="#FFF3C4" />;
         })}
-      {/* "Poussière d'étoiles" (A.starClip) is a WHOLE-IMAGE overlay drawn by
+      {/* "Arc-en-ciel magique" (A.starClip) is a WHOLE-IMAGE overlay drawn by
           Mascot.tsx on top of every rig — wings included — so it isn't handled
           here. */}
 

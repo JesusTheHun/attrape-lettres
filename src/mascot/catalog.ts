@@ -75,7 +75,7 @@ export const CATALOG: CustomizationOption[] = [
   style("unicorn", US.horn, "spiral", "Corne torsadée", "🐚", 45, 3),
   accessory(ACCESSORY.unicorn.ribbon, "unicorn", "Nœud", "🎀", 45),
   accessory(ACCESSORY.unicorn.flowerCrown, "unicorn", "Couronne de fleurs", "🌸", 95, 2),
-  accessory(ACCESSORY.unicorn.starClip, "unicorn", "Aura arc-en-ciel", "🌈", 200, 4),
+  accessory(ACCESSORY.unicorn.starClip, "unicorn", "Arc-en-ciel magique", "🌈", 200, 4),
 
   /* ---- Cat ----------------------------------------------------------- */
   color("cat", CA.body, "gris", "#C9CCD6", "Pelage gris", "🩶", 18),

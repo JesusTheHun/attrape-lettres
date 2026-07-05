@@ -5,10 +5,10 @@ import { Unicorn } from "./Unicorn";
 import { Cat } from "./Cat";
 import { Fox } from "./Fox";
 import { ACCESSORY } from "./ids";
-import { HoloAura } from "./parts";
+import { RainbowSheen } from "./parts";
 
-/** Premium accessories rendered as a WHOLE-IMAGE aura (not a worn part). */
-const AURA_IDS: string[] = [ACCESSORY.unicorn.starClip];
+/** Premium accessories rendered as a WHOLE-IMAGE rainbow sheen (not a worn part). */
+const RAINBOW_IDS: string[] = [ACCESSORY.unicorn.starClip];
 
 /**
  * Parametric, layered inline-SVG mascot — drop-in for <Ollie mood>.
@@ -79,6 +79,16 @@ export function Mascot({ config, mood, size = 88, preview = false, focus }: Masc
   // pin scale=1 so a `focus` crop lines up with raw layout coordinates.
   const k = preview ? 1 : stageScale(config.stage);
   const pivot = layout.feetY;
+  const scaledRig = <g transform={`translate(50 ${pivot}) scale(${k}) translate(-50 ${-pivot})`}>{rig}</g>;
+
+  // "Arc-en-ciel magique": a rainbow prism sweep MASKED to the pet's silhouette,
+  // so it hugs the whole creature (wings + overflow beyond the box included) and
+  // never spills onto the card/background or hard-cuts at the viewBox edge. The
+  // mask is the rig itself re-rendered as a flat white silhouette (brightness(0)
+  // invert(1)), so it tracks every part at every stade for free.
+  const rainbow = config.accessories.some((a) => RAINBOW_IDS.includes(a));
+  const rigId = `${uid}-rig`;
+  const maskId = `${uid}-petmask`;
 
   return (
     <svg
@@ -92,10 +102,22 @@ export function Mascot({ config, mood, size = 88, preview = false, focus }: Masc
       style={{ overflow: preview ? "hidden" : "visible", display: "block" }}
     >
       <ellipse cx={50} cy={layout.feetY + 3.5} rx={layout.bodyRX * 0.92 * k} ry={3.6} fill="#000" opacity={0.1} />
-      <g transform={`translate(50 ${pivot}) scale(${k}) translate(-50 ${-pivot})`}>{rig}</g>
-      {/* "Aura arc-en-ciel": a whole-image iridescent holo overlay, drawn on top
-          of the rig (wings included) in unscaled viewBox space. */}
-      {config.accessories.some((a) => AURA_IDS.includes(a)) && <HoloAura id={`${uid}-aura`} />}
+      {rainbow ? (
+        <>
+          <defs>
+            <g id={rigId}>{scaledRig}</g>
+            <mask id={maskId} maskUnits="userSpaceOnUse" x={-120} y={-120} width={340} height={340}>
+              <use href={`#${rigId}`} style={{ filter: "brightness(0) invert(1)" }} />
+            </mask>
+          </defs>
+          <use href={`#${rigId}`} />
+          <g mask={`url(#${maskId})`}>
+            <RainbowSheen id={`${uid}-sheen`} />
+          </g>
+        </>
+      ) : (
+        scaledRig
+      )}
     </svg>
   );
 }

@@ -260,82 +260,53 @@ export function Sparkles({
   );
 }
 
-/* -- "Aura arc-en-ciel" premium overlay --------------------------------- */
+/* -- "Arc-en-ciel magique" premium overlay ------------------------------ */
 
 /**
- * Premium "Aura arc-en-ciel" overlay — the ultimate reward. An iridescent
- * holo-card effect over the ENTIRE image: a rainbow wash that slowly cycles its
- * hue (the living "shifting glow") under a bright diagonal sheen that sweeps
- * across (the "tilt-the-card" highlight). Deliberately STARLESS — the free
- * growth timeline already owns sparkle-stars, so nothing here can read as
- * redundant. A radial fade keeps the wash on the creature and off the square's
- * corners; the whole thing is clipped to the viewBox so it never spills onto
- * surrounding UI. Motion is pure CSS (index.css: alHue / alSheen) — off the
- * React render path, frozen under prefers-reduced-motion (a static rainbow wash
- * remains). `id` must be unique per mascot instance (it names the <defs>).
+ * Premium "Arc-en-ciel magique" overlay — the ultimate reward. A single rainbow
+ * prism of light that sweeps diagonally across the WHOLE image (wings included)
+ * on a slow loop, like tilting a holographic card. No stars (the free growth
+ * timeline already owns those) and NO colour film / glow over the pet — just the
+ * travelling spectrum glint. Clipped to the viewBox so it never spills onto
+ * surrounding UI. Motion is pure CSS (index.css: alSheen) — off the React render
+ * path; under prefers-reduced-motion the animation freezes to a static rainbow
+ * band across the centre. `id` must be unique per mascot instance.
  */
-export function HoloAura({ id }: { id: string }) {
-  const sheenW = 13; // half-width of the sheen band, in viewBox units
+export function RainbowSheen({ id }: { id: string }) {
+  const sheenW = 26; // half-width of the prism band, in viewBox units
+  // Sweep range comfortably exceeds the pet's on-screen extent (wings overflow
+  // the 0..100 box at the top stades). The band lives off the pet at both ends —
+  // where the silhouette mask hides it — so the linear wrap is never seen.
   const sheenStyle = {
-    "--al-from": `${-(50 + sheenW)}px`,
-    "--al-to": `${50 + sheenW}px`,
+    "--al-from": "-150px",
+    "--al-to": "150px",
   } as CSSProperties;
 
   return (
-    <g clipPath={`url(#${id}-box)`}>
+    <g>
       <defs>
-        <clipPath id={`${id}-box`}>
-          <rect x={0} y={0} width={100} height={100} />
-        </clipPath>
-        {/* diagonal rainbow; first + last stop match so the hue cycle is seamless */}
-        <linearGradient id={`${id}-rain`} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#FF6F91" />
-          <stop offset="22%" stopColor="#FFD24C" />
-          <stop offset="44%" stopColor="#7CE8B0" />
-          <stop offset="66%" stopColor="#5BC8FF" />
-          <stop offset="88%" stopColor="#B98CFF" />
-          <stop offset="100%" stopColor="#FF6F91" />
-        </linearGradient>
-        {/* radial fade: solid at the centre, gone before the square edge */}
-        <radialGradient id={`${id}-fadeg`}>
-          <stop offset="0%" stopColor="#fff" />
-          <stop offset="58%" stopColor="#fff" />
-          <stop offset="100%" stopColor="#000" />
-        </radialGradient>
-        <mask id={`${id}-fade`}>
-          <rect x={0} y={0} width={100} height={100} fill={`url(#${id}-fadeg)`} />
-        </mask>
+        {/* the sweeping glint IS a rainbow prism — a spectrum band, soft at both edges */}
         <linearGradient id={`${id}-sheen`} x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="#fff" stopOpacity="0" />
-          <stop offset="42%" stopColor="#fff" stopOpacity="0" />
-          <stop offset="50%" stopColor="#fff" stopOpacity="0.6" />
-          <stop offset="58%" stopColor="#fff" stopOpacity="0" />
-          <stop offset="100%" stopColor="#fff" stopOpacity="0" />
+          <stop offset="0%" stopColor="#FF6F91" stopOpacity="0" />
+          <stop offset="26%" stopColor="#FF6F91" stopOpacity="0" />
+          <stop offset="38%" stopColor="#FF6F91" stopOpacity="0.75" />
+          <stop offset="47%" stopColor="#FFD24C" stopOpacity="0.8" />
+          <stop offset="53%" stopColor="#7CE8B0" stopOpacity="0.8" />
+          <stop offset="60%" stopColor="#5BC8FF" stopOpacity="0.8" />
+          <stop offset="68%" stopColor="#B98CFF" stopOpacity="0.75" />
+          <stop offset="80%" stopColor="#B98CFF" stopOpacity="0" />
+          <stop offset="100%" stopColor="#B98CFF" stopOpacity="0" />
         </linearGradient>
       </defs>
 
-      {/* iridescent wash — the hue slowly cycles for a living holo shimmer */}
-      <g mask={`url(#${id}-fade)`}>
-        <rect
-          className="al-holo"
-          x={0}
-          y={0}
-          width={100}
-          height={100}
-          fill={`url(#${id}-rain)`}
-          opacity={0.5}
-          style={{ mixBlendMode: "overlay" }}
-        />
-      </g>
-
-      {/* bright diagonal glint sweeping across the whole image */}
+      {/* rainbow prism sweeping across the pet (confined by the silhouette mask) */}
       <g transform="rotate(-20 50 50)">
         <rect
           className="al-sheen"
           x={50 - sheenW}
-          y={-40}
+          y={-120}
           width={sheenW * 2}
-          height={180}
+          height={340}
           fill={`url(#${id}-sheen)`}
           style={sheenStyle}
         />
