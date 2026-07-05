@@ -1,8 +1,13 @@
 export type ExerciseId =
   | "first-letter"
+  | "match-case"
+  | "match-script"
   | "fill-blank"
   | "order-syllables"
   | "find-intruder"
+  | "spell-syllable"
+  | "spell-syllable-plus"
+  | "spell-two-syllables"
   | "spell-sound";
 
 export type Mood = "idle" | "happy" | "cheer";
@@ -31,6 +36,34 @@ export interface FirstLetterRound {
   choices: string[];
 }
 
+/** Letter-form matching exercise -------------------------------------------*/
+/**
+ * One engine, two skills: pair a letter with its counterpart FORM. `case` pairs a
+ * majuscule with its minuscule (both directions in one run); `script` pairs a
+ * printed (sans-serif) letter with its cursive "attaché" twin at the SAME case.
+ * The underlying letter is the identity; only the rendered form flips.
+ */
+export type LetterMatchKind = "case" | "script";
+
+/** How a letter is drawn on a tile. */
+export type LetterScript = "print" | "cursive";
+
+/** One rendered letter: the same underlying letter, shown in a given case + script. */
+export interface LetterFace {
+  /** Canonical UPPERCASE letter — identity (pick match) + the name spoken by VO. */
+  base: string;
+  /** The exact glyph to render, already cased (e.g. "A" or "a"). */
+  glyph: string;
+  script: LetterScript;
+}
+
+export interface LetterMatchRound {
+  /** The letter shown big; the child finds its counterpart form below. */
+  prompt: LetterFace;
+  /** Tiles, shuffled — all in the counterpart form; exactly one shares prompt.base. */
+  choices: LetterFace[];
+}
+
 /** Build-syllables exercise ------------------------------------------------*/
 export interface SyllableWord {
   word: string;
@@ -40,6 +73,19 @@ export interface SyllableWord {
 }
 
 export type SyllableMode = "fill-blank" | "order" | "order-distractor";
+
+/** Fill-a-syllable exercise -----------------------------------------------*/
+/**
+ * ONE engine, three siblings. Part of the word is already written; one (or two)
+ * syllable is blanked into per-letter slots the child fills by tapping letters
+ * in the right order. Mode only changes what lands in the tray / how many gaps:
+ *   - `letters-exact`  one gap, tray = exactly that syllable's letters (order only).
+ *   - `letters-extra`  one gap, tray = those letters + intruder letters.
+ *   - `letters-two`    two gaps, tray = both syllables' letters + intruders.
+ * All three share the SAME word ladder (level per level), so a child meets the
+ * same words as the task gets harder.
+ */
+export type SpellSyllableMode = "letters-exact" | "letters-extra" | "letters-two";
 
 export interface SyllableTier {
   minSyllables: number;
@@ -80,6 +126,10 @@ export interface ExerciseMeta {
   levelCount: number;
   /** Syllable exercises carry the seeding mode; first-letter leaves it undefined. */
   mode?: SyllableMode;
+  /** Fill-a-syllable siblings carry which letter mode they run; others leave it undefined. */
+  spell?: SpellSyllableMode;
+  /** Letter-form matching exercises carry which form they flip; others leave it undefined. */
+  match?: LetterMatchKind;
 }
 
 export type View =

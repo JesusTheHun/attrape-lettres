@@ -1,5 +1,5 @@
-import { LETTER_WORDS, SYLLABLE_WORDS, SOUND_TARGETS } from "../content.ts";
-import { soundPrompt, soundSuccess } from "../levels.ts";
+import { LETTER_WORDS, LETTER_MATCH_ALPHABET, SYLLABLE_WORDS, SOUND_TARGETS } from "../content.ts";
+import { LETTER_MATCH_PROMPTS, letterMatchSuccess, soundPrompt, soundSuccess } from "../levels.ts";
 
 /* -------------------------------------------------------------------------- */
 /* Voice-over vocabulary — the finite, AUTHORED set of things the app speaks.   */
@@ -24,6 +24,11 @@ export function enumerateUtterances(): string[] {
     out.add(`Trouve la première lettre de ${w.word}.`);
     out.add(`Oui ! ${w.letter}. ${w.word}.`);
   }
+
+  // Letter-form matching (case + script): the fixed directional consignes shared
+  // by both exercises, plus a per-letter success line (named only after matching).
+  for (const p of Object.values(LETTER_MATCH_PROMPTS)) out.add(p);
+  for (const base of LETTER_MATCH_ALPHABET) out.add(letterMatchSuccess(base));
 
   // Syllable build: the bare word (announce + "Écouter") + the success line.
   for (const w of SYLLABLE_WORDS) {

@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { AssembleExercise } from "./exercises/AssembleExercise";
 import { FirstLetterExercise } from "./exercises/FirstLetterExercise";
+import { LetterMatchExercise } from "./exercises/LetterMatchExercise";
 import { SpellSoundExercise } from "./exercises/SpellSoundExercise";
+import { SpellSyllableExercise } from "./exercises/SpellSyllableExercise";
 import { Dashboard } from "./components/Dashboard";
 import { WhoIsPlaying } from "./components/WhoIsPlaying";
 import { Mascot } from "./mascot/Mascot";
@@ -10,7 +12,7 @@ import { Shop } from "./shop/Shop";
 import { Picker } from "./shop/Picker";
 import { useProfile } from "./hooks/useProfile";
 import { useAudio } from "./hooks/useAudio";
-import { EXERCISES, MODE_HINT } from "./levels";
+import { EXERCISES, MATCH_HINT, MODE_HINT, SPELL_HINT } from "./levels";
 import type { ExerciseId, View } from "./types";
 
 const STAGE = "linear-gradient(180deg,#FFE7C9 0%,#FFEFD6 38%,#DCEFFB 100%)";
@@ -67,6 +69,14 @@ export default function App() {
     if (view.exercise === "spell-sound")
       return (
         <SpellSoundExercise key={key} exercise={view.exercise} level={view.level} onBack={back} onNext={next} />
+      );
+    if (meta.spell)
+      return (
+        <SpellSyllableExercise key={key} exercise={view.exercise} mode={meta.spell} level={view.level} onBack={back} onNext={next} />
+      );
+    if (meta.match)
+      return (
+        <LetterMatchExercise key={key} exercise={view.exercise} kind={meta.match} level={view.level} onBack={back} onNext={next} />
       );
     return meta.mode ? (
       <AssembleExercise key={key} exercise={view.exercise} mode={meta.mode} level={view.level} onBack={back} onNext={next} />
@@ -145,6 +155,8 @@ export default function App() {
             <span style={{ fontSize: 26 }}>{ex.emoji}</span>
             <h2 className="m-0 text-xl font-extrabold text-[#5A3A1E]">{ex.name}</h2>
             {ex.mode && <span className="text-sm text-[#9A7A5A]">· {MODE_HINT[ex.mode]}</span>}
+            {ex.spell && <span className="text-sm text-[#9A7A5A]">· {SPELL_HINT[ex.spell]}</span>}
+            {ex.match && <span className="text-sm text-[#9A7A5A]">· {MATCH_HINT[ex.match]}</span>}
           </div>
           <div className="grid grid-cols-5 gap-2">
             {Array.from({ length: ex.levelCount }, (_, i) => i + 1).map((lvl) => {

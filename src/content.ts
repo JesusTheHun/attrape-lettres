@@ -52,6 +52,16 @@ export const LETTER_WORDS: LetterWord[] = [
 ];
 
 /**
+ * The full letter set for the letter-form matching games (majuscule ⇄ minuscule,
+ * script ⇄ cursive). Uppercase canonical; the round builder cases + styles each
+ * face. This is the pool the null (final) match level draws from.
+ */
+export const LETTER_MATCH_ALPHABET: string[] = [
+  "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M",
+  "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
+];
+
+/**
  * Syllable dataset: split is authored, not computed. Splits favour simple,
  * open syllables so a child can sound each tile out.
  */
@@ -114,6 +124,22 @@ export const SYLLABLE_WORDS: SyllableWord[] = [
 export const SYLLABLE_BANK: string[] = Array.from(
   new Set(SYLLABLE_WORDS.flatMap((w) => w.syllables))
 );
+
+/**
+ * Fill-a-syllable ladder — the word list per level, by name (resolved against
+ * SYLLABLE_WORDS in levels.ts so the authored split + emoji + baked VO are
+ * reused, never duplicated). The SAME list feeds all three siblings ("écris la
+ * syllabe" / "…avec des intrus" / "…deux syllabes"), so the child meets the same
+ * words as the task hardens. Every word has ≥3 syllables so the two-syllable
+ * sibling always leaves a written anchor. Level 1 stays tiny (5 words) for a fast
+ * win → confidence loop. Word count grows and 4-syllable words arrive last.
+ */
+export const SPELL_SYLLABLE_WORD_NAMES: string[][] = [
+  ["PYJAMA", "PANTALON", "CHOCOLAT", "CINÉMA", "MACARON"],
+  ["BIBERON", "PAPILLON", "CROCODILE", "KANGOUROU", "DINOSAURE", "PARAPLUIE"],
+  ["TÉLÉPHONE", "ÉLÉPHANT", "ANANAS", "KOALA", "HÔPITAL", "PAPILLON", "CROCODILE", "DINOSAURE"],
+  ["ORDINATEUR", "HÉLICOPTÈRE", "HIPPOPOTAME", "LOCOMOTIVE", "ANNIVERSAIRE", "AQUARIUM", "SUPERMARCHÉ", "TÉLÉVISION"],
+];
 
 /**
  * Spell-the-sound dataset — one authored pool per level (index = level - 1).

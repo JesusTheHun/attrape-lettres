@@ -1,16 +1,22 @@
 import {
   LETTER_WORDS,
+  LETTER_MATCH_ALPHABET,
   SYLLABLE_WORDS,
   SYLLABLE_BANK,
+  SPELL_SYLLABLE_WORD_NAMES,
   SOUND_TARGETS,
   SOUND_LETTER_BANK,
 } from "./content";
 import type {
   ExerciseMeta,
   FirstLetterLevel,
+  LetterFace,
+  LetterMatchKind,
+  LetterMatchRound,
   LetterWord,
   SoundLevel,
   SoundTarget,
+  SpellSyllableMode,
   SyllableMode,
   SyllableTier,
   SyllableWord,
@@ -47,6 +53,126 @@ export function firstLetterPool(level: number): LetterWord[] {
   if (!cfg.letters) return LETTER_WORDS;
   const allowed = new Set(cfg.letters);
   return LETTER_WORDS.filter((w) => allowed.has(w.letter));
+}
+
+/* -------------------------------------------------------------------------- */
+/* Letter-form matching — 4 explicit levels, shared by both kinds (case+script) */
+/* Difficulty is one axis: the letter pool grows each level (6 → 13 → 19 → 26)   */
+/* + one more distractor tile, ending on the full alphabet.                     */
+/* Each run MIXES both directions (upper→lower AND lower→upper; print→cursive    */
+/* AND cursive→print), so one session drills a form and "the opposite" together. */
+/* -------------------------------------------------------------------------- */
+
+export interface LetterMatchLevel {
+  /** Letter catalog (uppercase). `null` = the full alphabet. */
+  letters: string[] | null;
+  /** Distinct letters drawn from the pool at the start of a run. */
+  pick: number;
+  /** How many of those come back a second time (spaced apart). */
+  repeats: number;
+  /** Wrong-answer tiles added beside the correct counterpart. */
+  distractors: number;
+}
+
+export const LETTER_MATCH_LEVELS: LetterMatchLevel[] = [
+  { letters: ["A", "B", "D", "E", "G", "R"], pick: 5, repeats: 3, distractors: 2 }, // 6
+  {
+    letters: ["A", "B", "C", "D", "E", "F", "G", "H", "N", "O", "R", "S", "T"],
+    pick: 6,
+    repeats: 3,
+    distractors: 2,
+  }, // 13
+  {
+    letters: [
+      "A", "B", "C", "D", "E", "F", "G", "H", "I", "L",
+      "M", "N", "O", "P", "Q", "R", "S", "T", "U",
+    ],
+    pick: 7,
+    repeats: 3,
+    distractors: 3,
+  }, // 19
+  { letters: null, pick: 8, repeats: 4, distractors: 3 }, // full alphabet (26)
+];
+
+export const LETTER_MATCH_LEVEL_COUNT = LETTER_MATCH_LEVELS.length;
+
+function letterMatchLevel(level: number): LetterMatchLevel {
+  return LETTER_MATCH_LEVELS[Math.min(Math.max(level, 1), LETTER_MATCH_LEVEL_COUNT) - 1];
+}
+
+export function letterMatchPool(level: number): string[] {
+  return letterMatchLevel(level).letters ?? LETTER_MATCH_ALPHABET;
+}
+
+/** The fixed, directional instruction lines — a small, bake-able VO set. */
+export const LETTER_MATCH_PROMPTS = {
+  toLower: "Trouve la petite lettre.",
+  toUpper: "Trouve la grande lettre.",
+  toCursive: "Trouve la lettre attachée.",
+  toPrint: "Trouve la lettre en script.",
+} as const;
+
+/** Which line to speak, read off the prompt→answer transform (never names the target). */
+export function letterMatchPrompt(prompt: LetterFace, answer: LetterFace): string {
+  if (prompt.script !== answer.script)
+    return answer.script === "cursive"
+      ? LETTER_MATCH_PROMPTS.toCursive
+      : LETTER_MATCH_PROMPTS.toPrint;
+  return answer.glyph === answer.glyph.toUpperCase()
+    ? LETTER_MATCH_PROMPTS.toUpper
+    : LETTER_MATCH_PROMPTS.toLower;
+}
+
+/** The success line — names the letter only AFTER it's been matched by its shape. */
+export function letterMatchSuccess(base: string): string {
+  return `Oui ! ${base}.`;
+}
+
+/**
+ * One run of match rounds. Direction is randomised per round (both `case`
+ * directions, both `script` directions), so a single session practises a form
+ * and its opposite. The correct tile is always the counterpart of `prompt`.
+ */
+export function buildLetterMatchSession(
+  kind: LetterMatchKind,
+  level: number
+): LetterMatchRound[] {
+  const cfg = letterMatchLevel(level);
+  const catalog = letterMatchPool(level);
+  return repeatSession(catalog, cfg.pick, cfg.repeats).map((base) => {
+    const distractors = shuffle(catalog.filter((l) => l !== base)).slice(0, cfg.distractors);
+    const pool = shuffle([base, ...distractors]);
+    return kind === "case" ? caseRound(base, pool) : scriptRound(base, pool);
+  });
+}
+
+/** upper⇄lower, both plain print: prompt one case, every tile the other. */
+function caseRound(base: string, pool: string[]): LetterMatchRound {
+  const promptUpper = Math.random() < 0.5;
+  const face = (l: string, upper: boolean): LetterFace => ({
+    base: l,
+    glyph: upper ? l : l.toLowerCase(),
+    script: "print",
+  });
+  return {
+    prompt: face(base, promptUpper),
+    choices: pool.map((l) => face(l, !promptUpper)),
+  };
+}
+
+/** print⇄cursive at ONE shared case: prompt one script, every tile the other. */
+function scriptRound(base: string, pool: string[]): LetterMatchRound {
+  const upper = Math.random() < 0.5; // prompt + tiles share this case
+  const promptCursive = Math.random() < 0.5;
+  const face = (l: string, cursive: boolean): LetterFace => ({
+    base: l,
+    glyph: upper ? l : l.toLowerCase(),
+    script: cursive ? "cursive" : "print",
+  });
+  return {
+    prompt: face(base, promptCursive),
+    choices: pool.map((l) => face(l, !promptCursive)),
+  };
 }
 
 /* -------------------------------------------------------------------------- */
@@ -153,6 +279,120 @@ export function soundSuccess(t: SoundTarget): string {
 }
 
 /* -------------------------------------------------------------------------- */
+/* Fill-a-syllable — one 4-level ladder, shared by all 3 siblings.             */
+/* The word list is level == index (content); only the tray/gap count changes  */
+/* per mode. Level 1 is deliberately 5 words for a quick, repeated win.         */
+/* -------------------------------------------------------------------------- */
+
+export interface SpellSyllableLevel {
+  /** Distinct words drawn from the level's list at the start of a run. */
+  pick: number;
+  /** How many of those words come back a second time (spaced apart). */
+  repeats: number;
+  /** Intruder letters added to the tray for the -extra / -two modes (0 for exact). */
+  distractors: number;
+}
+
+export const SPELL_SYLLABLE_LEVELS: SpellSyllableLevel[] = [
+  { pick: 5, repeats: 3, distractors: 2 },
+  { pick: 6, repeats: 3, distractors: 2 },
+  { pick: 7, repeats: 3, distractors: 3 },
+  { pick: 8, repeats: 4, distractors: 3 },
+];
+
+export const SPELL_SYLLABLE_LEVEL_COUNT = SPELL_SYLLABLE_LEVELS.length;
+
+const WORD_BY_NAME = new Map(SYLLABLE_WORDS.map((w) => [w.word, w]));
+
+function spellSyllableIdx(level: number): number {
+  return Math.min(Math.max(level, 1), SPELL_SYLLABLE_LEVEL_COUNT) - 1;
+}
+
+export function spellSyllableLevel(level: number): SpellSyllableLevel {
+  return SPELL_SYLLABLE_LEVELS[spellSyllableIdx(level)];
+}
+
+/** The level's authored word list, resolved to full SyllableWord objects. */
+export function spellSyllablePool(level: number): SyllableWord[] {
+  return SPELL_SYLLABLE_WORD_NAMES[spellSyllableIdx(level)].map((name) => {
+    const w = WORD_BY_NAME.get(name);
+    if (!w) throw new Error(`spellSyllablePool: unknown word "${name}"`);
+    return w;
+  });
+}
+
+export function buildSpellSyllableSession(level: number): SyllableWord[] {
+  const cfg = spellSyllableLevel(level);
+  return repeatSession(spellSyllablePool(level), cfg.pick, cfg.repeats);
+}
+
+export interface SpellCell {
+  /** The correct letter at this position. */
+  letter: string;
+  /** True = a slot the child fills; false = already written (locked). */
+  fill: boolean;
+  /** Index among fill cells in reading order, or -1 when shown. */
+  slotIndex: number;
+  /** First letter of its syllable — used to gap-space the written word. */
+  syllableStart: boolean;
+}
+
+export interface SpellLetterTile {
+  id: number;
+  letter: string;
+}
+
+export interface SpellSyllableRound {
+  word: SyllableWord;
+  /** The whole word, letter by letter: shown letters + the gap's slots, in order. */
+  cells: SpellCell[];
+  /** The gap letters in reading order — what the filled slots must equal. */
+  answer: string[];
+  /** Shuffled letter tiles the child taps. */
+  tray: SpellLetterTile[];
+}
+
+let _spellTileId = 0;
+const spellTile = (letter: string): SpellLetterTile => ({ id: _spellTileId++, letter });
+
+/**
+ * Blank out 1 (or 2, for `letters-two`) whole syllables into per-letter slots and
+ * fill the tray. `letters-exact` gives only the gap's own letters (order is the
+ * whole task); the other two add intruders. At least one syllable always stays
+ * written, so there's a printed anchor to read the word from. Hidden syllables
+ * are chosen at random — the gap can sit anywhere in the word.
+ */
+export function buildSpellSyllableRound(
+  word: SyllableWord,
+  mode: SpellSyllableMode,
+  distractors: number
+): SpellSyllableRound {
+  const syl = word.syllables;
+  const hideCount = Math.min(mode === "letters-two" ? 2 : 1, syl.length - 1);
+  const hidden = new Set(shuffle(syl.map((_, i) => i)).slice(0, hideCount));
+
+  const cells: SpellCell[] = [];
+  const answer: string[] = [];
+  syl.forEach((s, si) => {
+    const gap = hidden.has(si);
+    [...s].forEach((ch, ci) => {
+      cells.push({
+        letter: ch,
+        fill: gap,
+        slotIndex: gap ? answer.length : -1,
+        syllableStart: ci === 0,
+      });
+      if (gap) answer.push(ch);
+    });
+  });
+
+  const extra = mode === "letters-exact" ? 0 : distractors;
+  const need = new Set(answer);
+  const intruders = shuffle(SOUND_LETTER_BANK.filter((l) => !need.has(l))).slice(0, extra);
+  return { word, cells, answer, tray: shuffle([...answer, ...intruders]).map(spellTile) };
+}
+
+/* -------------------------------------------------------------------------- */
 /* Hub catalog                                                                */
 /* -------------------------------------------------------------------------- */
 
@@ -162,12 +402,28 @@ export const EXERCISES: ExerciseMeta[] = [
   { id: "order-syllables", name: "Range les syllabes", emoji: "🔀", levelCount: SYLLABLE_LEVEL_COUNT, mode: "order" },
   { id: "find-intruder", name: "Trouve l’intrus", emoji: "🕵️", levelCount: SYLLABLE_LEVEL_COUNT, mode: "order-distractor" },
   { id: "spell-sound", name: "Fabrique le son", emoji: "🎧", levelCount: SOUND_LEVEL_COUNT },
+  { id: "spell-syllable", name: "Écris la syllabe", emoji: "✏️", levelCount: SPELL_SYLLABLE_LEVEL_COUNT, spell: "letters-exact" },
+  { id: "spell-syllable-plus", name: "La syllabe et les intrus", emoji: "🎯", levelCount: SPELL_SYLLABLE_LEVEL_COUNT, spell: "letters-extra" },
+  { id: "spell-two-syllables", name: "Écris deux syllabes", emoji: "📝", levelCount: SPELL_SYLLABLE_LEVEL_COUNT, spell: "letters-two" },
+  { id: "match-case", name: "Grande et petite lettre", emoji: "🔠", levelCount: LETTER_MATCH_LEVEL_COUNT, match: "case" },
+  { id: "match-script", name: "Lettres attachées", emoji: "✍️", levelCount: LETTER_MATCH_LEVEL_COUNT, match: "script" },
 ];
 
 export const MODE_HINT: Record<SyllableMode, string> = {
   "fill-blank": "Trouve la syllabe manquante",
   order: "Remets les syllabes dans l’ordre",
   "order-distractor": "Range le mot… et évite l’intrus !",
+};
+
+export const MATCH_HINT: Record<LetterMatchKind, string> = {
+  case: "Associe majuscule et minuscule",
+  script: "Associe le script et l’attaché",
+};
+
+export const SPELL_HINT: Record<SpellSyllableMode, string> = {
+  "letters-exact": "Range les lettres de la syllabe",
+  "letters-extra": "Range les lettres… évite les intrus",
+  "letters-two": "Complète les deux syllabes",
 };
 
 /* -------------------------------------------------------------------------- */

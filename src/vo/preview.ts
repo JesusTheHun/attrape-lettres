@@ -1,4 +1,10 @@
-import { LETTER_WORDS, SYLLABLE_BANK, SOUND_TARGETS, SOUND_LETTER_BANK } from "../content.ts";
+import {
+  LETTER_WORDS,
+  LETTER_MATCH_ALPHABET,
+  SYLLABLE_BANK,
+  SOUND_TARGETS,
+  SOUND_LETTER_BANK,
+} from "../content.ts";
 
 /* -------------------------------------------------------------------------- */
 /* Preview voice-over — the "hear it before you tap it" vocabulary.             */
@@ -42,6 +48,8 @@ export function enumeratePreviewUtterances(): VoItem[] {
   for (const w of LETTER_WORDS) letters.add(w.letter);
   for (const l of SOUND_LETTER_BANK) letters.add(l);
   for (const pool of SOUND_TARGETS) for (const t of pool) for (const g of t.spelling) letters.add(g);
+  // Letter-form matching tiles audition by the letter NAME (both cases/scripts).
+  for (const l of LETTER_MATCH_ALPHABET) letters.add(l);
   for (const l of letters) if (!byText.has(l)) byText.set(l, { text: l, kind: "letter" });
 
   return [...byText.values()];

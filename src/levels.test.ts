@@ -17,8 +17,19 @@ import {
   SOUND_PICK,
   SOUND_REPEATS,
   SOUND_SESSION_LENGTH,
+  LETTER_MATCH_LEVELS,
+  LETTER_MATCH_PROMPTS,
+  letterMatchPool,
+  letterMatchPrompt,
+  buildLetterMatchSession,
+  SPELL_SYLLABLE_LEVELS,
+  spellSyllableLevel,
+  spellSyllablePool,
+  buildSpellSyllableRound,
+  buildSpellSyllableSession,
 } from "./levels";
-import { LETTER_WORDS, SOUND_LETTER_BANK } from "./content";
+import { LETTER_WORDS, LETTER_MATCH_ALPHABET, SOUND_LETTER_BANK } from "./content";
+import type { LetterMatchKind, SpellSyllableMode } from "./types";
 import type { SoundTarget, SyllableWord } from "./types";
 
 describe("firstLetterPool", () => {
@@ -229,6 +240,205 @@ describe("buildSoundRound", () => {
     const round = buildSoundRound(target, 3);
     const ids = round.tray.map((t) => t.id);
     expect(new Set(ids).size).toBe(ids.length);
+  });
+});
+
+describe("spellSyllablePool", () => {
+  it("clamps out-of-range levels and resolves to real ≥3-syllable words", () => {
+    expect(spellSyllablePool(0)).toEqual(spellSyllablePool(1));
+    expect(spellSyllablePool(999)).toEqual(spellSyllablePool(SPELL_SYLLABLE_LEVELS.length));
+    SPELL_SYLLABLE_LEVELS.forEach((_, i) => {
+      const pool = spellSyllablePool(i + 1);
+      expect(pool.length).toBeGreaterThan(0);
+      // ≥3 syllables so the two-syllable sibling always leaves a written anchor.
+      pool.forEach((w) => expect(w.syllables.length).toBeGreaterThanOrEqual(3));
+    });
+  });
+
+  it("keeps level 1 tiny (≤5 words) and gives every level enough to pick a full run", () => {
+    expect(spellSyllablePool(1).length).toBeLessThanOrEqual(5);
+    SPELL_SYLLABLE_LEVELS.forEach((cfg, i) =>
+      expect(spellSyllablePool(i + 1).length).toBeGreaterThanOrEqual(cfg.pick)
+    );
+  });
+});
+
+describe("buildSpellSyllableRound", () => {
+  const MODES: SpellSyllableMode[] = ["letters-exact", "letters-extra", "letters-two"];
+  // Every mode × level, many runs — the invariants must hold on every pool word.
+  const runs = MODES.flatMap((mode) =>
+    SPELL_SYLLABLE_LEVELS.flatMap((_, i) => {
+      const cfg = spellSyllableLevel(i + 1);
+      return spellSyllablePool(i + 1).flatMap((word) =>
+        Array.from({ length: 12 }, () => ({
+          mode,
+          word,
+          round: buildSpellSyllableRound(word, mode, cfg.distractors),
+          distractors: cfg.distractors,
+        }))
+      );
+    })
+  );
+
+  it("spells the whole word cell-by-cell, in reading order", () => {
+    runs.forEach(({ word, round }) => {
+      expect(round.cells.map((c) => c.letter).join("")).toBe(word.syllables.join(""));
+    });
+  });
+
+  it("hides WHOLE syllables and always leaves a written anchor", () => {
+    runs.forEach(({ mode, word, round }) => {
+      let ci = 0;
+      const hidden = word.syllables.filter((s) => {
+        const len = [...s].length;
+        const group = round.cells.slice(ci, ci + len);
+        ci += len;
+        const allFill = group.every((c) => c.fill);
+        const noneFill = group.every((c) => !c.fill);
+        expect(allFill || noneFill).toBe(true); // never a half-hidden syllable
+        return allFill;
+      });
+      expect(hidden.length).toBe(mode === "letters-two" ? 2 : 1);
+      expect(round.cells.some((c) => !c.fill)).toBe(true); // ≥1 anchor letter shown
+    });
+  });
+
+  it("answer is the gap letters in order, numbered 0..n-1", () => {
+    runs.forEach(({ round }) => {
+      const fills = round.cells.filter((c) => c.fill);
+      expect(fills.map((c) => c.slotIndex)).toEqual(fills.map((_, i) => i));
+      expect(round.answer).toEqual(fills.map((c) => c.letter));
+      round.cells.filter((c) => !c.fill).forEach((c) => expect(c.slotIndex).toBe(-1));
+    });
+  });
+
+  it("letters-exact: tray is exactly the gap letters, no intruders", () => {
+    runs
+      .filter((r) => r.mode === "letters-exact")
+      .forEach(({ round }) => {
+        expect(round.tray.map((t) => t.letter).sort()).toEqual([...round.answer].sort());
+      });
+  });
+
+  it("letters-extra / -two: adds exactly `distractors` intruder letters, none in the gap", () => {
+    runs
+      .filter((r) => r.mode !== "letters-exact")
+      .forEach(({ round, distractors }) => {
+        expect(round.tray).toHaveLength(round.answer.length + distractors);
+        const need = new Set(round.answer);
+        const intruders = round.tray.map((t) => t.letter).filter((l) => !need.has(l));
+        expect(intruders).toHaveLength(distractors);
+        intruders.forEach((l) => expect(SOUND_LETTER_BANK).toContain(l));
+      });
+  });
+
+  it("gives every tray tile a unique id", () => {
+    runs.forEach(({ round }) => {
+      const ids = round.tray.map((t) => t.id);
+      expect(new Set(ids).size).toBe(ids.length);
+    });
+  });
+});
+
+describe("buildSpellSyllableSession", () => {
+  it("seeds pick + repeats rounds, spaced so no word repeats back-to-back", () => {
+    SPELL_SYLLABLE_LEVELS.forEach((cfg, i) => {
+      for (let n = 0; n < 40; n++) {
+        const run = buildSpellSyllableSession(i + 1);
+        expect(run).toHaveLength(cfg.pick + cfg.repeats);
+        run.forEach((w, k) => {
+          if (k > 0) expect(run[k - 1].word).not.toBe(w.word);
+        });
+      }
+    });
+  });
+});
+
+describe("letterMatchPool", () => {
+  it("restricts to the level's catalog and returns the full alphabet for the null level", () => {
+    const l1 = new Set(LETTER_MATCH_LEVELS[0].letters!);
+    expect(letterMatchPool(1).every((l) => l1.has(l))).toBe(true);
+    expect(letterMatchPool(LETTER_MATCH_LEVELS.length)).toEqual(LETTER_MATCH_ALPHABET);
+  });
+
+  it("gives every level a pool big enough for its pick", () => {
+    LETTER_MATCH_LEVELS.forEach((cfg, i) =>
+      expect(letterMatchPool(i + 1).length).toBeGreaterThanOrEqual(cfg.pick)
+    );
+  });
+});
+
+describe("buildLetterMatchSession", () => {
+  const KINDS: LetterMatchKind[] = ["case", "script"];
+  // Every kind × level, many runs — the invariants must hold on all pool shapes.
+  const runs = KINDS.flatMap((kind) =>
+    LETTER_MATCH_LEVELS.flatMap((_, i) =>
+      Array.from({ length: 30 }, () => ({ kind, level: i + 1, session: buildLetterMatchSession(kind, i + 1) }))
+    )
+  );
+
+  it("is pick + repeats rounds, spaced so no letter repeats back-to-back", () => {
+    runs.forEach(({ level, session }) => {
+      const cfg = LETTER_MATCH_LEVELS[level - 1];
+      expect(session).toHaveLength(cfg.pick + cfg.repeats);
+      session.forEach((r, i) => {
+        if (i > 0) expect(session[i - 1].prompt.base).not.toBe(r.prompt.base);
+      });
+    });
+  });
+
+  it("offers exactly one correct counterpart among distinct-letter tiles", () => {
+    runs.forEach(({ level, session }) => {
+      const cfg = LETTER_MATCH_LEVELS[level - 1];
+      session.forEach((r) => {
+        expect(r.choices).toHaveLength(cfg.distractors + 1);
+        const bases = r.choices.map((c) => c.base);
+        expect(new Set(bases).size).toBe(bases.length); // distinct letters
+        expect(bases.filter((b) => b === r.prompt.base)).toHaveLength(1);
+      });
+    });
+  });
+
+  it("case: both plain print, tiles flip the prompt's case (glyph, not just name)", () => {
+    runs
+      .filter((r) => r.kind === "case")
+      .forEach(({ session }) =>
+        session.forEach((r) => {
+          expect(r.prompt.script).toBe("print");
+          const answer = r.choices.find((c) => c.base === r.prompt.base)!;
+          expect(answer.glyph).not.toBe(r.prompt.glyph); // A ⇄ a, never A ⇄ A
+          const promptUpper = r.prompt.glyph === r.prompt.glyph.toUpperCase();
+          r.choices.forEach((c) => {
+            expect(c.script).toBe("print");
+            expect(c.glyph === c.glyph.toUpperCase()).toBe(!promptUpper);
+          });
+        })
+      );
+  });
+
+  it("script: one shared case, tiles flip print ⇄ cursive", () => {
+    runs
+      .filter((r) => r.kind === "script")
+      .forEach(({ session }) =>
+        session.forEach((r) => {
+          const otherScript = r.prompt.script === "cursive" ? "print" : "cursive";
+          const promptUpper = r.prompt.glyph === r.prompt.glyph.toUpperCase();
+          r.choices.forEach((c) => {
+            expect(c.script).toBe(otherScript);
+            expect(c.glyph === c.glyph.toUpperCase()).toBe(promptUpper); // same case as prompt
+          });
+        })
+      );
+  });
+});
+
+describe("letterMatchPrompt", () => {
+  it("reads the direction off the prompt→answer transform", () => {
+    const P = (base: string, glyph: string, script: "print" | "cursive") => ({ base, glyph, script });
+    expect(letterMatchPrompt(P("A", "A", "print"), P("A", "a", "print"))).toBe(LETTER_MATCH_PROMPTS.toLower);
+    expect(letterMatchPrompt(P("A", "a", "print"), P("A", "A", "print"))).toBe(LETTER_MATCH_PROMPTS.toUpper);
+    expect(letterMatchPrompt(P("A", "A", "print"), P("A", "A", "cursive"))).toBe(LETTER_MATCH_PROMPTS.toCursive);
+    expect(letterMatchPrompt(P("A", "a", "cursive"), P("A", "a", "print"))).toBe(LETTER_MATCH_PROMPTS.toPrint);
   });
 });
 
