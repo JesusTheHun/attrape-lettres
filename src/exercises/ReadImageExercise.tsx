@@ -129,7 +129,7 @@ export function ReadImageExercise({
           {/* The word to READ — the whole task. Never spoken, so the child works
               from the letters, not the ear. */}
           <div
-            className="text-center font-black text-[#5A3A1E]"
+            className="text-center font-black uppercase text-[#5A3A1E]"
             style={{ fontSize: "clamp(38px,11vw,68px)", lineHeight: 1.1, margin: "6px 0" }}
           >
             {round.target.word}
