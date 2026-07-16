@@ -4,6 +4,7 @@ import { EarnBadge } from "../components/EarnBadge";
 import { EndButtons } from "../components/EndButtons";
 import { Mascot } from "../mascot/Mascot";
 import { Tile } from "../components/Tile";
+import { FitLine } from "../components/FitLine";
 import { WordIcon } from "../components/WordIcon";
 import { useAudio } from "../hooks/useAudio";
 import { useConfetti } from "../hooks/useConfetti";
@@ -243,11 +244,9 @@ export function SpellSyllableExercise({ exercise, mode, level, mixed = false, on
           {/* The word, letter by letter: written letters + dashed slots for the
               gap. A filled slot is a button that pops its letter back to the tray
               so a misplacement can be fixed mid-row. A small gap before each new
-              syllable keeps the word's shape readable. */}
-          <div
-            aria-label="Mot à compléter"
-            className="mb-6 flex flex-wrap items-center justify-center gap-1.5"
-          >
+              syllable keeps the word's shape readable. FitLine keeps the whole
+              word on a single line, shrinking if needed. */}
+          <FitLine ariaLabel="Mot à compléter" className="mb-6" rowClassName="gap-1.5">
             {round.cells.map((c, i) => {
               const style = {
                 minWidth: "clamp(40px,11vw,60px)",
@@ -300,7 +299,7 @@ export function SpellSyllableExercise({ exercise, mode, level, mixed = false, on
                 </div>
               );
             })}
-          </div>
+          </FitLine>
 
           {/* Letter tray */}
           <div className="flex flex-wrap items-center justify-center gap-3">

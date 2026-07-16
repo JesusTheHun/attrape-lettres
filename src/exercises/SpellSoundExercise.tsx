@@ -4,6 +4,7 @@ import { EarnBadge } from "../components/EarnBadge";
 import { EndButtons } from "../components/EndButtons";
 import { Mascot } from "../mascot/Mascot";
 import { Tile } from "../components/Tile";
+import { FitLine } from "../components/FitLine";
 import { useAudio } from "../hooks/useAudio";
 import { useConfetti } from "../hooks/useConfetti";
 import {
@@ -219,8 +220,9 @@ export function SpellSoundExercise({ exercise, level, onBack, onNext }: Props) {
           </button>
 
           {/* Spelling slots — a filled one is a button that pops its letter back
-              to the tray so a misplacement can be fixed mid-row. */}
-          <div className="mb-6 flex flex-wrap items-center justify-center gap-2">
+              to the tray so a misplacement can be fixed mid-row. FitLine keeps
+              the whole row on a single line, shrinking if needed. */}
+          <FitLine className="mb-6" rowClassName="gap-2">
             {slots.map((s, i) => {
               const style = {
                 minWidth: "clamp(52px,15vw,76px)",
@@ -253,7 +255,7 @@ export function SpellSoundExercise({ exercise, level, onBack, onNext }: Props) {
                 </div>
               );
             })}
-          </div>
+          </FitLine>
 
           {/* Letter tray */}
           <div className="flex flex-wrap items-center justify-center gap-3">

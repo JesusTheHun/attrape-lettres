@@ -4,6 +4,7 @@ import { EarnBadge } from "../components/EarnBadge";
 import { EndButtons } from "../components/EndButtons";
 import { Mascot } from "../mascot/Mascot";
 import { Tile } from "../components/Tile";
+import { FitLine } from "../components/FitLine";
 import { WordIcon } from "../components/WordIcon";
 import { useAudio } from "../hooks/useAudio";
 import { useConfetti } from "../hooks/useConfetti";
@@ -127,13 +128,16 @@ export function ReadImageExercise({
           </p>
           <Mascot config={profile.config} mood={mood} />
           {/* The word to READ — the whole task. Never spoken, so the child works
-              from the letters, not the ear. */}
-          <div
-            className="text-center font-black uppercase text-[#5A3A1E]"
-            style={{ fontSize: "clamp(38px,11vw,68px)", lineHeight: 1.1, margin: "6px 0" }}
-          >
-            {round.target.word}
-          </div>
+              from the letters, not the ear. FitLine keeps it on a single line,
+              shrinking if needed. */}
+          <FitLine className="my-1.5">
+            <div
+              className="text-center font-black uppercase text-[#5A3A1E]"
+              style={{ fontSize: "clamp(38px,11vw,68px)", lineHeight: 1.1 }}
+            >
+              {round.target.word}
+            </div>
+          </FitLine>
           <button
             onPointerDown={() => {
               if (locked.current) return; // don't cut the success line mid-celebration

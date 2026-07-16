@@ -4,6 +4,7 @@ import { EarnBadge } from "../components/EarnBadge";
 import { EndButtons } from "../components/EndButtons";
 import { Mascot } from "../mascot/Mascot";
 import { Tile } from "../components/Tile";
+import { FitLine } from "../components/FitLine";
 import { WordIcon } from "../components/WordIcon";
 import { useAudio } from "../hooks/useAudio";
 import { useConfetti } from "../hooks/useConfetti";
@@ -218,8 +219,9 @@ export function AssembleExercise({ exercise, mode, level, onBack, onNext }: Prop
           </button>
 
           {/* Assembly slots — a filled, non-locked one is a button that pops its
-              tile back to the tray so a misplacement can be fixed mid-row. */}
-          <div className="mb-6 flex flex-wrap items-center justify-center gap-2">
+              tile back to the tray so a misplacement can be fixed mid-row.
+              FitLine keeps the whole word on a single line, shrinking if needed. */}
+          <FitLine className="mb-6" rowClassName="gap-2">
             {slots.map((s, i) => {
               const removable = s != null && !round.locked[i];
               const style = {
@@ -253,7 +255,7 @@ export function AssembleExercise({ exercise, mode, level, onBack, onNext }: Prop
                 </div>
               );
             })}
-          </div>
+          </FitLine>
 
           {/* Tray */}
           <div className="flex flex-wrap items-center justify-center gap-3">
