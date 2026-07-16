@@ -10,6 +10,7 @@ import { ExerciseIcon } from "./components/ExerciseIcon";
 import { WhoIsPlaying } from "./components/WhoIsPlaying";
 import { Mascot } from "./mascot/Mascot";
 import { MascotGallery } from "./dev/MascotGallery";
+import { VoGallery } from "./dev/VoGallery";
 import { Shop } from "./shop/Shop";
 import { Picker } from "./shop/Picker";
 import { useProfile } from "./hooks/useProfile";
@@ -43,6 +44,9 @@ export default function App() {
   }, []);
   if (hash === "#stages")
     return <MascotGallery onClose={() => (window.location.hash = "")} />;
+  // Dev-only VO audition bench (bake-and-LISTEN loop), reachable at #vo.
+  if (hash === "#vo")
+    return <VoGallery onClose={() => (window.location.hash = "")} />;
 
   // Who's-playing gate: siblings share the device. No active player ⇒ the
   // welcome screen (pick a child or create one). selectChild/createChild set
