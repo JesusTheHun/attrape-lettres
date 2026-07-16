@@ -637,12 +637,13 @@ export function repeatSession<T>(pool: readonly T[], pick: number, repeats: numb
   if (r === 0) return picks;
 
   const doubles = shuffle(picks).slice(0, r);
-  const singles = picks.filter((x) => !doubles.includes(x));
-  const grouped = [...doubles.flatMap((d) => [d, d]), ...singles];
-  const out = new Array<T>(grouped.length);
-  let k = 0;
-  for (let i = 0; i < out.length; i += 2) out[i] = grouped[k++];
-  for (let i = 1; i < out.length; i += 2) out[i] = grouped[k++];
+  // Random item picked to repeat AND random position: shuffle the whole run,
+  // rerolling until no item lands twice in a row. Always solvable for runs of
+  // ≥3 rounds; the cap only matters for the degenerate 1-item pool.
+  let out = shuffle([...picks, ...doubles]);
+  for (let tries = 0; tries < 64 && out.some((x, i) => i > 0 && x === out[i - 1]); tries++) {
+    out = shuffle([...picks, ...doubles]);
+  }
   return out;
 }
 
