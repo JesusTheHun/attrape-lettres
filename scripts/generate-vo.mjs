@@ -564,16 +564,91 @@ const SAY_AS = {
   // (k is /k/ unambiguously in fr). Listen once: guard against the « K.O. »
   // knockout reading — if it trips, fall back to "cô" (as in « côté »).
   CO: "ko",
+  // Bare "Jus" babbled twice in a row (a 32s « jus chute chi chut… » medley);
+  // lowercase to steer the reader off whatever the capitalized token triggers.
+  Jus: "jus",
+  // "AN" the ANNIVERSAIRE tile is /an/ (the double N denasalizes) — NOT the
+  // nasal /ɑ̃/ that the lowercase "an" SOUND_SAY row (level-4 sound) encodes.
+  // Exact uppercase match so the tile and the sound stay distinct.
+  AN: "âne",
+  // Three "comme dans" rows kept garbling the WORD (manteau → « moteau »,
+  // sapin → « sa peinture », pin → « pan ») across rolls: an article pins the
+  // noun reading without changing what the child learns.
+  "an, comme dans manteau.": "en, comme dans un manteau.",
+  "in, comme dans sapin.": "hein, comme dans un sapin.",
+  "in, comme dans pin.": "hein, comme dans un pin.",
+  // « feu » read as the letter F four rolls in a row; « du feu » forces the noun.
+  "eu, comme dans feu.": "eux, comme dans du feu.",
+};
+
+/* Same idea, applied at the SOUND-TOKEN level: the spell-sound vocabulary speaks
+ * bare sound tokens ("ri", "on") inside three authored shapes — the bare prompt,
+ * "<sound>, comme dans <word>." and "Oui ! <sound>." — and the TTS misreads many
+ * of them in isolation (é → English "ee", "in" → English, "ri" → a giggle, "on"
+ * → /ɑ̃/…). The cure is the same authored-spoken-form trick, but keyed by TOKEN
+ * so one row fixes every utterance shape that speaks it. Values are real French
+ * words (or accent-pinned respellings) that are EXACT homophones of the target
+ * sound — a prose reader can't misread « riz » or « faux ». Keys are lowercase;
+ * uppercase syllable tiles are matched after their lowercase transform. Letters
+ * (kind "letter") are exempt: « O » must be NAMED, never read « eau ».
+ * Same contract as SAY_AS: clip keys never change (voKey still hashes the
+ * utterance text), only the audio fed to the TTS — and every row is a HYPOTHESIS
+ * until you bake and LISTEN. */
+const SOUND_SAY = {
+  // /a/ row + friends — plain CV syllables the reader turned into interjections.
+  ba: "bas", pa: "pas", ra: "rat",
+  // /i/ column: real-word homophones.
+  ri: "riz", li: "lit", ni: "nid", pi: "pie", vi: "vie", di: "dis", ji: "j'y",
+  // /o/ column: the reader said « bon », « pool », « wow »…
+  bo: "beau", po: "pot", mo: "mot", to: "tôt", lo: "l'eau", vo: "vos",
+  no: "nos", so: "seau", ro: "rôt", fo: "faux", zo: "zô",
+  // /y/ column. "fu" resisted « fût » AND « fus » — vowel-pin like dû/zô
+  // (a « fût » completion would still be /fy/, t silent, so it can't lose).
+  du: "dû", ju: "jus", mu: "mue", ru: "rue", fu: "fû", su: "sue",
+  // é column — read as English "ee" (fé → « fi »): the -es determiners are
+  // bullet-proof /e/ homophones; fée/nez/chez are real words. ré resisted
+  // "rez" (« heureux ») AND "rhé" (« ri ») — "raie" trades a hair of vowel
+  // height (/ʁɛ/) for a reading the model can't miss; "vé" has no clean
+  // homophone ("vais" reads /ve/); "jo" said « jou » as the name Jo, so it
+  // gets the zô-style circumflex pin.
+  fé: "fée", sé: "ses", lé: "les", mé: "mes", té: "tes", né: "nez",
+  ré: "raie", ché: "chez", é: "et", vé: "vais", jo: "jô",
+  // Vowel teams & nasals — the level-4/5 sounds ("on" read /ɑ̃/, "in" read as
+  // English "in", "eu" read /e/, "o" read /u/). "oie" still split into
+  // « ou-à » on 3 of 4 rolls, so oi goes phonetic; "euh" came back clipped, so
+  // eu uses the pronoun « eux » instead.
+  on: "ont", an: "en", in: "hein", eu: "eux", o: "eau", oi: "wa",
+  // Preview syllable tiles that misread (TOR was spelled letter-by-letter).
+  tor: "tore",
+  // Preview tiles spoken as they sound IN THEIR WORD — a tile is always heard
+  // inside one authored word, so context wins: intervocalic S reads /z/
+  // (dino-SAURE, télévi-SION, fu-SÉE), PIN is the /pɛ̃/ of LAPIN, NAS keeps
+  // the usually-sounded final s of ANANAS, NE is the schwa of BANANE.
+  pin: "pain", teau: "tôt", tue: "tu", dau: "dos", mate: "matte",
+  ne: "nœud", saure: "zore", sion: "zion", sée: "zée", py: "pie",
+  kan: "camp", nas: "nasse", tal: "talle",
 };
 
 /** What we actually FEED the TTS for an item — which can differ from the clip's
- *  identity text. An explicit SAY_AS override wins; otherwise a syllable is spoken
- *  lowercase (uppercase reads as an acronym) and everything else verbatim. The key
- *  is still derived from the original `text`, so the runtime lookup in clips.ts is
- *  unchanged; only the audio content improves. Letters stay uppercase (STYLE_LETTER
- *  wants the letter NAMED, e.g. "B" → « bé »). */
-const promptText = (it) =>
-  SAY_AS[it.text] ?? (it.kind === "syllable" ? it.text.toLowerCase() : it.text);
+ *  identity text. An explicit SAY_AS override wins; then the SOUND_SAY token map
+ *  is applied inside the three sound-utterance shapes; otherwise a syllable is
+ *  spoken lowercase (uppercase reads as an acronym) and everything else verbatim.
+ *  The key is still derived from the original `text`, so the runtime lookup in
+ *  clips.ts is unchanged; only the audio content improves. Letters stay uppercase
+ *  AND unmapped (STYLE_LETTER wants the letter NAMED — « O », never « eau »). */
+const promptText = (it) => {
+  const exact = SAY_AS[it.text];
+  if (exact) return exact;
+  const text = it.kind === "syllable" ? it.text.toLowerCase() : it.text;
+  if (it.kind === "letter") return text;
+  const say = (tok) => SOUND_SAY[tok.toLowerCase()];
+  if (say(text)) return say(text); // bare sound prompt / syllable tile
+  const prompt = /^(.+?), comme dans (.+)\.$/.exec(text); // spell-sound prompt
+  if (prompt && say(prompt[1])) return `${say(prompt[1])}, comme dans ${prompt[2]}.`;
+  const success = /^Oui ! (.+)\.$/.exec(text); // spell-sound success line
+  if (success && say(success[1])) return `Oui ! ${say(success[1])}.`;
+  return text;
+};
 
 /** Combined, deduped catalog: phrases first (they win a key collision), then the
  *  separate preview vocabulary, each item tagged with kind + its per-kind style. */
@@ -612,6 +687,18 @@ async function main() {
   const known = new Set(catalog.map((it) => it.text));
   for (const k of Object.keys(SAY_AS)) {
     if (!known.has(k)) console.warn(`  ! SAY_AS override "${k}" matches no utterance — typo or stale? (no effect)`);
+  }
+  // Same rot-guard for SOUND_SAY: collect every sound token the catalog speaks
+  // (bare prompts, syllable tiles, "comme dans" prompts, "Oui !" successes).
+  const spokenTokens = new Set();
+  for (const it of catalog) {
+    if (it.kind === "letter") continue;
+    const text = it.kind === "syllable" ? it.text.toLowerCase() : it.text;
+    const m = /^(.+?), comme dans .+\.$/.exec(text) ?? /^Oui ! (.+)\.$/.exec(text);
+    spokenTokens.add((m ? m[1] : text).toLowerCase());
+  }
+  for (const k of Object.keys(SOUND_SAY)) {
+    if (!spokenTokens.has(k)) console.warn(`  ! SOUND_SAY override "${k}" matches no sound token — typo or stale? (no effect)`);
   }
 
   // --list: print the rollback map (key → filename, presence) for a group, no API.
