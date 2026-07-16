@@ -15,7 +15,7 @@ const INK = "#5A3A1E";
 /** Local price curve — rises with the current stage. */
 const growthPrice = (stage: number): number => 30 * (stage + 1);
 
-export function GrowthCard({ onGrew }: { onGrew?: () => void }) {
+export function GrowthCard({ onGrew }: { onGrew?: (cost: number) => void }) {
   const { profile, spend, setConfig } = useProfile();
   const { config, balance } = profile;
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -30,7 +30,7 @@ export function GrowthCard({ onGrew }: { onGrew?: () => void }) {
     if (atMax) return;
     if (spend(price)) {
       setConfig((c) => ({ ...c, stage: Math.min(c.stage + 1, GROWTH_STAGES - 1) }));
-      onGrew?.();
+      onGrew?.(price);
     }
   };
 

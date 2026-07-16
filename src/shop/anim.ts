@@ -4,7 +4,7 @@
 /* prefers-reduced-motion is respected here so every caller inherits it.        */
 /* -------------------------------------------------------------------------- */
 
-const reducedMotion = (): boolean =>
+export const reducedMotion = (): boolean =>
   typeof window !== "undefined" &&
   typeof window.matchMedia === "function" &&
   window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -41,6 +41,67 @@ export function press(el: Element | null | undefined): void {
 /* -------------------------------------------------------------------------- */
 
 const SPARKLES = ["✨", "⭐", "🌟", "💫"];
+
+/* -------------------------------------------------------------------------- */
+/* Purchase ceremony — a handful of stars fly from the WALLET to the mascot,    */
+/* so a child SEES stars leave their purse when something is bought. Throwaway  */
+/* DOM on document.body driven by WAAPI, exactly like growBurst below.          */
+/* -------------------------------------------------------------------------- */
+
+export function starFlight(
+  from: Element | null | undefined,
+  to: Element | null | undefined,
+  count: number
+): void {
+  if (!from || !to || reducedMotion() || typeof document === "undefined") return;
+  const a = from.getBoundingClientRect();
+  const b = to.getBoundingClientRect();
+  if (a.width === 0 || b.width === 0) return;
+  const x0 = a.left + a.width / 2;
+  const y0 = a.top + a.height / 2;
+  const x1 = b.left + b.width / 2;
+  const y1 = b.top + b.height / 2;
+
+  const layer = document.createElement("div");
+  layer.setAttribute("aria-hidden", "true");
+  layer.style.cssText =
+    "position:fixed;inset:0;pointer-events:none;z-index:60;overflow:visible;";
+  document.body.appendChild(layer);
+
+  let pending = 0;
+  for (let i = 0; i < count; i++) {
+    const el = document.createElement("span");
+    el.textContent = "⭐";
+    el.style.cssText =
+      `position:fixed;left:${x0}px;top:${y0}px;font-size:22px;line-height:1;` +
+      "will-change:transform,opacity;";
+    layer.appendChild(el);
+    pending++;
+    // Each star arcs on its own bow: the midpoint bulges sideways/upward a bit
+    // more per star, so the flock fans out instead of forming a single file.
+    const bow = (i % 2 === 0 ? 1 : -1) * (14 + i * 7);
+    const mx = (x1 - x0) / 2 + bow;
+    const my = (y1 - y0) / 2 - 36 - i * 4;
+    const anim = el.animate(
+      [
+        { transform: "translate(-50%,-50%) scale(0.5)", opacity: 0 },
+        {
+          transform: `translate(calc(-50% + ${mx}px),calc(-50% + ${my}px)) scale(1.15)`,
+          opacity: 1,
+          offset: 0.5,
+        },
+        {
+          transform: `translate(calc(-50% + ${x1 - x0}px),calc(-50% + ${y1 - y0}px)) scale(0.35)`,
+          opacity: 0.2,
+        },
+      ],
+      { duration: 620 + i * 45, delay: i * 70, easing: "cubic-bezier(.3,.6,.4,1)", fill: "forwards" }
+    );
+    anim.addEventListener("finish", () => {
+      if (--pending <= 0) layer.remove();
+    });
+  }
+}
 
 export function growBurst(anchor: Element | null | undefined): void {
   if (!anchor || reducedMotion() || typeof document === "undefined") return;

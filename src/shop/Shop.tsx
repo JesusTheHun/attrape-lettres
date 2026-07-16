@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useAudio } from "../hooks/useAudio";
 import { applyOption, useProfile } from "../hooks/useProfile";
 import { CATALOG, DEFAULT_LOOKS, type DefaultLook } from "../mascot/catalog";
@@ -8,7 +8,7 @@ import { SHOP_BOUGHT, SHOP_GREW, SHOP_NEED_MORE, shopCostLine } from "../vo/utte
 import { GrowthCard } from "./GrowthCard";
 import { ItemPreview } from "./ItemPreview";
 import { ShopItem } from "./ShopItem";
-import { growBurst, pop, press } from "./anim";
+import { growBurst, pop, press, reducedMotion, starFlight } from "./anim";
 
 /* -------------------------------------------------------------------------- */
 /* Shop / dressing-room — the spending area.                                    */
@@ -37,6 +37,43 @@ const SLOT_LABEL: Record<string, string> = {
   tailSize: "Queue",
   furPattern: "Pelage",
 };
+
+/* The wallet figure counts down (or up) instead of jumping, so a child watches
+ * the price actually LEAVE the purse. The count runs on rAF writing textContent
+ * directly — off the React render path (invariant 2). React re-renders with the
+ * same child string, so reconciliation never stomps a frame mid-count. */
+function AnimatedNumber({ value }: { value: number }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const shownRef = useRef(value); // what the DOM currently displays
+  const rafRef = useRef(0);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    const from = shownRef.current;
+    if (!el || from === value) return;
+    if (reducedMotion()) {
+      shownRef.current = value; // React already committed the new number
+      return;
+    }
+    // React just committed the target; rewind to the old figure before paint,
+    // then tick to the new one so the change reads as movement, not a jump.
+    el.textContent = String(from);
+    const t0 = performance.now();
+    const dur = Math.min(900, 350 + Math.abs(value - from) * 12);
+    const tick = (t: number) => {
+      const k = Math.min(1, (t - t0) / dur);
+      const eased = 1 - (1 - k) * (1 - k);
+      const v = Math.round(from + (value - from) * eased);
+      el.textContent = String(v);
+      shownRef.current = v;
+      if (k < 1) rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [value]);
+
+  return <span ref={ref}>{value}</span>;
+}
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -110,6 +147,10 @@ export function Shop({ onBack }: { onBack: () => void }) {
   const audio = useAudio();
   const previewRef = useRef<HTMLDivElement>(null);
   const buyRef = useRef<HTMLButtonElement>(null);
+  const walletRef = useRef<HTMLDivElement>(null);
+
+  // How many stars fly wallet→mascot on a purchase: pricier = more of a shower.
+  const flightSize = (cost: number) => Math.min(8, Math.max(3, Math.round(cost / 10)));
 
   /* The try-on "cart": at most ONE unowned option, worn by the preview mascot
    * but NOT bought. Any real config change (equip, buy, factory look) clears it. */
@@ -133,6 +174,7 @@ export function Shop({ onBack }: { onBack: () => void }) {
     if (!cart) return;
     audio.unlock();
     if (!buy(cart)) return; // wallet raced empty — soft no-op, never an error
+    starFlight(walletRef.current, previewRef.current, flightSize(cart.cost));
     pop(previewRef.current);
     audio.success();
     void audio.say(SHOP_BOUGHT);
@@ -290,11 +332,12 @@ export function Shop({ onBack }: { onBack: () => void }) {
             ← Retour
           </button>
           <div
+            ref={walletRef}
             aria-label={`${balance} points`}
             className="rounded-full px-4 py-2 text-lg font-black shadow"
             style={{ background: "#FFD54F", color: "#4A3B00" }}
           >
-            ⭐ {balance}
+            ⭐ <AnimatedNumber value={balance} />
           </div>
         </div>
 
@@ -347,7 +390,8 @@ export function Shop({ onBack }: { onBack: () => void }) {
 
       <div className="flex w-full flex-col gap-5 px-5">
         <GrowthCard
-          onGrew={() => {
+          onGrew={(cost) => {
+            starFlight(walletRef.current, previewRef.current, flightSize(cost));
             audio.success();
             void audio.say(SHOP_GREW);
             pop(previewRef.current);
