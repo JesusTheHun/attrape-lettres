@@ -42,8 +42,10 @@ function ShopHarness() {
   const { createChild, award, activeId } = useProfile();
   useEffect(() => {
     createChild("Test");
-    // Six distinct first-clears = 60 pts, plenty for a 40-pt style.
-    for (let level = 0; level < 6; level++) award("first-letter" as ExerciseId, level);
+    // Six distinct first-clears of a PAYING exercise (difficulty 1) with no
+    // perfect-round bonus = 6 × 10 = 60 pts, plenty for a 40-pt style.
+    for (let level = 0; level < 6; level++)
+      award("order-syllables" as ExerciseId, level, 0, 1);
   }, [createChild, award]);
   return activeId ? <Shop onBack={() => {}} /> : null;
 }
