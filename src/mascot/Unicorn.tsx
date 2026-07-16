@@ -210,6 +210,10 @@ export function Unicorn({ config, layout, stage, mood, uid, preview }: RigProps)
         );
       })}
 
+      {/* star crown — UNDER the horn (drawn next) so the horn always pokes
+          through the open band; the flower crown accessory replaces it. */}
+      {spec.crown && !has(A.flowerCrown) && <Crown cx={headCX} cy={headCY - headR * 0.5} r={headR * 0.95} band={hornCol} gem="#FF7EA8" open />}
+
       {/* forelock — two symmetric locks framing the face, clear of the eyes */}
       <Plume x={headCX - headR * 0.24} y={headCY - headR * 0.6} color={maneCol} len={headR * 0.42} wide={4} rot={-20} n={2} />
       <Plume x={headCX + headR * 0.24} y={headCY - headR * 0.6} color={maneCol} len={headR * 0.42} wide={4} rot={20} n={2} />
@@ -224,9 +228,6 @@ export function Unicorn({ config, layout, stage, mood, uid, preview }: RigProps)
           <path d={fourStar(headCX, apexY - 2, 4.2)} fill="#FFF3C4" />
         </g>
       )}
-
-      {/* star crown — the flower crown accessory replaces it, never stacks on it */}
-      {spec.crown && !has(A.flowerCrown) && <Crown cx={headCX} cy={headCY - headR * 0.5} r={headR * 0.95} band={hornCol} gem="#FF7EA8" />}
 
       {/* face */}
       <Eyes cx={headCX} y={headCY + headR * 0.06} dx={headR * 0.42} r={eyeR} mood={mood} sleepy={stage === 0} />
@@ -250,13 +251,15 @@ export function Unicorn({ config, layout, stage, mood, uid, preview }: RigProps)
         ) : (
           <Bow x={headCX + headR * 0.34} y={headCY - headR * 0.5} s={headR * 0.05} color="#FF7EA8" />
         ))}
+      {/* crest left OPEN at the top so the horn (or its stade-2 nub) always pokes
+          through — a crown that swallows the just-earned horn is a heartbreak */}
       {has(A.flowerCrown) &&
-        [-62, -31, 0, 31, 62].map((deg, i) => {
+        [-72, -38, 38, 72].map((deg, i) => {
           const rad = ((deg - 90) * Math.PI) / 180;
           const fx = anchor.head.x + Math.cos(rad) * anchor.head.r * 0.98;
           const fy = anchor.head.y + Math.sin(rad) * anchor.head.r * 0.98;
-          const palette = ["#FF8FB1", "#FFD54F", "#AED581", "#7FD1D8", "#BA9EE8"];
-          return <Flower key={i} x={fx} y={fy} r={3.6} petal={palette[i]} center="#FFF3C4" />;
+          const palette = ["#FF8FB1", "#FFD54F", "#AED581", "#7FD1D8"];
+          return <Flower key={i} x={fx} y={fy} r={3.8} petal={palette[i]} center="#FFF3C4" />;
         })}
       {/* "Arc-en-ciel magique" (A.starClip) is a WHOLE-IMAGE overlay drawn by
           Mascot.tsx on top of every rig — wings included — so it isn't handled

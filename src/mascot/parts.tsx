@@ -495,13 +495,16 @@ export function GroundGlow({ id, cx, y, rx, color, opacity }: { id: string; cx: 
 }
 
 /** Outlined tiara/crown arcing over the head, gem-tipped spikes. */
-export function Crown({ cx, cy, r, band = "#FFD54F", gem = "#FF7EA8", edge = "#B07E1E" }: { cx: number; cy: number; r: number; band?: string; gem?: string; edge?: string }) {
-  const spikes = [-0.62, -0.31, 0, 0.31, 0.62].map((f, i) => {
+/** `open` drops the tall CENTRE spike — for wearers whose horn rises exactly
+ * there (the rig also draws the horn OVER the band so it always pokes through). */
+export function Crown({ cx, cy, r, band = "#FFD54F", gem = "#FF7EA8", edge = "#B07E1E", open = false }: { cx: number; cy: number; r: number; band?: string; gem?: string; edge?: string; open?: boolean }) {
+  const spikes = [-0.62, -0.31, 0, 0.31, 0.62].flatMap((f, i) => {
+    if (open && i === 2) return [];
     const a = (-90 + f * 78) * (Math.PI / 180);
     const bx = cx + Math.cos(a) * r;
     const by = cy + Math.sin(a) * r;
     const h = i === 2 ? 8.5 : 5;
-    return { bx, by, tx: cx + Math.cos(a) * (r + h), ty: cy + Math.sin(a) * (r + h), big: i === 2 };
+    return [{ bx, by, tx: cx + Math.cos(a) * (r + h), ty: cy + Math.sin(a) * (r + h), big: i === 2 }];
   });
   const bandPath = `M${cx - r * 0.72} ${cy - r * 0.55} Q${cx} ${cy - r * 1.02} ${cx + r * 0.72} ${cy - r * 0.55}`;
   return (
