@@ -84,7 +84,6 @@ export const SYLLABLE_WORDS: SyllableWord[] = [
   { word: "TORTUE", syllables: ["TOR", "TUE"], emoji: "🐢" },
   { word: "VOITURE", syllables: ["VOI", "TURE"], emoji: "🚗" },
   { word: "SOURIS", syllables: ["SOU", "RIS"], emoji: "🐭" },
-  { word: "BANANE", syllables: ["BA", "NANE"], emoji: "🍌" },
   { word: "CAROTTE", syllables: ["CA", "ROTTE"], emoji: "🥕" },
   { word: "DAUPHIN", syllables: ["DAU", "PHIN"], emoji: "🐬" },
   { word: "ROBOT", syllables: ["RO", "BOT"], emoji: "🤖" },
@@ -93,7 +92,8 @@ export const SYLLABLE_WORDS: SyllableWord[] = [
   { word: "CITRON", syllables: ["CI", "TRON"], emoji: "🍋" },
   { word: "TOMATE", syllables: ["TO", "MATE"], emoji: "🍅" },
   // 3 syllables
-  { word: "PAPILLON", syllables: ["PA", "PIL", "LON"], emoji: "🦋" },
+  { word: "BANANE", syllables: ["BA", "NA", "NE"], emoji: "🍌" },
+  { word: "PAPILLON", syllables: ["PA", "PI", "LLON"], emoji: "🦋" },
   { word: "ÉLÉPHANT", syllables: ["É", "LÉ", "PHANT"], emoji: "🐘" },
   { word: "CROCODILE", syllables: ["CRO", "CO", "DILE"], emoji: "🐊" },
   { word: "CHOCOLAT", syllables: ["CHO", "CO", "LAT"], emoji: "🍫" },
