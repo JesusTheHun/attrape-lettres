@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { AssembleExercise } from "./exercises/AssembleExercise";
+import { FindSoundExercise } from "./exercises/FindSoundExercise";
 import { FirstLetterExercise } from "./exercises/FirstLetterExercise";
+import { SoundTwinsExercise } from "./exercises/SoundTwinsExercise";
 import { LetterMatchExercise } from "./exercises/LetterMatchExercise";
 import { ReadImageExercise } from "./exercises/ReadImageExercise";
 import { SpellSoundExercise } from "./exercises/SpellSoundExercise";
@@ -79,6 +81,14 @@ export default function App() {
     if (view.exercise === "spell-sound")
       return (
         <SpellSoundExercise key={key} exercise={view.exercise} level={view.level} onBack={back} onNext={next} />
+      );
+    if (view.exercise === "find-sound")
+      return (
+        <FindSoundExercise key={key} exercise={view.exercise} level={view.level} onBack={back} onNext={next} />
+      );
+    if (view.exercise === "sound-twins")
+      return (
+        <SoundTwinsExercise key={key} exercise={view.exercise} level={view.level} onBack={back} onNext={next} />
       );
     if (meta.spell)
       return (
@@ -167,6 +177,7 @@ export default function App() {
             {ex.mode && <span className="text-sm text-[#9A7A5A]">· {MODE_HINT[ex.mode]}</span>}
             {ex.spell && <span className="text-sm text-[#9A7A5A]">· {ex.mixed ? MIXED_HINT : SPELL_HINT[ex.spell]}</span>}
             {ex.match && <span className="text-sm text-[#9A7A5A]">· {MATCH_HINT[ex.match]}</span>}
+            {ex.hint && <span className="text-sm text-[#9A7A5A]">· {ex.hint}</span>}
           </div>
           <div className="grid grid-cols-5 gap-2">
             {Array.from({ length: ex.levelCount }, (_, i) => i + 1).map((lvl) => {

@@ -1,11 +1,22 @@
-import { LETTER_WORDS, LETTER_MATCH_ALPHABET, SYLLABLE_WORDS, SOUND_TARGETS } from "../content.ts";
+import {
+  BASIC_SOUNDS,
+  LETTER_WORDS,
+  LETTER_MATCH_ALPHABET,
+  SYLLABLE_WORDS,
+  SOUND_TARGETS,
+  TWIN_FAMILIES,
+} from "../content.ts";
 import { CATALOG } from "../mascot/catalog.ts";
 import {
   LETTER_MATCH_PROMPTS,
   READ_IMAGE_PROMPT,
+  findSoundPrompt,
+  findSoundSuccess,
   letterMatchSuccess,
   soundPrompt,
   soundSuccess,
+  twinPrompt,
+  twinSuccess,
 } from "../levels.ts";
 
 /* -------------------------------------------------------------------------- */
@@ -67,6 +78,24 @@ export function enumerateUtterances(): string[] {
   for (const target of SOUND_TARGETS.flat()) {
     out.add(soundPrompt(target));
     out.add(soundSuccess(target));
+  }
+
+  // Find-the-sound: the bare sound (each tile's "Écouter"), the anchored
+  // prompt and the success line. The prompt/success SHAPES match spell-sound's,
+  // so overlapping (sound, word) pairs reuse already-baked clips.
+  for (const s of BASIC_SOUNDS.flat()) {
+    out.add(s.sound);
+    out.add(findSoundPrompt(s));
+    out.add(findSoundSuccess(s));
+  }
+
+  // Sound-twins: the hunt consigne + the bare family sound (tile "Écouter" —
+  // every tile, twin or intruder, speaks its OWN family's sound) + one anchor
+  // success line per graphy.
+  for (const f of TWIN_FAMILIES.flat()) {
+    out.add(f.sound);
+    out.add(twinPrompt(f));
+    for (const g of f.graphies) out.add(twinSuccess(g));
   }
 
   // Shop: celebrations + the spoken price of every tile. Costs are a finite

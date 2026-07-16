@@ -1,5 +1,7 @@
 export type ExerciseId =
   | "first-letter"
+  | "find-sound"
+  | "sound-twins"
   | "read-image"
   | "match-case"
   | "match-script"
@@ -115,6 +117,50 @@ export interface SyllableTier {
   repeats: number;
 }
 
+/** Find-the-sound exercise -------------------------------------------------*/
+/**
+ * The youngest rung of the sound ladder (recognition; spell-sound is
+ * production): the child HEARS a sound with its anchor word (« ou, comme dans
+ * hibou ») and taps the tile that writes it. Same one-prompt/one-tile loop as
+ * first-letter, so a pre-reader already knows how to play — no reading needed.
+ */
+export interface BasicSound {
+  /** Spoken sound, lowercase for the TTS/VO (e.g. "ou", "or", "che"). */
+  sound: string;
+  /** The written form shown on the tile, uppercase (e.g. "OU", "CH"). */
+  graphy: string;
+  /** Anchor word the sound lives in — spoken as "comme dans …" + shown as emoji. */
+  word: string;
+  emoji: string;
+  /**
+   * Authored confusable graphies (from the SAME level pool) preferred as
+   * distractors — adaptive-by-confusability done as data (OU vs ON, AN vs IN…).
+   */
+  traps?: string[];
+}
+
+/** Sound-twins exercise ----------------------------------------------------*/
+/** One written form of a sound family + the anchor word that owns it. */
+export interface TwinGraphy {
+  /** Uppercase tile text (e.g. "CO", "KO", "EAU"). */
+  text: string;
+  /** Spoken on this tile's success line (« Oui ! coq. ») — what tells twins apart. */
+  word: string;
+  emoji: string;
+}
+
+/**
+ * A family = ONE spoken sound and every way the level writes it. The child
+ * hears the sound and must find ALL the family's tiles among intruder graphies
+ * drawn from the level's other families.
+ */
+export interface TwinFamily {
+  /** Spoken sound, lowercase for the TTS/VO (e.g. "ko", "o", "an"). */
+  sound: string;
+  /** 2–4 same-sound written forms, each anchored to its own word. */
+  graphies: TwinGraphy[];
+}
+
 /** Spell-the-sound exercise ------------------------------------------------*/
 /**
  * One heard sound the child must re-spell by picking letters in order. The point
@@ -154,6 +200,8 @@ export interface ExerciseMeta {
   /** Reward weight (0 = training, pays nothing). Required: every new exercise
    *  must place itself in the economy, same deal as its ExerciseIcon. */
   difficulty: Difficulty;
+  /** Extra hub chip when the name alone doesn't say what to do (parent-facing). */
+  hint?: string;
   /** Syllable exercises carry the seeding mode; first-letter leaves it undefined. */
   mode?: SyllableMode;
   /** Fill-a-syllable siblings carry which letter mode they run; others leave it undefined. */

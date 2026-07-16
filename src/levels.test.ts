@@ -32,6 +32,20 @@ import {
   readImagePool,
   buildReadImageRound,
   buildReadImageSession,
+  FIND_SOUND_LEVELS,
+  findSoundLevel,
+  findSoundPool,
+  buildFindSoundRound,
+  buildFindSoundSession,
+  findSoundPrompt,
+  findSoundSuccess,
+  TWIN_LEVELS,
+  twinLevel,
+  twinPool,
+  buildTwinRound,
+  buildTwinSession,
+  twinPrompt,
+  twinSuccess,
 } from "./levels";
 import { LETTER_WORDS, LETTER_MATCH_ALPHABET, SOUND_LETTER_BANK } from "./content";
 import type { LetterMatchKind, SpellSyllableMode } from "./types";
@@ -577,6 +591,209 @@ describe("letterMatchPrompt", () => {
     expect(letterMatchPrompt(P("A", "a", "print"), P("A", "A", "print"))).toBe(LETTER_MATCH_PROMPTS.toUpper);
     expect(letterMatchPrompt(P("A", "A", "print"), P("A", "A", "cursive"))).toBe(LETTER_MATCH_PROMPTS.toCursive);
     expect(letterMatchPrompt(P("A", "a", "cursive"), P("A", "a", "print"))).toBe(LETTER_MATCH_PROMPTS.toPrint);
+  });
+});
+
+describe("findSoundPool / findSoundLevel", () => {
+  it("clamps out-of-range levels to the ladder ends", () => {
+    expect(findSoundLevel(0)).toBe(FIND_SOUND_LEVELS[0]);
+    expect(findSoundLevel(999)).toBe(FIND_SOUND_LEVELS[FIND_SOUND_LEVELS.length - 1]);
+    expect(findSoundPool(0)).toBe(findSoundPool(1));
+  });
+
+  it("gives every level a pool big enough for its pick and its distractors", () => {
+    FIND_SOUND_LEVELS.forEach((cfg, i) => {
+      const pool = findSoundPool(i + 1);
+      expect(pool.length).toBeGreaterThanOrEqual(cfg.pick);
+      expect(pool.length).toBeGreaterThanOrEqual(cfg.distractors + 1);
+    });
+  });
+
+  it("keeps sounds AND graphies distinct within a level (no homophone tiles)", () => {
+    FIND_SOUND_LEVELS.forEach((_, i) => {
+      const pool = findSoundPool(i + 1);
+      expect(new Set(pool.map((e) => e.sound)).size).toBe(pool.length);
+      expect(new Set(pool.map((e) => e.graphy)).size).toBe(pool.length);
+    });
+  });
+
+  it("resolves every authored trap to a different-sound entry of the SAME pool", () => {
+    FIND_SOUND_LEVELS.forEach((_, i) => {
+      const pool = findSoundPool(i + 1);
+      const byGraphy = new Map(pool.map((e) => [e.graphy, e]));
+      pool.forEach((e) =>
+        (e.traps ?? []).forEach((t) => {
+          const hit = byGraphy.get(t);
+          expect(hit).toBeDefined();
+          expect(hit!.sound).not.toBe(e.sound);
+        })
+      );
+    });
+  });
+});
+
+describe("buildFindSoundRound", () => {
+  const runs = FIND_SOUND_LEVELS.flatMap((cfg, i) => {
+    const pool = findSoundPool(i + 1);
+    return pool.flatMap((target) =>
+      Array.from({ length: 12 }, () => ({
+        cfg,
+        target,
+        round: buildFindSoundRound(target, pool, cfg.distractors),
+      }))
+    );
+  });
+
+  it("offers the target plus exactly `distractors` choices, all distinct graphies", () => {
+    runs.forEach(({ cfg, target, round }) => {
+      expect(round.choices).toHaveLength(cfg.distractors + 1);
+      expect(round.choices.filter((c) => c.graphy === target.graphy)).toHaveLength(1);
+      const graphies = round.choices.map((c) => c.graphy);
+      expect(new Set(graphies).size).toBe(graphies.length);
+    });
+  });
+
+  it("never offers a distractor that SOUNDS like the answer", () => {
+    runs.forEach(({ target, round }) => {
+      round.choices
+        .filter((c) => c.graphy !== target.graphy)
+        .forEach((c) => expect(c.sound).not.toBe(target.sound));
+    });
+  });
+
+  it("prefers the authored traps as distractors when they can fill the round", () => {
+    runs
+      .filter(({ target, cfg }) => (target.traps?.length ?? 0) >= cfg.distractors)
+      .forEach(({ target, round }) => {
+        round.choices
+          .filter((c) => c.graphy !== target.graphy)
+          .forEach((c) => expect(target.traps).toContain(c.graphy));
+      });
+  });
+});
+
+describe("buildFindSoundSession", () => {
+  it("seeds pick + repeats rounds, spaced so no sound repeats back-to-back", () => {
+    FIND_SOUND_LEVELS.forEach((cfg, i) => {
+      for (let n = 0; n < 40; n++) {
+        const run = buildFindSoundSession(i + 1);
+        expect(run).toHaveLength(cfg.pick + cfg.repeats);
+        run.forEach((r, k) => {
+          if (k > 0) expect(run[k - 1].target).not.toBe(r.target);
+        });
+      }
+    });
+  });
+});
+
+describe("twinPool / twinLevel", () => {
+  it("clamps out-of-range levels to the ladder ends", () => {
+    expect(twinLevel(0)).toBe(TWIN_LEVELS[0]);
+    expect(twinLevel(999)).toBe(TWIN_LEVELS[TWIN_LEVELS.length - 1]);
+    expect(twinPool(0)).toBe(twinPool(1));
+  });
+
+  it("gives every level a pool big enough for its pick", () => {
+    TWIN_LEVELS.forEach((cfg, i) =>
+      expect(twinPool(i + 1).length).toBeGreaterThanOrEqual(cfg.pick)
+    );
+  });
+
+  it("every family has ≥2 same-sound writings — the point of the game", () => {
+    TWIN_LEVELS.forEach((_, i) =>
+      twinPool(i + 1).forEach((f) => expect(f.graphies.length).toBeGreaterThanOrEqual(2))
+    );
+  });
+
+  it("keeps family sounds distinct and graphy texts unique across a level", () => {
+    TWIN_LEVELS.forEach((_, i) => {
+      const pool = twinPool(i + 1);
+      expect(new Set(pool.map((f) => f.sound)).size).toBe(pool.length);
+      const texts = pool.flatMap((f) => f.graphies.map((g) => g.text));
+      expect(new Set(texts).size).toBe(texts.length);
+    });
+  });
+
+  it("always has enough other-family graphies to fill the intruder quota", () => {
+    TWIN_LEVELS.forEach((cfg, i) => {
+      const pool = twinPool(i + 1);
+      pool.forEach((f) => {
+        const others = pool
+          .filter((o) => o.sound !== f.sound)
+          .reduce((n, o) => n + o.graphies.length, 0);
+        expect(others).toBeGreaterThanOrEqual(cfg.distractors);
+      });
+    });
+  });
+});
+
+describe("buildTwinRound", () => {
+  const runs = TWIN_LEVELS.flatMap((cfg, i) => {
+    const pool = twinPool(i + 1);
+    return pool.flatMap((family) =>
+      Array.from({ length: 12 }, () => ({
+        cfg,
+        family,
+        round: buildTwinRound(family, pool, cfg.distractors),
+      }))
+    );
+  });
+
+  it("deals every family graphy (correct) + exactly `distractors` intruders", () => {
+    runs.forEach(({ cfg, family, round }) => {
+      expect(round.tiles).toHaveLength(family.graphies.length + cfg.distractors);
+      family.graphies.forEach((g) => {
+        const tile = round.tiles.filter((t) => t.text === g.text);
+        expect(tile).toHaveLength(1);
+        expect(tile[0].correct).toBe(true);
+        expect(tile[0].sound).toBe(family.sound);
+      });
+      expect(round.tiles.filter((t) => t.correct)).toHaveLength(family.graphies.length);
+    });
+  });
+
+  it("intruders never spell the family's sound and never duplicate a text", () => {
+    runs.forEach(({ family, round }) => {
+      round.tiles
+        .filter((t) => !t.correct)
+        .forEach((t) => expect(t.sound).not.toBe(family.sound));
+      const texts = round.tiles.map((t) => t.text);
+      expect(new Set(texts).size).toBe(texts.length);
+    });
+  });
+
+  it("gives every tile a unique id", () => {
+    runs.forEach(({ round }) => {
+      const ids = round.tiles.map((t) => t.id);
+      expect(new Set(ids).size).toBe(ids.length);
+    });
+  });
+});
+
+describe("buildTwinSession", () => {
+  it("seeds pick + repeats rounds, spaced so no family repeats back-to-back", () => {
+    TWIN_LEVELS.forEach((cfg, i) => {
+      for (let n = 0; n < 40; n++) {
+        const run = buildTwinSession(i + 1);
+        expect(run).toHaveLength(cfg.pick + cfg.repeats);
+        run.forEach((r, k) => {
+          if (k > 0) expect(run[k - 1].family).not.toBe(r.family);
+        });
+      }
+    });
+  });
+});
+
+describe("find-sound / sound-twins prompt lines", () => {
+  it("anchors the find-sound prompt to its word and celebrates with the word", () => {
+    const s = { sound: "ou", graphy: "OU", word: "hibou", emoji: "🦉" };
+    expect(findSoundPrompt(s)).toBe("ou, comme dans hibou.");
+    expect(findSoundSuccess(s)).toBe("Oui ! hibou.");
+  });
+
+  it("asks for ALL twins of a sound and celebrates each graphy's own word", () => {
+    expect(twinPrompt({ sound: "ko", graphies: [] })).toBe("Trouve tous les ko !");
+    expect(twinSuccess({ text: "CO", word: "coq", emoji: "🐓" })).toBe("Oui ! coq.");
   });
 });
 

@@ -82,6 +82,20 @@ const GLYPHS: Record<ExerciseId, { tint: string; glyph: ReactNode }> = {
       </>
     ),
   },
+  // Find the sound — the magnifier again (the "trouve" language of the hub),
+  // but the lens holds a sound: a dot radiating two waves instead of an x.
+  "find-sound": {
+    tint: "#7CB342",
+    glyph: (
+      <>
+        <circle cx={13.5} cy={14} r={6.2} {...line} />
+        <path d="M18 18.5 L23.5 24" {...line} strokeWidth={2.8} />
+        <circle cx={11} cy={14} r={1.4} fill="#fff" />
+        <path d="M13.4 11.9 a3 3 0 0 1 0 4.2" {...line} strokeWidth={1.7} />
+        <path d="M15.6 10.4 a5.2 5.2 0 0 1 0 7.2" {...line} strokeWidth={1.7} opacity={0.7} />
+      </>
+    ),
+  },
   // Complete the word — three slots, the middle piece missing (dashed).
   "fill-blank": {
     tint: "#7C6FF0",
@@ -189,6 +203,17 @@ const GLYPHS: Record<ExerciseId, { tint: string; glyph: ReactNode }> = {
   "match-script": {
     tint: "#B06AB3",
     glyph: <path d="M8 20 C 8 12, 13 11, 12.5 16 C 12 20, 15 21, 19 18 C 21 16.5, 22 15, 22.5 13" {...line} />,
+  },
+  // Sound twins — two twin tiles joined by one arc: one sound, two writings.
+  "sound-twins": {
+    tint: "#D81B60",
+    glyph: (
+      <>
+        <rect x={6.5} y={14.5} width={8} height={8} rx={2.2} fill="#fff" />
+        <rect x={17.5} y={14.5} width={8} height={8} rx={2.2} fill="#fff" opacity={0.8} />
+        <path d="M10.5 12.5 C 12 8.5, 20 8.5, 21.5 12.5" {...line} strokeWidth={2} />
+      </>
+    ),
   },
   // The syllable + intruders, mixed writings — the bullseye, shuffled.
   "spell-syllable-plus-mixed": {

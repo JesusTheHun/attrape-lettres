@@ -627,6 +627,14 @@ const SOUND_SAY = {
   pin: "pain", teau: "tôt", tue: "tu", dau: "dos", mate: "matte",
   ne: "nœud", saure: "zore", sion: "zion", sée: "zée", py: "pie",
   kan: "camp", nas: "nasse", tal: "talle",
+  // Find-the-sound / sound-twins tokens: bare prompts, tile auditions and the
+  // « Trouve tous les … ! » consigne all speak these. Same hypothesis contract
+  // as every row above — bake and LISTEN. Real-word homophones where French
+  // has one (cas, qui, quai, haie, ce, are, ire); vowel-pinned respellings
+  // where it doesn't (kô like zô/jô; oure/oire/hure read as one rime).
+  ka: "cas", ko: "kô", ki: "qui", ké: "quai",
+  è: "haie", se: "ce",
+  ar: "are", ir: "ire", ur: "hure", our: "oure", oir: "oire",
 };
 
 /** What we actually FEED the TTS for an item — which can differ from the clip's
@@ -647,6 +655,8 @@ const promptText = (it) => {
   if (prompt && say(prompt[1])) return `${say(prompt[1])}, comme dans ${prompt[2]}.`;
   const success = /^Oui ! (.+)\.$/.exec(text); // spell-sound success line
   if (success && say(success[1])) return `Oui ! ${say(success[1])}.`;
+  const twins = /^Trouve tous les (.+) !$/.exec(text); // sound-twins consigne
+  if (twins && say(twins[1])) return `Trouve tous les ${say(twins[1])} !`;
   return text;
 };
 
@@ -694,7 +704,10 @@ async function main() {
   for (const it of catalog) {
     if (it.kind === "letter") continue;
     const text = it.kind === "syllable" ? it.text.toLowerCase() : it.text;
-    const m = /^(.+?), comme dans .+\.$/.exec(text) ?? /^Oui ! (.+)\.$/.exec(text);
+    const m =
+      /^(.+?), comme dans .+\.$/.exec(text) ??
+      /^Oui ! (.+)\.$/.exec(text) ??
+      /^Trouve tous les (.+) !$/.exec(text);
     spokenTokens.add((m ? m[1] : text).toLowerCase());
   }
   for (const k of Object.keys(SOUND_SAY)) {

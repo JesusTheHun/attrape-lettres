@@ -1,4 +1,5 @@
 import {
+  BASIC_SOUNDS,
   LETTER_WORDS,
   LETTER_MATCH_ALPHABET,
   SYLLABLE_WORDS,
@@ -6,8 +7,10 @@ import {
   SPELL_SYLLABLE_WORD_NAMES,
   SOUND_TARGETS,
   SOUND_LETTER_BANK,
+  TWIN_FAMILIES,
 } from "./content";
 import type {
+  BasicSound,
   Difficulty,
   ExerciseId,
   ExerciseMeta,
@@ -24,6 +27,8 @@ import type {
   SyllableMode,
   SyllableTier,
   SyllableWord,
+  TwinFamily,
+  TwinGraphy,
 } from "./types";
 
 /* -------------------------------------------------------------------------- */
@@ -345,6 +350,212 @@ export function soundSuccess(t: SoundTarget): string {
 }
 
 /* -------------------------------------------------------------------------- */
+/* Find-the-sound — 4 explicit levels                                         */
+/* The 4yo rung: hear « <sound>, comme dans <mot> », tap the graphy. Pools are */
+/* authored per level (BASIC_SOUNDS); only pick/repeats/distractors live here. */
+/* -------------------------------------------------------------------------- */
+
+export interface FindSoundLevel {
+  /** Distinct sounds drawn from the level pool at the start of a run. */
+  pick: number;
+  /** How many of those come back a second time (spaced apart). */
+  repeats: number;
+  /** Wrong-graphy tiles shown beside the correct one. */
+  distractors: number;
+}
+
+export const FIND_SOUND_LEVELS: FindSoundLevel[] = [
+  { pick: 5, repeats: 2, distractors: 1 },
+  { pick: 6, repeats: 3, distractors: 2 },
+  { pick: 6, repeats: 3, distractors: 2 },
+  { pick: 7, repeats: 3, distractors: 2 },
+];
+
+export const FIND_SOUND_LEVEL_COUNT = FIND_SOUND_LEVELS.length;
+
+function findSoundIdx(level: number): number {
+  return Math.min(Math.max(level, 1), FIND_SOUND_LEVEL_COUNT) - 1;
+}
+
+export function findSoundLevel(level: number): FindSoundLevel {
+  return FIND_SOUND_LEVELS[findSoundIdx(level)];
+}
+
+export function findSoundPool(level: number): BasicSound[] {
+  return BASIC_SOUNDS[findSoundIdx(level)];
+}
+
+export interface FindSoundRound {
+  target: BasicSound;
+  /** The target graphy plus distractor graphies, shuffled. */
+  choices: BasicSound[];
+}
+
+/**
+ * One round: the target + `distractors` other pool entries. A distractor is
+ * never a homophone of the answer (same `sound`), or a correct ear would be
+ * told "wrong". Authored `traps` (confusable neighbours) are preferred; the
+ * rest of the pool fills any remainder.
+ */
+export function buildFindSoundRound(
+  target: BasicSound,
+  pool: BasicSound[],
+  distractors: number
+): FindSoundRound {
+  const candidates = pool.filter(
+    (e) => e.sound !== target.sound && e.graphy !== target.graphy
+  );
+  const byGraphy = new Map(candidates.map((e) => [e.graphy, e]));
+  const traps = shuffle(target.traps ?? [])
+    .map((g) => byGraphy.get(g))
+    .filter((e): e is BasicSound => e !== undefined);
+  const rest = shuffle(candidates.filter((e) => !traps.includes(e)));
+  const picked: BasicSound[] = [];
+  const seen = new Set([target.graphy]);
+  for (const e of [...traps, ...rest]) {
+    if (picked.length >= distractors) break;
+    if (seen.has(e.graphy)) continue;
+    seen.add(e.graphy);
+    picked.push(e);
+  }
+  return { target, choices: shuffle([target, ...picked]) };
+}
+
+export function buildFindSoundSession(level: number): FindSoundRound[] {
+  const cfg = findSoundLevel(level);
+  const pool = findSoundPool(level);
+  return repeatSession(pool, cfg.pick, cfg.repeats).map((t) =>
+    buildFindSoundRound(t, pool, cfg.distractors)
+  );
+}
+
+/** What the child hears: the sound anchored to its word — never the spelling. */
+export function findSoundPrompt(t: BasicSound): string {
+  return `${t.sound}, comme dans ${t.word}.`;
+}
+
+/** The success line once the graphy is tapped. */
+export function findSoundSuccess(t: BasicSound): string {
+  return `Oui ! ${t.word}.`;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Sound-twins — 4 explicit levels                                            */
+/* Hear one sound, find ALL the tiles that write it. Families are authored     */
+/* (TWIN_FAMILIES); intruders come from the level's OTHER families, so every   */
+/* tile the child can audition has a real sound and a real anchor word.        */
+/* -------------------------------------------------------------------------- */
+
+export interface TwinLevel {
+  /** Distinct families drawn from the level pool at the start of a run. */
+  pick: number;
+  /** How many of those come back a second time (spaced apart). */
+  repeats: number;
+  /** Wrong-family graphy tiles mixed into the round. */
+  distractors: number;
+}
+
+export const TWIN_LEVELS: TwinLevel[] = [
+  { pick: 5, repeats: 2, distractors: 2 },
+  { pick: 5, repeats: 2, distractors: 2 },
+  { pick: 4, repeats: 2, distractors: 2 },
+  { pick: 5, repeats: 2, distractors: 3 },
+];
+
+export const TWIN_LEVEL_COUNT = TWIN_LEVELS.length;
+
+function twinIdx(level: number): number {
+  return Math.min(Math.max(level, 1), TWIN_LEVEL_COUNT) - 1;
+}
+
+export function twinLevel(level: number): TwinLevel {
+  return TWIN_LEVELS[twinIdx(level)];
+}
+
+export function twinPool(level: number): TwinFamily[] {
+  return TWIN_FAMILIES[twinIdx(level)];
+}
+
+export interface TwinTile {
+  id: number;
+  /** Uppercase graphy shown on the tile. */
+  text: string;
+  /** The sound THIS tile's own family spells — what "Écouter" speaks. */
+  sound: string;
+  /** This graphy's anchor word (success line for correct tiles). */
+  word: string;
+  emoji: string;
+  /** True = belongs to the round's family; false = intruder. */
+  correct: boolean;
+}
+
+export interface TwinRound {
+  family: TwinFamily;
+  /** Family graphies + intruders, shuffled. */
+  tiles: TwinTile[];
+}
+
+let _twinTileId = 0;
+
+/**
+ * One round: every graphy of `family` (all must be found) + `distractors`
+ * graphies from the level's other families. Intruders never spell the target
+ * sound (families within a level have distinct sounds), and tile texts are
+ * deduped so no two tiles read the same.
+ */
+export function buildTwinRound(
+  family: TwinFamily,
+  pool: TwinFamily[],
+  distractors: number
+): TwinRound {
+  const others = shuffle(
+    pool
+      .filter((f) => f.sound !== family.sound)
+      .flatMap((f) => f.graphies.map((g) => ({ ...g, sound: f.sound })))
+  );
+  const picked: (TwinGraphy & { sound: string })[] = [];
+  const seen = new Set(family.graphies.map((g) => g.text));
+  for (const g of others) {
+    if (picked.length >= distractors) break;
+    if (seen.has(g.text)) continue;
+    seen.add(g.text);
+    picked.push(g);
+  }
+  const tiles = shuffle([
+    ...family.graphies.map((g) => ({ ...g, sound: family.sound, correct: true })),
+    ...picked.map((g) => ({ ...g, correct: false })),
+  ]).map(
+    (t): TwinTile => ({
+      id: _twinTileId++,
+      text: t.text,
+      sound: t.sound,
+      word: t.word,
+      emoji: t.emoji,
+      correct: t.correct,
+    })
+  );
+  return { family, tiles };
+}
+
+export function buildTwinSession(level: number): TwinRound[] {
+  const cfg = twinLevel(level);
+  const pool = twinPool(level);
+  return repeatSession(pool, cfg.pick, cfg.repeats).map((f) =>
+    buildTwinRound(f, pool, cfg.distractors)
+  );
+}
+
+/** What the child hears at round start — the sound to hunt, never a spelling. */
+export function twinPrompt(f: TwinFamily): string {
+  return `Trouve tous les ${f.sound} !`;
+}
+
+/** Success line per found tile — anchors THIS spelling to its own word. */
+export function twinSuccess(g: TwinGraphy): string {
+  return `Oui ! ${g.word}.`;
+}
+
+/* -------------------------------------------------------------------------- */
 /* Fill-a-syllable — one 4-level ladder, shared by all 3 siblings.             */
 /* The word list is level == index (content); only the tray/gap count changes  */
 /* per mode. Level 1 is deliberately 5 words for a quick, repeated win.         */
@@ -563,6 +774,11 @@ function spellIntruders(
 // the hub progression so the point-optimal strategy is climbing, not farming.
 export const EXERCISES: ExerciseMeta[] = [
   { id: "first-letter", name: "La première lettre", emoji: "🔤", levelCount: FIRST_LETTER_LEVELS.length, difficulty: 0 },
+  // Trouve le son sits this early with difficulty 1 ON PURPOSE (a deliberate
+  // bump in the gradient): it's the youngest player's exercise, and 1 is what
+  // lets a pre-reader earn shop stars at all. Farming still doesn't pay — the
+  // bonus needs first-try rounds, and spam only ever gets the bare curve.
+  { id: "find-sound", name: "Trouve le son", emoji: "👂", levelCount: FIND_SOUND_LEVEL_COUNT, difficulty: 1, hint: "Écoute le son, tape son écriture" },
   { id: "fill-blank", name: "Complète le mot", emoji: "🧩", levelCount: SYLLABLE_LEVEL_COUNT, mode: "fill-blank", difficulty: 0 },
   { id: "order-syllables", name: "Range les syllabes", emoji: "🔀", levelCount: SYLLABLE_LEVEL_COUNT, mode: "order", difficulty: 1 },
   { id: "find-intruder", name: "Trouve l’intrus", emoji: "🕵️", levelCount: SYLLABLE_LEVEL_COUNT, mode: "order-distractor", difficulty: 1 },
@@ -573,6 +789,9 @@ export const EXERCISES: ExerciseMeta[] = [
   { id: "read-image", name: "Lis le mot", emoji: "🖼️", levelCount: READ_IMAGE_LEVEL_COUNT, difficulty: 2 },
   { id: "match-case", name: "Grande et petite lettre", emoji: "🔠", levelCount: LETTER_MATCH_LEVEL_COUNT, match: "case", difficulty: 1 },
   { id: "match-script", name: "Lettres attachées", emoji: "✍️", levelCount: LETTER_MATCH_LEVEL_COUNT, match: "script", difficulty: 2 },
+  // The mapping capstone of the sound ladder (find-sound = recognition,
+  // spell-sound = production): one heard sound, MANY written forms to find.
+  { id: "sound-twins", name: "Les syllabes jumelles", emoji: "👯", levelCount: TWIN_LEVEL_COUNT, difficulty: 3, hint: "Trouve toutes les écritures du son" },
   // The "écritures mêlées" twins: the two intruder spellers again, but now the
   // word takes one of three writings and the tray mixes forms — same letter in
   // the wrong case/script is a trap. They come LAST, after the child has met

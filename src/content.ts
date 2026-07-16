@@ -1,4 +1,4 @@
-import type { LetterWord, SoundTarget, SyllableWord } from "./types";
+import type { BasicSound, LetterWord, SoundTarget, SyllableWord, TwinFamily } from "./types";
 // Dedicated illustrations for words whose closest emoji is wrong (see WordIcon):
 // no glyph is a true igloo/skirt, and 🧁/🛌 read as cupcake/person-in-bed.
 import iglooImg from "./img/igloo.svg";
@@ -310,6 +310,234 @@ export const SOUND_TARGETS: SoundTarget[][] = [
     { sound: "si", spelling: ["C", "I"], word: "citron", emoji: "🍋" },
     { sound: "so", spelling: ["S", "O"], word: "soleil", emoji: "☀️" },
     { sound: "si", spelling: ["S", "I"], word: "singe", emoji: "🐒" },
+  ],
+];
+
+/**
+ * Find-the-sound dataset — one authored pool per level (index = level - 1).
+ * Recognition, not production: the child hears « <sound>, comme dans <word> »
+ * and taps the graphy. Sounds within one level are all DISTINCT (the round
+ * builder also enforces it), so a distractor can never be a homophone of the
+ * answer. Words are chosen to reuse already-baked "comme dans" clips from
+ * SOUND_TARGETS wherever the same (sound, word) pair exists.
+ *
+ *   1 — Les voyelles + ou/oi : sounds a pre-reader owns; 2 tiles.
+ *   2 — Les grandes équipes : nasals, eu/au and CH, each from a real word.
+ *   3 — Les sons en R : your or/ar/our closed rimes (fort, canard, ours…).
+ *   4 — Les sons voisins : same tiles, but the distractors are the authored
+ *       confusable neighbours (`traps`) — OU vs ON, AN vs IN — pure ear work.
+ */
+export const BASIC_SOUNDS: BasicSound[][] = [
+  // Level 1 — single vowels + the two loudest teams.
+  [
+    { sound: "a", graphy: "A", word: "avion", emoji: "✈️" },
+    { sound: "i", graphy: "I", word: "île", emoji: "🏝️" },
+    { sound: "o", graphy: "O", word: "orange", emoji: "🍊" },
+    { sound: "u", graphy: "U", word: "lune", emoji: "🌙" },
+    { sound: "é", graphy: "É", word: "école", emoji: "🏫" },
+    { sound: "ou", graphy: "OU", word: "hibou", emoji: "🦉" },
+    { sound: "oi", graphy: "OI", word: "roi", emoji: "👑" },
+  ],
+  // Level 2 — the big vowel teams, nasals and CH.
+  [
+    { sound: "ou", graphy: "OU", word: "loup", emoji: "🐺" },
+    { sound: "oi", graphy: "OI", word: "étoile", emoji: "⭐" },
+    { sound: "on", graphy: "ON", word: "pont", emoji: "🌉" },
+    { sound: "an", graphy: "AN", word: "gant", emoji: "🧤" },
+    { sound: "in", graphy: "IN", word: "lapin", emoji: "🐰" },
+    { sound: "eu", graphy: "EU", word: "feu", emoji: "🔥" },
+    { sound: "au", graphy: "AU", word: "auto", emoji: "🚗" },
+    { sound: "che", graphy: "CH", word: "cheval", emoji: "🐴" },
+  ],
+  // Level 3 — vowel + R rimes, with two team revisits.
+  [
+    { sound: "or", graphy: "OR", word: "tortue", emoji: "🐢" },
+    { sound: "ar", graphy: "AR", word: "canard", emoji: "🦆" },
+    { sound: "our", graphy: "OUR", word: "ours", emoji: "🐻" },
+    { sound: "oir", graphy: "OIR", word: "soir", emoji: "🌛" },
+    { sound: "ir", graphy: "IR", word: "rire", emoji: "😄" },
+    { sound: "ur", graphy: "UR", word: "mur", emoji: "🧱" },
+    { sound: "ou", graphy: "OU", word: "hibou", emoji: "🦉" },
+    { sound: "on", graphy: "ON", word: "pont", emoji: "🌉" },
+  ],
+  // Level 4 — neighbour sounds: the distractors are the authored confusions.
+  [
+    { sound: "ou", graphy: "OU", word: "loup", emoji: "🐺", traps: ["ON", "OI"] },
+    { sound: "on", graphy: "ON", word: "mouton", emoji: "🐑", traps: ["OU", "AN"] },
+    { sound: "oi", graphy: "OI", word: "poisson", emoji: "🐟", traps: ["OU", "ON"] },
+    { sound: "an", graphy: "AN", word: "orange", emoji: "🍊", traps: ["IN", "ON"] },
+    { sound: "in", graphy: "IN", word: "sapin", emoji: "🎄", traps: ["AN", "ON"] },
+    { sound: "au", graphy: "AU", word: "jaune", emoji: "💛", traps: ["OU", "EU"] },
+    { sound: "eu", graphy: "EU", word: "bleu", emoji: "🔵", traps: ["AU", "OU"] },
+  ],
+];
+
+/**
+ * Sound-twins dataset — one authored pool of families per level. A family is
+ * one SOUND and every written form the level teaches for it; intruder tiles
+ * come from the level's other families (the builder never mixes homophones,
+ * and graphy texts are unique across one level's families).
+ *
+ *   1 — c/k/qu et f/ph : the sound is trivially the same, the forms are loud.
+ *   2 — o/au/eau et é/er/ez : the classic vowel-team spellings.
+ *   3 — Les nasales + è : an/en/am/em, on/om, in/ain/ein, è/ai/ei/et.
+ *   4 — Les lettres qui changent : ç, c-doux, qu — the letter alone lies.
+ */
+export const TWIN_FAMILIES: TwinFamily[][] = [
+  // Level 1 — /k/ and /f/ written several ways.
+  [
+    {
+      sound: "ka",
+      graphies: [
+        { text: "CA", word: "cadeau", emoji: "🎁" },
+        { text: "KA", word: "kayak", emoji: "🛶" },
+        { text: "QUA", word: "quatre", emoji: "4️⃣" },
+      ],
+    },
+    {
+      sound: "ko",
+      graphies: [
+        { text: "CO", word: "coq", emoji: "🐓" },
+        { text: "KO", word: "koala", emoji: "🐨" },
+      ],
+    },
+    {
+      sound: "ki",
+      graphies: [
+        { text: "QUI", word: "qui", emoji: "❓" },
+        { text: "KI", word: "kiwi", emoji: "🥝" },
+      ],
+    },
+    {
+      sound: "fa",
+      graphies: [
+        { text: "FA", word: "farine", emoji: "🌾" },
+        { text: "PHA", word: "pharmacie", emoji: "💊" },
+      ],
+    },
+    {
+      sound: "fo",
+      graphies: [
+        { text: "FO", word: "forêt", emoji: "🌳" },
+        { text: "PHO", word: "photo", emoji: "📷" },
+      ],
+    },
+  ],
+  // Level 2 — the /o/ and /é/ vowel teams, bare and inside syllables.
+  [
+    {
+      sound: "o",
+      graphies: [
+        { text: "O", word: "moto", emoji: "🏍️" },
+        { text: "AU", word: "auto", emoji: "🚗" },
+        { text: "EAU", word: "bateau", emoji: "⛵" },
+      ],
+    },
+    {
+      sound: "é",
+      graphies: [
+        { text: "É", word: "vélo", emoji: "🚲" },
+        { text: "ER", word: "goûter", emoji: "🍪" },
+        { text: "EZ", word: "nez", emoji: "👃" },
+      ],
+    },
+    {
+      sound: "so",
+      graphies: [
+        { text: "SO", word: "soleil", emoji: "☀️" },
+        { text: "SEAU", word: "seau", emoji: "🪣" },
+        { text: "SAU", word: "saut", emoji: "🤸" },
+      ],
+    },
+    {
+      sound: "to",
+      graphies: [
+        { text: "TO", word: "tomate", emoji: "🍅" },
+        { text: "TEAU", word: "gâteau", emoji: "🍰" },
+      ],
+    },
+    {
+      sound: "bo",
+      graphies: [
+        { text: "BO", word: "robot", emoji: "🤖" },
+        { text: "BEAU", word: "corbeau", emoji: "🐦‍⬛" },
+      ],
+    },
+  ],
+  // Level 3 — nasals and è: several letters, one sound, many spellings.
+  [
+    {
+      sound: "an",
+      graphies: [
+        { text: "AN", word: "gant", emoji: "🧤" },
+        { text: "EN", word: "dent", emoji: "🦷" },
+        { text: "AM", word: "chambre", emoji: "🛏️" },
+        { text: "EM", word: "tempête", emoji: "🌪️" },
+      ],
+    },
+    {
+      sound: "on",
+      graphies: [
+        { text: "ON", word: "pont", emoji: "🌉" },
+        { text: "OM", word: "pompier", emoji: "🚒" },
+      ],
+    },
+    {
+      sound: "in",
+      graphies: [
+        { text: "IN", word: "lapin", emoji: "🐰" },
+        { text: "AIN", word: "pain", emoji: "🥖" },
+        { text: "EIN", word: "peinture", emoji: "🎨" },
+      ],
+    },
+    {
+      sound: "è",
+      graphies: [
+        { text: "È", word: "chèvre", emoji: "🐐" },
+        { text: "AI", word: "fraise", emoji: "🍓" },
+        { text: "EI", word: "neige", emoji: "❄️" },
+        { text: "ET", word: "jouet", emoji: "🧸" },
+      ],
+    },
+  ],
+  // Level 4 — the softeners: the same letter reads differently, the sound wins.
+  [
+    {
+      sound: "si",
+      graphies: [
+        { text: "SI", word: "singe", emoji: "🐒" },
+        { text: "CI", word: "citron", emoji: "🍋" },
+      ],
+    },
+    {
+      sound: "sa",
+      graphies: [
+        { text: "SA", word: "sac", emoji: "🎒" },
+        { text: "ÇA", word: "ça", emoji: "👉" },
+      ],
+    },
+    {
+      sound: "se",
+      graphies: [
+        { text: "SE", word: "semaine", emoji: "📅" },
+        { text: "CE", word: "cerise", emoji: "🍒" },
+      ],
+    },
+    {
+      sound: "ké",
+      graphies: [
+        { text: "KÉ", word: "képi", emoji: "🧢" },
+        { text: "QUAI", word: "quai", emoji: "🚉" },
+      ],
+    },
+    {
+      sound: "ka",
+      graphies: [
+        { text: "CA", word: "cadeau", emoji: "🎁" },
+        { text: "KA", word: "kayak", emoji: "🛶" },
+        { text: "QUA", word: "quatre", emoji: "4️⃣" },
+      ],
+    },
   ],
 ];
 
