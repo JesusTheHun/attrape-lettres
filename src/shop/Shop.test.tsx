@@ -74,26 +74,27 @@ const buyViaTryOn = (tile: () => HTMLElement) => {
 };
 
 describe("Shop — try-on before buy", () => {
-  it("trying on shows the buy bar but spends nothing", () => {
+  it("trying on opens the dialog but spends nothing", () => {
     renderShop();
 
     fireEvent.click(curlyTail());
 
-    // In the cart: marked as trying, wallet untouched, nothing equipped yet.
+    // The try-on dialog is up: wallet untouched, nothing equipped yet.
+    expect(screen.getByRole("dialog", { name: "Essayer Queue bouclée" })).toBeInTheDocument();
     expect(curlyTail()).toHaveAccessibleName(/en train d'essayer/);
     expect(screen.getByLabelText("60 points")).toBeInTheDocument();
     expect(curlyTail()).not.toHaveAccessibleName(/équipé/);
     expect(buyButton()).toBeEnabled();
   });
 
-  it("the buy button spends, equips, and empties the cart", () => {
+  it("the buy button spends, equips, and closes the dialog", () => {
     renderShop();
 
     buyViaTryOn(curlyTail);
 
     expect(curlyTail()).toHaveAccessibleName(/équipé/);
     expect(screen.getByLabelText("20 points")).toBeInTheDocument(); // 60 - 40
-    expect(screen.queryByRole("button", { name: /^Acheter/ })).toBeNull();
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it("an unaffordable item can be tried on but not bought", () => {
@@ -112,6 +113,7 @@ describe("Shop — try-on before buy", () => {
     fireEvent.click(curlyTail());
     fireEvent.click(screen.getByRole("button", { name: "Ne pas acheter" }));
 
+    expect(screen.queryByRole("dialog")).toBeNull();
     expect(curlyTail()).not.toHaveAccessibleName(/en train d'essayer/);
     expect(screen.getByLabelText("60 points")).toBeInTheDocument();
   });

@@ -1,10 +1,10 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { useAudio } from "../hooks/useAudio";
 import { applyOption, useProfile } from "../hooks/useProfile";
 import { CATALOG, DEFAULT_LOOKS, type DefaultLook } from "../mascot/catalog";
 import { Mascot } from "../mascot/Mascot";
 import { loadShopSeen, saveShopSeen } from "../storage";
-import type { CustomizationOption, Species } from "../types";
+import type { CustomizationOption, MascotConfig, Species } from "../types";
 import { SHOP_BOUGHT, SHOP_GREW, SHOP_NEED_MORE, shopCostLine } from "../vo/utterances";
 import { GrowthCard } from "./GrowthCard";
 import { ItemPreview } from "./ItemPreview";
@@ -14,10 +14,10 @@ import { growBurst, pop, press, reducedMotion, starFlight } from "./anim";
 
 /* -------------------------------------------------------------------------- */
 /* Shop / dressing-room — the spending area.                                    */
-/* Buying is a two-step ceremony a 6yo can follow: tapping an unowned tile is a */
-/* FREE try-on (the live mascot wears it, nothing is spent, VO says the price), */
-/* and only the big "Acheter · ⭐ N" button under the mascot spends. Owned      */
-/* items equip on tap, as before. Reads CATALOG + the wallet; mutates only via  */
+/* Buying is a two-step ceremony a 6yo can follow: tapping an unowned tile      */
+/* opens a TRY-ON DIALOG (the mascot wears it in the card, nothing is spent,   */
+/* VO says the price), and only its big "Acheter · ⭐ N" button spends. Owned  */
+/* items equip on tap, no dialog. Reads CATALOG + the wallet; mutates only via  */
 /* useProfile().buy / setConfig. Never touches storage. No hard errors.         */
 /* -------------------------------------------------------------------------- */
 
@@ -132,6 +132,115 @@ function TileGroups({ groups }: { groups: TileGroup[] }) {
   );
 }
 
+/* The try-on dialog — the ONE place a purchase is decided. Tapping an unowned
+ * tile opens it: the mascot wears the item IN the card (the shop behind stays
+ * as-is), the price sits on the buy button, and the meter shows the gap when
+ * the wallet is short. Backdrop tap / Échap = "non merci". Nothing here spends;
+ * the parent's confirmBuy does. */
+function TryOnDialog({
+  option,
+  config,
+  balance,
+  sinceBalance,
+  affordable,
+  buyRef,
+  onBuy,
+  onCancel,
+}: {
+  option: CustomizationOption;
+  config: MascotConfig;
+  balance: number;
+  sinceBalance: number;
+  affordable: boolean;
+  buyRef: RefObject<HTMLButtonElement>;
+  onBuy: () => void;
+  onCancel: () => void;
+}) {
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  // Mount ceremony: the card pops in, takes focus, and pins the page scroll.
+  useEffect(() => {
+    pop(cardRef.current);
+    cardRef.current?.focus();
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-5"
+      style={{ background: "rgba(74,48,24,0.45)" }}
+      onClick={onCancel}
+    >
+      <div
+        ref={cardRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Essayer ${option.name}`}
+        tabIndex={-1}
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") onCancel();
+        }}
+        className="flex w-full max-w-sm flex-col items-center gap-3 rounded-3xl p-6 outline-none"
+        style={{ background: STAGE, boxShadow: "0 24px 60px rgba(0,0,0,0.35)", fontFamily: ROUNDED }}
+      >
+        {/* The friend wears the item HERE — trying is the dialog's whole point. */}
+        <div className="drop-shadow-lg">
+          <Mascot config={applyOption(config, option)} mood="idle" size={150} />
+        </div>
+        <p className="text-xl font-black" style={{ color: INK }}>
+          {option.name}
+        </p>
+
+        <div className="flex w-full items-center justify-center gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            aria-label="Ne pas acheter"
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-xl font-black shadow active:scale-95 [touch-action:manipulation]"
+            style={{ background: "rgba(255,255,255,0.9)", color: "#9A7A5A", border: "none" }}
+          >
+            ✕
+          </button>
+          <button
+            ref={buyRef}
+            type="button"
+            disabled={!affordable}
+            onPointerDown={() => press(buyRef.current)}
+            onClick={onBuy}
+            aria-label={
+              affordable
+                ? `Acheter ${option.name} pour ${option.cost} étoiles`
+                : `Pas encore assez d'étoiles pour ${option.name}`
+            }
+            className="rounded-full px-6 py-3 text-lg font-black shadow [touch-action:manipulation] [-webkit-tap-highlight-color:transparent]"
+            style={{
+              background: affordable ? "#FFD54F" : "rgba(255,255,255,0.7)",
+              color: affordable ? "#4A3B00" : "#B8A98E",
+              border: "none",
+              cursor: affordable ? "pointer" : "default",
+              boxShadow: affordable ? "0 6px 0 rgba(0,0,0,0.12)" : "none",
+            }}
+          >
+            {affordable ? `Acheter · ⭐ ${option.cost}` : `⭐ ${option.cost} · pas encore`}
+          </button>
+        </div>
+
+        {/* Saving up: the meter shows how close the wallet is — no maths. */}
+        {!affordable && (
+          <div className="w-4/5">
+            <SavingsMeter cost={option.cost} balance={balance} since={sinceBalance} height={12} />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* The mascot's factory look for one slot, shown as an ordinary ALREADY-OWNED
  * tile (its real name, "À toi" / "Équipé ✓") — never "reset/default" jargon.
  * Selecting it clears the slot, so the rig falls back to this exact look. */
@@ -206,29 +315,31 @@ export function Shop({ onBack }: { onBack: () => void }) {
   // How many stars fly wallet→mascot on a purchase: pricier = more of a shower.
   const flightSize = (cost: number) => Math.min(8, Math.max(3, Math.round(cost / 10)));
 
-  /* The try-on "cart": at most ONE unowned option, worn by the preview mascot
+  /* The try-on "cart": at most ONE unowned option, shown worn in the dialog
    * but NOT bought. Any real config change (equip, buy, factory look) clears it. */
   const [cart, setCart] = useState<CustomizationOption | null>(null);
   const cartAffordable = cart !== null && balance >= cart.cost;
-  const shownConfig = cart ? applyOption(config, cart) : config;
 
   const forMe = CATALOG.filter((o) => o.species === config.species);
   const defaults = DEFAULT_LOOKS[config.species];
 
-  // Free try-on: dress the preview, say the price. Nothing is spent here.
+  // Free try-on: open the dialog, say the price. Nothing is spent here.
   const tryOn = (o: CustomizationOption) => {
     audio.unlock();
+    audio.pop();
     setCart(o);
-    pop(previewRef.current);
     void audio.say(balance >= o.cost ? shopCostLine(o.cost) : `${shopCostLine(o.cost)} ${SHOP_NEED_MORE}`);
   };
 
-  // The ONLY place shop items are paid for: the big button under the mascot.
+  /* The ONLY place shop items are paid for: the dialog's buy button. The dialog
+   * closes and the stars fly from the tapped button to the HEADER mascot — it
+   * survives the unmount, so the celebration lands on the friend now wearing
+   * the item (rects are captured synchronously; the flight layer lives on body). */
   const confirmBuy = () => {
     if (!cart) return;
     audio.unlock();
     if (!buy(cart)) return; // wallet raced empty — soft no-op, never an error
-    starFlight(walletRef.current, previewRef.current, flightSize(cart.cost));
+    starFlight(buyRef.current ?? walletRef.current, previewRef.current, flightSize(cart.cost));
     pop(previewRef.current);
     audio.success();
     void audio.say(SHOP_BOUGHT);
@@ -237,8 +348,8 @@ export function Shop({ onBack }: { onBack: () => void }) {
 
   const cancelTry = () => {
     audio.unlock();
+    audio.pop();
     setCart(null);
-    pop(previewRef.current);
   };
 
   // Colours & style variants just apply (free re-apply once owned).
@@ -392,60 +503,29 @@ export function Shop({ onBack }: { onBack: () => void }) {
           </div>
         </div>
 
-        {/* The live preview wears the cart item during a try-on (shownConfig),
-         * so a kid SEES the item on their friend before deciding to buy. */}
+        {/* The header friend is the REAL look — what's owned and worn. Trying
+         * on happens in the dialog, so this never flickers with maybes. */}
         <div ref={previewRef} className="drop-shadow-lg">
-          <Mascot config={shownConfig} mood="idle" size={128} />
+          <Mascot config={config} mood="idle" size={128} />
         </div>
 
-        {cart ? (
-          <div className="flex w-full max-w-sm flex-col items-center gap-2">
-            <div className="flex w-full items-center justify-center gap-2">
-              <button
-                type="button"
-                onClick={cancelTry}
-                aria-label="Ne pas acheter"
-                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-xl font-black shadow active:scale-95 [touch-action:manipulation]"
-                style={{ background: "rgba(255,255,255,0.9)", color: "#9A7A5A", border: "none" }}
-              >
-                ✕
-              </button>
-              <button
-                ref={buyRef}
-                type="button"
-                disabled={!cartAffordable}
-                onPointerDown={() => press(buyRef.current)}
-                onClick={confirmBuy}
-                aria-label={
-                  cartAffordable
-                    ? `Acheter ${cart.name} pour ${cart.cost} étoiles`
-                    : `Pas encore assez d'étoiles pour ${cart.name}`
-                }
-                className="rounded-full px-6 py-3 text-lg font-black shadow [touch-action:manipulation] [-webkit-tap-highlight-color:transparent]"
-                style={{
-                  background: cartAffordable ? "#FFD54F" : "rgba(255,255,255,0.7)",
-                  color: cartAffordable ? "#4A3B00" : "#B8A98E",
-                  border: "none",
-                  cursor: cartAffordable ? "pointer" : "default",
-                  boxShadow: cartAffordable ? "0 6px 0 rgba(0,0,0,0.12)" : "none",
-                }}
-              >
-                {cartAffordable ? `Acheter · ⭐ ${cart.cost}` : `⭐ ${cart.cost} · pas encore`}
-              </button>
-            </div>
-            {/* Saving up: the meter shows how close the wallet is — no maths. */}
-            {!cartAffordable && (
-              <div className="w-4/5">
-                <SavingsMeter cost={cart.cost} balance={balance} since={sinceBalance} height={12} />
-              </div>
-            )}
-          </div>
-        ) : (
-          <p className="text-sm font-bold" style={{ color: "#7A5A3A" }}>
-            Habille ton copain !
-          </p>
-        )}
+        <p className="text-sm font-bold" style={{ color: "#7A5A3A" }}>
+          Habille ton copain !
+        </p>
       </header>
+
+      {cart && (
+        <TryOnDialog
+          option={cart}
+          config={config}
+          balance={balance}
+          sinceBalance={sinceBalance}
+          affordable={cartAffordable}
+          buyRef={buyRef}
+          onBuy={confirmBuy}
+          onCancel={cancelTry}
+        />
+      )}
 
       <div className="flex w-full flex-col gap-5 px-5">
         {/* Yours first: dressing what you own is the everyday action. */}
