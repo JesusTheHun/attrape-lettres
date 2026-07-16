@@ -76,6 +76,8 @@ export const CATALOG: CustomizationOption[] = [
   accessory(ACCESSORY.unicorn.ribbon, "unicorn", "Nœud", "🎀", 45),
   accessory(ACCESSORY.unicorn.flowerCrown, "unicorn", "Couronne de fleurs", "🌸", 95, 2),
   accessory(ACCESSORY.unicorn.starClip, "unicorn", "Arc-en-ciel magique", "🌈", 200, 4),
+  accessory(ACCESSORY.unicorn.swimsuit, "unicorn", "Maillot de bain", "🩱", 60),
+  accessory(ACCESSORY.unicorn.swimRing, "unicorn", "Bouée", "🛟", 75),
 
   /* ---- Cat ----------------------------------------------------------- */
   color("cat", CA.body, "gris", "#C9CCD6", "Pelage gris", "🩶", 18),
@@ -93,6 +95,8 @@ export const CATALOG: CustomizationOption[] = [
   accessory(ACCESSORY.cat.bow, "cat", "Nœud", "🎀", 45),
   accessory(ACCESSORY.cat.bellCollar, "cat", "Collier grelot", "🔔", 55),
   accessory(ACCESSORY.cat.partyHat, "cat", "Chapeau de fête", "🎉", 200, 4),
+  accessory(ACCESSORY.cat.swimsuit, "cat", "Maillot de bain", "🩱", 60),
+  accessory(ACCESSORY.cat.swimRing, "cat", "Bouée", "🛟", 75),
 
   /* ---- Fox ----------------------------------------------------------- */
   color("fox", FO.body, "roux", "#E96B4A", "Pelage roux", "🍂", 18),
@@ -108,6 +112,8 @@ export const CATALOG: CustomizationOption[] = [
   accessory(ACCESSORY.fox.scarf, "fox", "Écharpe", "🧣", 45),
   accessory(ACCESSORY.fox.beanie, "fox", "Bonnet", "🧢", 60),
   accessory(ACCESSORY.fox.boots, "fox", "Bottes", "🥾", 200, 4),
+  accessory(ACCESSORY.fox.swimsuit, "fox", "Maillot de bain", "🩱", 60),
+  accessory(ACCESSORY.fox.swimRing, "fox", "Bouée", "🛟", 75),
 ];
 
 /**

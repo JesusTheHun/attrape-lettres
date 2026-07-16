@@ -2,7 +2,7 @@ import type { RigProps } from "./growth";
 import { INK, pick } from "./growth";
 import { accessoryAnchors } from "./anchors";
 import { COLOR_SLOT, STYLE_SLOT, ACCESSORY } from "./ids";
-import { Aura, Bow, Cheeks, Crown, Eyes, Flower, FoldedLegs, GroundGlow, Halo, Leg, Mouth, Plume, Sparkles, fourStar } from "./parts";
+import { Aura, Bow, Cheeks, Crown, Eyes, Flower, FoldedLegs, GroundGlow, Halo, Leg, Mouth, Plume, Sparkles, SwimRing, Swimsuit, fourStar } from "./parts";
 
 /**
  * Unicorn — "Céleste" timeline. Every stade 3→9 adds ONE clearly visible,
@@ -155,6 +155,9 @@ export function Unicorn({ config, layout, stage, mood, uid, preview }: RigProps)
       {spec.ground && <GroundGlow id={`${uid}-ground`} cx={50} y={layout.feetY + 2} rx={bodyRX + 20} color="#FFE29A" opacity={0.9} />}
       {spec.aura > 0 && <Aura id={`${uid}-aura`} cx={bodyCX} cy={bodyCY - 2} r={bodyRX + 24} color="#FFE29A" opacity={spec.aura} />}
 
+      {/* lying baby rests ON its swim ring (drawn behind), face clear of the tube */}
+      {!layout.standing && has(A.swimRing) && <SwimRing id={`${uid}-ring`} cx={bodyCX} cy={bodyCY + bodyRY * 0.15} rx={bodyRX * 1.15} color="#FF8FB1" />}
+
       <Wings s={spec.wing} cx={bodyCX} cy={bodyCY - bodyRY * 0.28} starry={spec.wing >= 2} />
 
       {/* tail attached at rump, behind body */}
@@ -164,8 +167,13 @@ export function Unicorn({ config, layout, stage, mood, uid, preview }: RigProps)
         <Leg key={`b${i}`} spec={l} w={legW} color={body} hoof={hoof} />
       ))}
 
+      {/* swim ring, back half — behind the body so the pet sits IN the tube */}
+      {layout.standing && has(A.swimRing) && <SwimRing id={`${uid}-ringb`} cx={bodyCX} cy={bodyCY + bodyRY * 0.3} rx={bodyRX * 1.22} color="#FF8FB1" part="back" />}
+
       <ellipse cx={bodyCX} cy={bodyCY} rx={bodyRX} ry={bodyRY} fill={body} />
       {!layout.standing && <FoldedLegs bodyCX={bodyCX} bodyCY={bodyCY} bodyRX={bodyRX} color={body} hoof={hoof} />}
+      {/* lying culotte sits on the rump, UNDER the resting head/neck */}
+      {!layout.standing && has(A.swimsuit) && <Swimsuit id={`${uid}-suit`} cx={bodyCX} cy={bodyCY} rx={bodyRX} ry={bodyRY} color="#7FD1D8" lying />}
       <path d={`M${bodyCX} ${bodyCY - bodyRY * 0.5} L${headCX} ${headCY + headR * 0.4}`} stroke={body} strokeWidth={headR * 0.9} strokeLinecap="round" />
 
       {layout.legs.filter((l) => !l.back).map((l, i) => (
@@ -229,6 +237,11 @@ export function Unicorn({ config, layout, stage, mood, uid, preview }: RigProps)
       {spec.aura > 0.4 && layout.legs.map((l, i) => <Aura key={`ha${i}`} id={`${uid}-hoof-${i}`} cx={l.footX} cy={l.footY} r={8} color="#FFF0B8" opacity={spec.aura} />)}
 
       {/* accessories — placement from the per-species/per-stage anchor resolver */}
+      {/* swim set — grows with its wearer: rump culotte on the newborn (drawn
+          earlier, under the head) → striped suit → star badge (6+); the ring's
+          front half closes the tube around the waist, duck head at 7+. */}
+      {layout.standing && has(A.swimsuit) && <Swimsuit id={`${uid}-suit`} cx={bodyCX} cy={bodyCY} rx={bodyRX} ry={bodyRY} color="#7FD1D8" star={stage >= 6} />}
+      {layout.standing && has(A.swimRing) && <SwimRing id={`${uid}-ringf`} cx={bodyCX} cy={bodyCY + bodyRY * 0.3} rx={bodyRX * 1.22} color="#FF8FB1" part="front" duck={stage >= 7} />}
       {/* ribbon: baby (lying, no neck yet) wears it as a hair bow ON the head;
           once standing it drops to the throat. */}
       {has(A.ribbon) &&

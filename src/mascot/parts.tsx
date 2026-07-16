@@ -328,6 +328,113 @@ export function Bow({ x, y, s, color }: { x: number; y: number; s: number; color
   );
 }
 
+/** One-piece striped bathing suit — a colour band CLIPPED to the torso ellipse so
+ * it hugs the belly. Standing pets wear a waist band (champions, stade 6+, earn a
+ * white `star` badge). `lying` newborns wear a little nappy-culotte on the RUMP
+ * (away from the oversized resting head) with vertical stripes — the rig draws it
+ * UNDER the head/neck so the face always stays on top. */
+export function Swimsuit({ id, cx, cy, rx, ry, color, stripe = "#FFF6EE", lying = false, star = false }: { id: string; cx: number; cy: number; rx: number; ry: number; color: string; stripe?: string; lying?: boolean; star?: boolean }) {
+  if (lying) {
+    const edge = cx - rx * 0.16; // culotte covers the left (rump) side of the loaf
+    return (
+      <g>
+        <defs>
+          <clipPath id={id}>
+            <ellipse cx={cx} cy={cy} rx={rx} ry={ry} />
+          </clipPath>
+        </defs>
+        <g clipPath={`url(#${id})`}>
+          <rect x={cx - rx - 1} y={cy - ry - 1} width={edge - (cx - rx - 1)} height={ry * 2 + 2} fill={color} />
+          {[0.72, 0.44].map((k) => (
+            <path
+              key={k}
+              d={`M${cx - rx * k} ${cy - ry} q 2.6 ${ry * 0.5} 0 ${ry} q -2.6 ${ry * 0.5} 0 ${ry}`}
+              fill="none"
+              stroke={stripe}
+              strokeWidth={2}
+              opacity={0.9}
+            />
+          ))}
+        </g>
+        <path d={`M${edge} ${cy - ry * 0.9} Q${edge + 2} ${cy} ${edge} ${cy + ry * 0.9}`} fill="none" stroke={DARK} strokeWidth={1} opacity={0.28} />
+      </g>
+    );
+  }
+  const top = cy - ry * 0.12;
+  return (
+    <g>
+      <defs>
+        <clipPath id={id}>
+          <ellipse cx={cx} cy={cy} rx={rx} ry={ry} />
+        </clipPath>
+      </defs>
+      <g clipPath={`url(#${id})`}>
+        <rect x={cx - rx - 1} y={top} width={rx * 2 + 2} height={ry * 2} fill={color} />
+        {[0.34, 0.68].map((k) => (
+          <path
+            key={k}
+            d={`M${cx - rx} ${top + ry * k} q ${rx * 0.5} -3 ${rx} 0 q ${rx * 0.5} 3 ${rx} 0`}
+            fill="none"
+            stroke={stripe}
+            strokeWidth={2.2}
+            opacity={0.9}
+          />
+        ))}
+      </g>
+      <path d={`M${cx - rx * 0.97} ${top + 1.5} Q${cx} ${top - 2} ${cx + rx * 0.97} ${top + 1.5}`} fill="none" stroke={DARK} strokeWidth={1} opacity={0.28} />
+      {star && <path d={fourStar(cx, cy + ry * 0.38, 3.1)} fill="#fff" opacity={0.95} />}
+    </g>
+  );
+}
+
+/** Classic segmented swim ring — a thick ellipse torus with alternating
+ * colour/cream segments and faint rim outlines so it reads as a puffy
+ * inflatable. To make the pet sit INSIDE the tube, rigs draw it twice: the
+ * `back` half behind the body, the `front` half over it (each half is the same
+ * geometry clipped at the tube's midline). `full` is for lying babies who rest
+ * ON the ring. `duck` (stade 7+) perches an inflatable duck head on the tube —
+ * drawn with the front half so the body never hides it. */
+export function SwimRing({ id, cx, cy, rx, color, duck = false, part = "full" }: { id: string; cx: number; cy: number; rx: number; color: string; duck?: boolean; part?: "full" | "back" | "front" }) {
+  const ry = rx * 0.38;
+  const w = rx * 0.32;
+  // ~1/8 of the ellipse perimeter (Ramanujan) → 4 colour + 4 cream segments.
+  const per = Math.PI * (3 * (rx + ry) - Math.sqrt((3 * rx + ry) * (rx + 3 * ry)));
+  const dash = per / 8;
+  const pad = w + 2;
+  const hx = cx + rx * 0.95;
+  const hy = cy - w * 0.55;
+  const hr = w * 0.8;
+  return (
+    <g>
+      {duck && part !== "back" && (
+        <g>
+          <circle cx={hx} cy={hy} r={hr} fill="#FFE082" />
+          <circle cx={hx} cy={hy} r={hr} fill="none" stroke={DARK} strokeWidth={0.7} opacity={0.25} />
+          <path d={`M${hx + hr * 0.6} ${hy - 1.4} L${hx + hr + 3.6} ${hy + 0.4} L${hx + hr * 0.6} ${hy + 1.8} Z`} fill="#FF8A50" />
+          <circle cx={hx + hr * 0.25} cy={hy - hr * 0.25} r={0.9} fill={DARK} />
+        </g>
+      )}
+      {part !== "full" && (
+        <defs>
+          <clipPath id={id}>
+            {part === "back" ? (
+              <rect x={cx - rx - pad} y={cy - ry - pad} width={(rx + pad) * 2} height={ry + pad} />
+            ) : (
+              <rect x={cx - rx - pad} y={cy} width={(rx + pad) * 2} height={ry + pad} />
+            )}
+          </clipPath>
+        </defs>
+      )}
+      <g clipPath={part === "full" ? undefined : `url(#${id})`}>
+        <ellipse cx={cx} cy={cy} rx={rx} ry={ry} fill="none" stroke="#FFF6EE" strokeWidth={w} />
+        <ellipse cx={cx} cy={cy} rx={rx} ry={ry} fill="none" stroke={color} strokeWidth={w} strokeDasharray={`${dash} ${dash}`} />
+        <ellipse cx={cx} cy={cy} rx={rx + w / 2} ry={ry + w / 2} fill="none" stroke={DARK} strokeWidth={0.8} opacity={0.22} />
+        <ellipse cx={cx} cy={cy} rx={rx - w / 2} ry={ry - w / 2} fill="none" stroke={DARK} strokeWidth={0.8} opacity={0.22} />
+      </g>
+    </g>
+  );
+}
+
 export function Flower({
   x,
   y,

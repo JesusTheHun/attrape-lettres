@@ -2,7 +2,7 @@ import type { RigProps } from "./growth";
 import { mix, pick, ramp } from "./growth";
 import { accessoryAnchors } from "./anchors";
 import { COLOR_SLOT, STYLE_SLOT, ACCESSORY } from "./ids";
-import { Aura, Bow, Cheeks, Crown, Eyes, FoldedLegs, GroundGlow, Halo, Leg, Mouth, Plume, Sparkles } from "./parts";
+import { Aura, Bow, Cheeks, Crown, Eyes, FoldedLegs, GroundGlow, Halo, Leg, Mouth, Plume, Sparkles, SwimRing, Swimsuit } from "./parts";
 
 /**
  * Cat — "Lynx Royal" timeline. Each stade 3→9 adds a clear, high-contrast beat
@@ -119,6 +119,9 @@ export function Cat({ config, layout, stage, mood, uid, preview }: RigProps) {
       {spec.ground && <GroundGlow id={`${uid}-ground`} cx={50} y={layout.feetY + 2} rx={bodyRX + 18} color="#FFE29A" opacity={0.85} />}
       {spec.aura > 0 && <Aura id={`${uid}-tailglow`} cx={tipX} cy={tipY} r={rB * 1.5} color="#FFE6B0" opacity={spec.aura} />}
 
+      {/* lying baby rests ON its swim ring (drawn behind), face clear of the tube */}
+      {!layout.standing && has(A.swimRing) && <SwimRing id={`${uid}-ring`} cx={bodyCX} cy={bodyCY + bodyRY * 0.15} rx={bodyRX * 1.15} color="#FF6B6B" />}
+
       {/* tail behind body — core + fur clumps + fluffy tip */}
       <path d={`M${tx} ${ty} Q${cx1} ${cy1} ${tipX} ${tipY}`} fill="none" stroke={tailCol} strokeWidth={rB * 0.7} strokeLinecap="round" />
       {clumps.map((b, i) => <circle key={`tc${i}`} cx={b.px} cy={b.py} r={b.r} fill={tailCol} />)}
@@ -129,6 +132,9 @@ export function Cat({ config, layout, stage, mood, uid, preview }: RigProps) {
       {layout.legs.filter((l) => l.back).map((l, i) => (
         <Leg key={`b${i}`} spec={l} w={legW} color={body} hoof={body} />
       ))}
+
+      {/* swim ring, back half — behind the body so the pet sits IN the tube */}
+      {layout.standing && has(A.swimRing) && <SwimRing id={`${uid}-ringb`} cx={bodyCX} cy={bodyCY + bodyRY * 0.3} rx={bodyRX * 1.22} color="#FF6B6B" part="back" />}
 
       {/* fluffy: lighter scalloped fur halo breaking the body outline */}
       {fluffy &&
@@ -141,6 +147,8 @@ export function Cat({ config, layout, stage, mood, uid, preview }: RigProps) {
       <ellipse cx={bodyCX} cy={bodyCY} rx={bodyRX} ry={bodyRY} fill={body} />
       <ellipse cx={bodyCX} cy={bodyCY + bodyRY * 0.28} rx={bodyRX * 0.6} ry={bodyRY * 0.62} fill={belly} />
       {!layout.standing && <FoldedLegs bodyCX={bodyCX} bodyCY={bodyCY} bodyRX={bodyRX} color={body} hoof={belly} />}
+      {/* lying culotte sits on the rump, UNDER the resting head/neck */}
+      {!layout.standing && has(A.swimsuit) && <Swimsuit id={`${uid}-suit`} cx={bodyCX} cy={bodyCY} rx={bodyRX} ry={bodyRY} color="#4FC3F7" lying />}
       <path d={`M${bodyCX} ${bodyCY - bodyRY * 0.5} L${headCX} ${headCY + headR * 0.4}`} stroke={body} strokeWidth={headR * 0.95} strokeLinecap="round" />
 
       {/* front legs */}
@@ -210,6 +218,11 @@ export function Cat({ config, layout, stage, mood, uid, preview }: RigProps) {
       {spec.crown && <Crown cx={headCX} cy={headCY - headR * 0.5} r={headR * 0.95} band="#FFD54F" gem="#E0533B" />}
 
       {/* accessories — placement from the per-species/per-stage anchor resolver */}
+      {/* swim set — grows with its wearer: rump culotte on the newborn (drawn
+          earlier, under the head) → striped suit → star badge (6+); the ring's
+          front half closes the tube around the waist, duck head at 7+. */}
+      {layout.standing && has(A.swimsuit) && <Swimsuit id={`${uid}-suit`} cx={bodyCX} cy={bodyCY} rx={bodyRX} ry={bodyRY} color="#4FC3F7" star={stage >= 6} />}
+      {layout.standing && has(A.swimRing) && <SwimRing id={`${uid}-ringf`} cx={bodyCX} cy={bodyCY + bodyRY * 0.3} rx={bodyRX * 1.22} color="#FF6B6B" part="front" duck={stage >= 7} />}
       {has(A.bellCollar) && (
         <g>
           <path d={`M${anchor.neck.x - anchor.neck.w} ${anchor.neck.y} Q${anchor.neck.x} ${anchor.neck.y + 6} ${anchor.neck.x + anchor.neck.w} ${anchor.neck.y}`} fill="none" stroke="#EF6F6C" strokeWidth={3.4} strokeLinecap="round" />

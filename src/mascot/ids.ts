@@ -26,15 +26,21 @@ export const ACCESSORY = {
     ribbon: "unicorn.accessory.ribbon",
     flowerCrown: "unicorn.accessory.flower-crown",
     starClip: "unicorn.accessory.star-clip",
+    swimsuit: "unicorn.accessory.swimsuit",
+    swimRing: "unicorn.accessory.swim-ring",
   },
   cat: {
     bow: "cat.accessory.bow",
     bellCollar: "cat.accessory.bell-collar",
     partyHat: "cat.accessory.party-hat",
+    swimsuit: "cat.accessory.swimsuit",
+    swimRing: "cat.accessory.swim-ring",
   },
   fox: {
     scarf: "fox.accessory.scarf",
     beanie: "fox.accessory.beanie",
     boots: "fox.accessory.boots",
+    swimsuit: "fox.accessory.swimsuit",
+    swimRing: "fox.accessory.swim-ring",
   },
 } as const;

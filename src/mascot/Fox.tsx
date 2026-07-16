@@ -2,7 +2,7 @@ import type { RigProps } from "./growth";
 import { INK, pick, ramp } from "./growth";
 import { accessoryAnchors } from "./anchors";
 import { COLOR_SLOT, STYLE_SLOT, ACCESSORY } from "./ids";
-import { Aura, Cheeks, Eyes, FoldedLegs, GroundGlow, Halo, Leg, Mouth, Plume, Sparkles, fourStar } from "./parts";
+import { Aura, Cheeks, Eyes, FoldedLegs, GroundGlow, Halo, Leg, Mouth, Plume, Sparkles, SwimRing, Swimsuit, fourStar } from "./parts";
 
 /**
  * Fox — "Kitsune" timeline. Each stade 3→9 sprouts a clearly visible beat on
@@ -144,6 +144,9 @@ export function Fox({ config, layout, stage, mood, uid, preview }: RigProps) {
     <g>
       {spec.ground && <GroundGlow id={`${uid}-ground`} cx={50} y={layout.feetY + 2} rx={bodyRX + 18} color="#FFD59A" opacity={0.85} />}
 
+      {/* lying baby rests ON its swim ring (drawn behind), face clear of the tube */}
+      {!layout.standing && has(A.swimRing) && <SwimRing id={`${uid}-ring`} cx={bodyCX} cy={bodyCY + bodyRY * 0.15} rx={bodyRX * 1.15} color="#FFD54F" />}
+
       {/* extra kitsune tails, fanned symmetrically behind the body */}
       {Array.from({ length: extra }).map((_, i) => {
         const spread = extra === 1 ? 0 : i / (extra - 1) - 0.5;
@@ -171,6 +174,9 @@ export function Fox({ config, layout, stage, mood, uid, preview }: RigProps) {
         <Leg key={`b${i}`} spec={l} w={legW} color={body} hoof={INK} />
       ))}
 
+      {/* swim ring, back half — behind the body so the pet sits IN the tube */}
+      {layout.standing && has(A.swimRing) && <SwimRing id={`${uid}-ringb`} cx={bodyCX} cy={bodyCY + bodyRY * 0.3} rx={bodyRX * 1.22} color="#FFD54F" part="back" />}
+
       {/* body */}
       <ellipse cx={bodyCX} cy={bodyCY} rx={bodyRX} ry={bodyRY} fill={body} />
 
@@ -192,6 +198,8 @@ export function Fox({ config, layout, stage, mood, uid, preview }: RigProps) {
 
       <ellipse cx={bodyCX} cy={bodyCY + bodyRY * 0.3} rx={bodyRX * 0.55} ry={bodyRY * 0.6} fill={belly} />
       {!layout.standing && <FoldedLegs bodyCX={bodyCX} bodyCY={bodyCY} bodyRX={bodyRX} color={body} hoof={INK} />}
+      {/* lying culotte sits on the rump, UNDER the resting head/neck */}
+      {!layout.standing && has(A.swimsuit) && <Swimsuit id={`${uid}-suit`} cx={bodyCX} cy={bodyCY} rx={bodyRX} ry={bodyRY} color="#5AA9E0" lying />}
 
       {/* neck */}
       <path d={`M${bodyCX} ${bodyCY - bodyRY * 0.5} L${headCX} ${headCY + headR * 0.4}`} stroke={body} strokeWidth={headR * 0.95} strokeLinecap="round" />
@@ -244,6 +252,11 @@ export function Fox({ config, layout, stage, mood, uid, preview }: RigProps) {
       {spec.mark && <path d={fourStar(headCX, headCY - headR * 0.55, 2.6)} fill="#FFF3C4" />}
 
       {/* accessories — placement from the per-species/per-stage anchor resolver */}
+      {/* swim set — grows with its wearer: rump culotte on the newborn (drawn
+          earlier, under the head) → striped suit → star badge (6+); the ring's
+          front half closes the tube around the waist, duck head at 7+. */}
+      {layout.standing && has(A.swimsuit) && <Swimsuit id={`${uid}-suit`} cx={bodyCX} cy={bodyCY} rx={bodyRX} ry={bodyRY} color="#5AA9E0" star={stage >= 6} />}
+      {layout.standing && has(A.swimRing) && <SwimRing id={`${uid}-ringf`} cx={bodyCX} cy={bodyCY + bodyRY * 0.3} rx={bodyRX * 1.22} color="#FFD54F" part="front" duck={stage >= 7} />}
       {has(A.scarf) && (
         <g>
           <path d={`M${anchor.neck.x - anchor.neck.w} ${anchor.neck.y} Q${anchor.neck.x} ${anchor.neck.y + 7} ${anchor.neck.x + anchor.neck.w} ${anchor.neck.y}`} fill="none" stroke="#66BB6A" strokeWidth={5} strokeLinecap="round" />

@@ -68,6 +68,7 @@ function focusFor(species: Species, category: CustomizationCategory, slot: strin
   const belly = () => box(bodyCX, bodyCY + bodyRY * 0.28, bodyRX * 1.15);
 
   if (category === "accessory") {
+    const AA = ACCESSORY[species];
     if (value === ACCESSORY.unicorn.starClip) return undefined; // whole-image shimmer
     if (value === ACCESSORY.unicorn.ribbon || value === ACCESSORY.cat.bellCollar || value === ACCESSORY.fox.scarf)
       return box(A.neck.x, A.neck.y, headR * 1.1);
@@ -75,6 +76,9 @@ function focusFor(species: Species, category: CustomizationCategory, slot: strin
       return box(A.headTop.x, headCY - headR * 0.55, headR * 1.4);
     if (value === ACCESSORY.unicorn.flowerCrown) return box(headCX, headCY - headR * 0.2, headR * 1.4);
     if (value === ACCESSORY.fox.boots) return box(bodyCX, feetY - 4, bodyRX * 1.25);
+    // Swim set — every species sells the same items, so match on the per-species map.
+    if (value === AA.swimsuit) return box(bodyCX, bodyCY + bodyRY * 0.25, bodyRX * 1.2);
+    if (value === AA.swimRing) return box(bodyCX, bodyCY + bodyRY * 0.3, bodyRX * 1.55);
     return undefined;
   }
 
