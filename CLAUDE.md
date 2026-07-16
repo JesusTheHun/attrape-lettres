@@ -60,6 +60,15 @@ These are why the game feels alive to a child. Changing them silently will regre
 7. **Every exercise has an original drawn icon, never an emoji.** The hub renders
    `<ExerciseIcon id>`, not `ex.emoji`. Adding an exercise ⇒ add its icon in the
    SAME change (the `Record<ExerciseId, …>` in `ExerciseIcon.tsx` enforces it).
+8. **Farming never pays.** Kids will spam-tap every tile to grind points; the
+   design absorbs it without a fail state (see 3). Three mechanisms, keep all:
+   single-tap picks are silently swallowed for `MISS_COOLDOWN_MS` after a miss
+   (sequence engines pace retries with the "Oh non" line instead); each round's
+   star greys on its FIRST wrong tap, at pointerdown, in the GameFrame strip;
+   and all points flow through `sessionReward()` — completion curve + accuracy
+   bonus weighted by the exercise's authored `difficulty` (0 = training, pays
+   nothing ever). Never award points outside `sessionReward`, and never make a
+   spam-completable path pay.
 
 ## Recipes
 
@@ -67,8 +76,10 @@ These are why the game feels alive to a child. Changing them silently will regre
 syllable words, author the split. That's it — pools derive automatically.
 
 **Add a syllable-style exercise:** add a `SyllableMode`, branch it in
-`buildSyllableRound`, add an `EXERCISES` row with that `mode`. No new component.
-Then add its icon (next recipe) — that step is not optional.
+`buildSyllableRound`, add an `EXERCISES` row with that `mode` and a `difficulty`
+(required — 0 = training/no points, 1–4 = accuracy-bonus weight rising with the
+hub progression). No new component. Then add its icon (next recipe) — that step
+is not optional.
 
 **Add an exercise icon (ALWAYS when adding an exercise):** add a `GLYPHS[<id>]`
 entry in `components/ExerciseIcon.tsx` — a distinct `tint` + an in-house white
@@ -79,6 +90,11 @@ compile without it, so this happens in the same change, automatically.
 **Tune progression:** edit `SYLLABLE_TIERS` (syllable count + `pick`/`repeats`),
 `FIRST_LETTER_LEVELS` (letter catalog + `pick`/`repeats`), or `SOUND_LEVELS`
 (distractor count). Pure data; no component changes.
+
+**Tune the economy:** `difficulty` per `EXERCISES` row (levels.ts) and the knobs
+in `rewards.ts` (`REWARD_CURVE`, `sessionReward`, `MISS_COOLDOWN_MS`). A careful
+full-perfect run earns curve + `difficulty`; spam earns the bare curve. Keep the
+gradient monotone with the hub order so climbing always out-pays grinding.
 
 **Run shape:** every exercise seeds a run through `repeatSession(pool, pick,
 repeats)` — pick N distinct items, replay `repeats` of them, never two rounds in
