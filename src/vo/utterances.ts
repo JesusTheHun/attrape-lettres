@@ -1,4 +1,5 @@
 import { LETTER_WORDS, LETTER_MATCH_ALPHABET, SYLLABLE_WORDS, SOUND_TARGETS } from "../content.ts";
+import { CATALOG } from "../mascot/catalog.ts";
 import {
   LETTER_MATCH_PROMPTS,
   READ_IMAGE_PROMPT,
@@ -66,6 +67,17 @@ export function enumerateUtterances(): string[] {
   for (const target of SOUND_TARGETS.flat()) {
     out.add(soundPrompt(target));
     out.add(soundSuccess(target));
+  }
+
+  // Shop: celebrations + the spoken price of every tile. Costs are a finite
+  // catalog vocabulary; both readings a try-on can trigger are baked (the
+  // plain price, and price + "not enough yet" as ONE clip — say() is passed
+  // the combined string, and lookup is by exact utterance).
+  out.add(SHOP_BOUGHT);
+  out.add(SHOP_GREW);
+  for (const cost of new Set(CATALOG.map((o) => o.cost))) {
+    out.add(shopCostLine(cost));
+    out.add(`${shopCostLine(cost)} ${SHOP_NEED_MORE}`);
   }
 
   return [...out];
