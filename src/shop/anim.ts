@@ -43,6 +43,34 @@ export function press(el: Element | null | undefined): void {
 const SPARKLES = ["✨", "⭐", "🌟", "💫"];
 
 /* -------------------------------------------------------------------------- */
+/* Savings meter — the fill sweeps from where it stood LAST VISIT to today's    */
+/* level, so stars earned in between read as visible movement (a 4% delta the   */
+/* eye would never spot statically is unmistakable as motion). The sparkle pops */
+/* at the tip right as the sweep lands. React owns the final width via style;   */
+/* these only animate the journey there.                                        */
+/* -------------------------------------------------------------------------- */
+
+export function meterFill(el: Element | null | undefined, fromPct: number, toPct: number): void {
+  if (!el || reducedMotion()) return;
+  el.animate([{ width: `${fromPct}%` }, { width: `${toPct}%` }], {
+    duration: 900,
+    easing: "cubic-bezier(.2,.7,.3,1)",
+  });
+}
+
+export function tipSparkle(el: Element | null | undefined): void {
+  if (!el || reducedMotion()) return;
+  el.animate(
+    [
+      { transform: "translate(-50%,-50%) scale(0.2)", opacity: 0 },
+      { transform: "translate(-50%,-50%) scale(1.4)", opacity: 1, offset: 0.5 },
+      { transform: "translate(-50%,-50%) scale(0.6)", opacity: 0 },
+    ],
+    { duration: 620, delay: 780, easing: "ease-out" } // lands as the fill arrives
+  );
+}
+
+/* -------------------------------------------------------------------------- */
 /* Purchase ceremony — a handful of stars fly from the WALLET to the mascot,    */
 /* so a child SEES stars leave their purse when something is bought. Throwaway  */
 /* DOM on document.body driven by WAAPI, exactly like growBurst below.          */

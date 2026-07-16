@@ -29,6 +29,7 @@ import type { PersistedProfile, Roster } from "./types";
 const KEY = "attrape-lettres:roster:v3";
 const V2_KEY = "attrape-lettres:profile:v2";
 const V1_KEY = "attrape-lettres:profile:v1";
+const SHOP_SEEN_KEY = "attrape-lettres:shop-seen:v1";
 
 export function loadRoster(): Roster | null {
   try {
@@ -44,6 +45,29 @@ export function saveRoster(roster: Roster): void {
     localStorage.setItem(KEY, JSON.stringify(roster));
   } catch {
     /* private mode / quota — profiles just won't persist this session. */
+  }
+}
+
+/**
+ * Balance each child LAST SAW in the shop (childId → stars). Purely cosmetic:
+ * the savings meters animate from this value on entry, so stars earned since
+ * the previous visit read as visible growth. Losing it costs nothing but the
+ * animation, hence its own key outside the roster blob (no schema bump).
+ */
+export function loadShopSeen(): Record<string, number> {
+  try {
+    const raw = localStorage.getItem(SHOP_SEEN_KEY);
+    return raw ? (JSON.parse(raw) as Record<string, number>) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function saveShopSeen(seen: Record<string, number>): void {
+  try {
+    localStorage.setItem(SHOP_SEEN_KEY, JSON.stringify(seen));
+  } catch {
+    /* private mode / quota — the meter just won't animate next visit. */
   }
 }
 

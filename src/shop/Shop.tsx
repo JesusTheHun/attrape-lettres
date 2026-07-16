@@ -1,12 +1,14 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useAudio } from "../hooks/useAudio";
 import { applyOption, useProfile } from "../hooks/useProfile";
 import { CATALOG, DEFAULT_LOOKS, type DefaultLook } from "../mascot/catalog";
 import { Mascot } from "../mascot/Mascot";
+import { loadShopSeen, saveShopSeen } from "../storage";
 import type { CustomizationOption, Species } from "../types";
 import { SHOP_BOUGHT, SHOP_GREW, SHOP_NEED_MORE, shopCostLine } from "../vo/utterances";
 import { GrowthCard } from "./GrowthCard";
 import { ItemPreview } from "./ItemPreview";
+import { SavingsMeter } from "./Meter";
 import { ShopItem } from "./ShopItem";
 import { growBurst, pop, press, reducedMotion, starFlight } from "./anim";
 
@@ -142,8 +144,16 @@ function DefaultTile({
 }
 
 export function Shop({ onBack }: { onBack: () => void }) {
-  const { profile, buy, setConfig } = useProfile();
+  const { profile, buy, setConfig, activeId } = useProfile();
   const { config, balance, owned } = profile;
+
+  /* Balance this child last SAW here — the savings meters animate from it, so
+   * stars earned since the previous visit land as motion, not a static bar.
+   * Captured once per mount; every balance change updates the stored value. */
+  const [sinceBalance] = useState(() => loadShopSeen()[activeId ?? ""] ?? 0);
+  useEffect(() => {
+    if (activeId) saveShopSeen({ ...loadShopSeen(), [activeId]: balance });
+  }, [activeId, balance]);
   const audio = useAudio();
   const previewRef = useRef<HTMLDivElement>(null);
   const buyRef = useRef<HTMLButtonElement>(null);
@@ -252,6 +262,8 @@ export function Shop({ onBack }: { onBack: () => void }) {
         locked={locked}
         affordable={affordable}
         trying={cart?.id === o.id}
+        balance={balance}
+        sinceBalance={sinceBalance}
         onTap={onTap}
       />
     );
@@ -348,38 +360,46 @@ export function Shop({ onBack }: { onBack: () => void }) {
         </div>
 
         {cart ? (
-          <div className="flex w-full max-w-sm items-center justify-center gap-2">
-            <button
-              type="button"
-              onClick={cancelTry}
-              aria-label="Ne pas acheter"
-              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-xl font-black shadow active:scale-95 [touch-action:manipulation]"
-              style={{ background: "rgba(255,255,255,0.9)", color: "#9A7A5A", border: "none" }}
-            >
-              ✕
-            </button>
-            <button
-              ref={buyRef}
-              type="button"
-              disabled={!cartAffordable}
-              onPointerDown={() => press(buyRef.current)}
-              onClick={confirmBuy}
-              aria-label={
-                cartAffordable
-                  ? `Acheter ${cart.name} pour ${cart.cost} étoiles`
-                  : `Pas encore assez d'étoiles pour ${cart.name}`
-              }
-              className="rounded-full px-6 py-3 text-lg font-black shadow [touch-action:manipulation] [-webkit-tap-highlight-color:transparent]"
-              style={{
-                background: cartAffordable ? "#FFD54F" : "rgba(255,255,255,0.7)",
-                color: cartAffordable ? "#4A3B00" : "#B8A98E",
-                border: "none",
-                cursor: cartAffordable ? "pointer" : "default",
-                boxShadow: cartAffordable ? "0 6px 0 rgba(0,0,0,0.12)" : "none",
-              }}
-            >
-              {cartAffordable ? `Acheter · ⭐ ${cart.cost}` : `⭐ ${cart.cost} · pas encore`}
-            </button>
+          <div className="flex w-full max-w-sm flex-col items-center gap-2">
+            <div className="flex w-full items-center justify-center gap-2">
+              <button
+                type="button"
+                onClick={cancelTry}
+                aria-label="Ne pas acheter"
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-xl font-black shadow active:scale-95 [touch-action:manipulation]"
+                style={{ background: "rgba(255,255,255,0.9)", color: "#9A7A5A", border: "none" }}
+              >
+                ✕
+              </button>
+              <button
+                ref={buyRef}
+                type="button"
+                disabled={!cartAffordable}
+                onPointerDown={() => press(buyRef.current)}
+                onClick={confirmBuy}
+                aria-label={
+                  cartAffordable
+                    ? `Acheter ${cart.name} pour ${cart.cost} étoiles`
+                    : `Pas encore assez d'étoiles pour ${cart.name}`
+                }
+                className="rounded-full px-6 py-3 text-lg font-black shadow [touch-action:manipulation] [-webkit-tap-highlight-color:transparent]"
+                style={{
+                  background: cartAffordable ? "#FFD54F" : "rgba(255,255,255,0.7)",
+                  color: cartAffordable ? "#4A3B00" : "#B8A98E",
+                  border: "none",
+                  cursor: cartAffordable ? "pointer" : "default",
+                  boxShadow: cartAffordable ? "0 6px 0 rgba(0,0,0,0.12)" : "none",
+                }}
+              >
+                {cartAffordable ? `Acheter · ⭐ ${cart.cost}` : `⭐ ${cart.cost} · pas encore`}
+              </button>
+            </div>
+            {/* Saving up: the meter shows how close the wallet is — no maths. */}
+            {!cartAffordable && (
+              <div className="w-4/5">
+                <SavingsMeter cost={cart.cost} balance={balance} since={sinceBalance} height={12} />
+              </div>
+            )}
           </div>
         ) : (
           <p className="text-sm font-bold" style={{ color: "#7A5A3A" }}>
@@ -390,6 +410,7 @@ export function Shop({ onBack }: { onBack: () => void }) {
 
       <div className="flex w-full flex-col gap-5 px-5">
         <GrowthCard
+          sinceBalance={sinceBalance}
           onGrew={(cost) => {
             starFlight(walletRef.current, previewRef.current, flightSize(cost));
             audio.success();

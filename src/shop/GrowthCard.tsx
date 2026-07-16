@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { useProfile } from "../hooks/useProfile";
 import { Mascot } from "../mascot/Mascot";
 import { GROWTH_STAGES } from "../types";
+import { SavingsMeter } from "./Meter";
 import { press } from "./anim";
 
 /* -------------------------------------------------------------------------- */
@@ -15,7 +16,14 @@ const INK = "#5A3A1E";
 /** Local price curve — rises with the current stage. */
 const growthPrice = (stage: number): number => 30 * (stage + 1);
 
-export function GrowthCard({ onGrew }: { onGrew?: (cost: number) => void }) {
+export function GrowthCard({
+  onGrew,
+  sinceBalance,
+}: {
+  onGrew?: (cost: number) => void;
+  /** Wallet at the previous shop visit — the savings meter animates from it. */
+  sinceBalance: number;
+}) {
   const { profile, spend, setConfig } = useProfile();
   const { config, balance } = profile;
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -96,6 +104,12 @@ export function GrowthCard({ onGrew }: { onGrew?: (cost: number) => void }) {
         >
           {atMax ? "Niveau max ✨" : affordable ? `Grandir · ⭐ ${price}` : `pas encore · ⭐ ${price}`}
         </button>
+
+        {/* Saving up for the next stage — growth is the longest save, so it
+         * gets the fattest "how close am I" meter of all. */}
+        {!atMax && !affordable && (
+          <SavingsMeter cost={price} balance={balance} since={sinceBalance} height={12} />
+        )}
       </div>
     </section>
   );
