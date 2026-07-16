@@ -77,14 +77,58 @@ function AnimatedNumber({ value }: { value: number }) {
   return <span ref={ref}>{value}</span>;
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+/* A zone is a ROOM, not a heading: the wardrobe (what's yours, no prices) and
+ * the store (what's for sale). Distinct tints + an icon chip make the split
+ * spatial, so ownership is a place a pre-reader can see, not a text badge. */
+function Zone({
+  icon,
+  title,
+  tint,
+  children,
+}: {
+  icon: string;
+  title: string;
+  tint: string;
+  children: ReactNode;
+}) {
   return (
-    <section className="w-full">
-      <h2 className="mb-2 text-lg font-black" style={{ color: INK }}>
+    <section
+      className="w-full rounded-3xl p-4"
+      style={{ background: tint, boxShadow: "0 8px 18px rgba(0,0,0,0.07)" }}
+    >
+      <h2 className="mb-3 flex items-center gap-2.5 text-xl font-black" style={{ color: INK }}>
+        <span
+          aria-hidden
+          className="flex h-10 w-10 items-center justify-center rounded-2xl text-xl shadow"
+          style={{ background: "rgba(255,255,255,0.85)" }}
+        >
+          {icon}
+        </span>
         {title}
       </h2>
-      <div className="grid grid-cols-2 gap-2.5">{children}</div>
+      <div className="flex flex-col gap-4">{children}</div>
     </section>
+  );
+}
+
+/** Tiles bucketed under one body-part label ("Queue", "Corps", "Accessoires"). */
+interface TileGroup {
+  label: string;
+  tiles: ReactNode[];
+}
+
+function TileGroups({ groups }: { groups: TileGroup[] }) {
+  return (
+    <>
+      {groups.map((g) => (
+        <div key={g.label}>
+          <h3 className="mb-1 text-sm font-bold" style={{ color: "#7A5A3A" }}>
+            {g.label}
+          </h3>
+          <div className="grid grid-cols-2 gap-2.5">{g.tiles}</div>
+        </div>
+      ))}
+    </>
   );
 }
 
@@ -269,56 +313,51 @@ export function Shop({ onBack }: { onBack: () => void }) {
     );
   };
 
-  const itemsIn = (key: CustomizationOption["category"]) =>
-    forMe.filter((o) => o.category === key);
+  /* Both zones bucket tiles by BODY PART ("Queue", "Corps", …) — the way a
+   * child thinks about dressing — not by colour-vs-style. Accessories pool
+   * under their own label, last. */
+  const labelOf = (slot: string, category: CustomizationOption["category"]) =>
+    category === "accessory" ? "Accessoires" : (SLOT_LABEL[slot] ?? slot);
 
-  /* One section per colour/style category: variants grouped by the body part
-   * they change (catalog order), each group led by its factory-look tile. */
-  const renderSlotGroups = (
-    title: string,
-    category: "color" | "style",
-    kind: "colors" | "styles"
-  ) => {
-    const groups: { slot: string; items: CustomizationOption[] }[] = [];
-    for (const o of itemsIn(category)) {
-      const g = groups.find((s) => s.slot === o.slot);
-      if (g) g.items.push(o);
-      else groups.push({ slot: o.slot, items: [o] });
+  const grouped = (entries: { label: string; tile: ReactNode }[]): TileGroup[] => {
+    const out: TileGroup[] = [];
+    for (const e of entries) {
+      const g = out.find((x) => x.label === e.label);
+      if (g) g.tiles.push(e.tile);
+      else out.push({ label: e.label, tiles: [e.tile] });
     }
-    if (groups.length === 0) return null;
-
-    return (
-      <section className="w-full">
-        <h2 className="mb-2 text-lg font-black" style={{ color: INK }}>
-          {title}
-        </h2>
-        <div className="flex flex-col gap-3">
-          {groups.map((g) => {
-            const look = defaults.find((d) => d.category === category && d.slot === g.slot);
-            return (
-              <div key={g.slot}>
-                <h3 className="mb-1 text-sm font-bold" style={{ color: "#7A5A3A" }}>
-                  {SLOT_LABEL[g.slot] ?? title}
-                </h3>
-                <div className="grid grid-cols-2 gap-2.5">
-                  {look && (
-                    <DefaultTile
-                      look={look}
-                      species={config.species}
-                      active={config[kind][g.slot] === undefined}
-                      locked={config.stage < (look.minStage ?? 0)}
-                      onTap={() => clearSlot(kind, g.slot)}
-                    />
-                  )}
-                  {g.items.map(renderItem)}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-    );
+    return out;
   };
+
+  // The wardrobe: every factory look + everything bought. No prices in here.
+  const armoireGroups = grouped([
+    ...defaults.map((d) => {
+      const kind = d.category === "color" ? ("colors" as const) : ("styles" as const);
+      return {
+        label: labelOf(d.slot, d.category),
+        tile: (
+          <DefaultTile
+            key={`default.${d.category}.${d.slot}`}
+            look={d}
+            species={config.species}
+            active={config[kind][d.slot] === undefined}
+            locked={config.stage < (d.minStage ?? 0)}
+            onTap={() => clearSlot(kind, d.slot)}
+          />
+        ),
+      };
+    }),
+    ...forMe
+      .filter((o) => owned.includes(o.id))
+      .map((o) => ({ label: labelOf(o.slot, o.category), tile: renderItem(o) })),
+  ]);
+
+  // The store: only what is NOT yet owned — a bought item moves to the wardrobe.
+  const shopGroups = grouped(
+    forMe
+      .filter((o) => !owned.includes(o.id))
+      .map((o) => ({ label: labelOf(o.slot, o.category), tile: renderItem(o) }))
+  );
 
   return (
     <div
@@ -409,32 +448,31 @@ export function Shop({ onBack }: { onBack: () => void }) {
       </header>
 
       <div className="flex w-full flex-col gap-5 px-5">
-        <GrowthCard
-          sinceBalance={sinceBalance}
-          onGrew={(cost) => {
-            starFlight(walletRef.current, previewRef.current, flightSize(cost));
-            audio.success();
-            void audio.say(SHOP_GREW);
-            pop(previewRef.current);
-            growBurst(previewRef.current);
-          }}
-        />
+        {/* Yours first: dressing what you own is the everyday action. */}
+        <Zone icon="🧺" title="Ton armoire" tint="linear-gradient(160deg,#EAF7E0,#F4FBEC)">
+          <TileGroups groups={armoireGroups} />
+        </Zone>
 
-        {renderSlotGroups("Couleurs", "color", "colors")}
-        {renderSlotGroups("Styles", "style", "styles")}
-
-        {itemsIn("accessory").length > 0 && (
-          <Section title="Accessoires">{itemsIn("accessory").map(renderItem)}</Section>
-        )}
-
-        {forMe.length === 0 && (
-          <p
-            className="mt-2 text-center text-base font-bold"
-            style={{ color: "#7A5A3A" }}
-          >
-            Bientôt de nouveaux objets à découvrir ✨
-          </p>
-        )}
+        {/* Then the store: growth (the headline spend) + everything unowned. */}
+        <Zone icon="🛒" title="Le magasin" tint="linear-gradient(160deg,#E2F0FC,#EBF5FE)">
+          <GrowthCard
+            sinceBalance={sinceBalance}
+            onGrew={(cost) => {
+              starFlight(walletRef.current, previewRef.current, flightSize(cost));
+              audio.success();
+              void audio.say(SHOP_GREW);
+              pop(previewRef.current);
+              growBurst(previewRef.current);
+            }}
+          />
+          {shopGroups.length > 0 ? (
+            <TileGroups groups={shopGroups} />
+          ) : (
+            <p className="text-center text-base font-bold" style={{ color: "#7A5A3A" }}>
+              Bientôt de nouveaux objets à découvrir ✨
+            </p>
+          )}
+        </Zone>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import { useEffect } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ProfileProvider, useProfile } from "../hooks/useProfile";
@@ -112,6 +112,30 @@ describe("Shop — try-on before buy", () => {
 
     expect(curlyTail()).not.toHaveAccessibleName(/en train d'essayer/);
     expect(screen.getByLabelText("60 points")).toBeInTheDocument();
+  });
+});
+
+describe("Shop — armoire / magasin zones", () => {
+  const zone = (name: string) =>
+    screen.getByRole("heading", { name }).closest("section") as HTMLElement;
+
+  it("a bought item moves from the store to the wardrobe", () => {
+    renderShop();
+
+    // Unowned: for sale in the store, absent from the wardrobe.
+    expect(within(zone("Le magasin")).getByRole("button", { name: /^Queue bouclée,/ })).toBeInTheDocument();
+    expect(within(zone("Ton armoire")).queryByRole("button", { name: /^Queue bouclée,/ })).toBeNull();
+
+    buyViaTryOn(curlyTail);
+
+    // Bought: it now lives in the wardrobe, the store no longer sells it.
+    expect(within(zone("Ton armoire")).getByRole("button", { name: /^Queue bouclée,/ })).toBeInTheDocument();
+    expect(within(zone("Le magasin")).queryByRole("button", { name: /^Queue bouclée,/ })).toBeNull();
+  });
+
+  it("factory looks live in the wardrobe", () => {
+    renderShop();
+    expect(within(zone("Ton armoire")).getByRole("button", { name: /^Queue lisse,/ })).toBeInTheDocument();
   });
 });
 
