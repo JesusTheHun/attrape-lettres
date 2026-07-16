@@ -138,11 +138,22 @@ export interface SoundLevel {
 }
 
 /** Hub / navigation --------------------------------------------------------*/
+/**
+ * Reward weight of an exercise — the anti-farming knob. 0 = training exercise:
+ * pays NOTHING (no jackpot, no trickle, no bonus); the cheer is the reward.
+ * 1–4 = how many bonus points a full first-try run earns on top of the
+ * completion curve. See rewards.sessionReward.
+ */
+export type Difficulty = 0 | 1 | 2 | 3 | 4;
+
 export interface ExerciseMeta {
   id: ExerciseId;
   name: string;
   emoji: string;
   levelCount: number;
+  /** Reward weight (0 = training, pays nothing). Required: every new exercise
+   *  must place itself in the economy, same deal as its ExerciseIcon. */
+  difficulty: Difficulty;
   /** Syllable exercises carry the seeding mode; first-letter leaves it undefined. */
   mode?: SyllableMode;
   /** Fill-a-syllable siblings carry which letter mode they run; others leave it undefined. */

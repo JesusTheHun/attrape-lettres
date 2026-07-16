@@ -18,7 +18,8 @@ import type {
   Species,
   SpeciesProgress,
 } from "../types";
-import { ledgerKey, rewardFor } from "../rewards";
+import { ledgerKey, previewReward, sessionReward } from "../rewards";
+import { exerciseDifficulty } from "../levels";
 import {
   loadRoster,
   loadV1Profile,
@@ -181,9 +182,11 @@ export interface ProfileAPI {
   /** The child currently playing, or null while on the welcome screen. */
   activeId: string | null;
 
-  /** Award for clearing (exercise, level). Returns points granted; decays per repeat. */
-  award: (exercise: ExerciseId, level: number) => number;
-  /** Points the NEXT clear of (exercise, level) grants — for "seen in advance" cues. */
+  /** Award for clearing (exercise, level). Returns points granted: the decaying
+   *  completion curve plus the first-try accuracy bonus (see sessionReward).
+   *  Training exercises (difficulty 0) grant 0 but still count in the ledger. */
+  award: (exercise: ExerciseId, level: number, perfectRounds: number, totalRounds: number) => number;
+  /** Points the NEXT clear of (exercise, level) guarantees — for "seen in advance" cues. */
   preview: (exercise: ExerciseId, level: number) => number;
   /** Spend points if affordable. Returns success. */
   spend: (cost: number) => boolean;
@@ -251,10 +254,10 @@ export function ProfileProvider({ children: kids }: { children: ReactNode }) {
   );
 
   const award = useCallback(
-    (exercise: ExerciseId, level: number) => {
+    (exercise: ExerciseId, level: number, perfectRounds: number, totalRounds: number) => {
       const key = ledgerKey(exercise, level);
       const prior = activeProfileOf(ref.current).ledger[key] ?? 0;
-      const points = rewardFor(prior);
+      const points = sessionReward(exerciseDifficulty(exercise), prior, perfectRounds, totalRounds);
       updateActive((p) => ({
         ...p,
         balance: p.balance + points,
@@ -267,7 +270,12 @@ export function ProfileProvider({ children: kids }: { children: ReactNode }) {
 
   const preview = useCallback(
     (exercise: ExerciseId, level: number) =>
-      rewardFor(activeProfileOf(ref.current).ledger[ledgerKey(exercise, level)] ?? 0),
+      previewReward(
+        activeProfileOf(ref.current).ledger,
+        exercise,
+        level,
+        exerciseDifficulty(exercise)
+      ),
     []
   );
 

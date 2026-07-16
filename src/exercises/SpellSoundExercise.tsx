@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { GameFrame } from "../components/GameFrame";
-import { EarnBadge } from "../components/EarnBadge";
-import { EndButtons } from "../components/EndButtons";
+import { Finished } from "../components/Finished";
 import { Mascot } from "../mascot/Mascot";
 import { Tile } from "../components/Tile";
 import { FitLine } from "../components/FitLine";
@@ -58,8 +57,18 @@ export function SpellSoundExercise({ exercise, level, onBack, onNext }: Props) {
   const [mood, setMood] = useState<Mood>("idle");
   const [done, setDone] = useState(false);
   const [earned, setEarned] = useState(0);
+  // One winnable star per round; a wrong spelling greys it out on the spot. The
+  // ref mirrors the state so the award closure reads a never-stale count.
+  const [stars, setStars] = useState<boolean[]>(() => session.map(() => true));
+  const starsRef = useRef(stars);
   const locked = useRef(false);
   const mountedRef = useRef(true);
+
+  const missRound = useCallback((i: number) => {
+    if (!starsRef.current[i]) return;
+    starsRef.current = starsRef.current.map((s, j) => (j === i ? false : s));
+    setStars(starsRef.current);
+  }, []);
 
   const loadRound = useCallback(
     (target: (typeof session)[number]) => {
@@ -134,7 +143,9 @@ export function SpellSoundExercise({ exercise, level, onBack, onNext }: Props) {
           if (!ok || !mountedRef.current) return;
           if (nextIdx >= session.length) {
             setMood("cheer");
-            setEarned(award(exercise, level));
+            setEarned(
+              award(exercise, level, starsRef.current.filter(Boolean).length, session.length)
+            );
             setDone(true);
             void audio.say("Bravo ! Tu as tout réussi !");
           } else {
@@ -149,6 +160,7 @@ export function SpellSoundExercise({ exercise, level, onBack, onNext }: Props) {
         // re-enabling taps) can't cut "Oh non" off.
         locked.current = true;
         audio.oops();
+        missRound(idx); // the star greys NOW, same beat as the "Oh non"
         void (async () => {
           await audio.say("Oh non ! On recommence.");
           if (!mountedRef.current) return;
@@ -160,7 +172,7 @@ export function SpellSoundExercise({ exercise, level, onBack, onNext }: Props) {
       }
       return "accept";
     },
-    [audio, award, exercise, fire, idx, level, loadRound, round, session, slots]
+    [audio, award, exercise, fire, idx, level, loadRound, missRound, round, session, slots]
   );
 
   // Tap a filled slot to send its letter back to the tray — undo a misplacement
@@ -193,9 +205,15 @@ export function SpellSoundExercise({ exercise, level, onBack, onNext }: Props) {
   const target = round.target;
 
   return (
-    <GameFrame onBack={onBack} done={idx} total={session.length} canvasRef={canvasRef}>
+    <GameFrame
+      onBack={onBack}
+      done={done ? session.length : idx}
+      total={session.length}
+      stars={stars}
+      canvasRef={canvasRef}
+    >
       {done ? (
-        <Finished onMenu={onBack} onNext={onNext} count={session.length} earned={earned} />
+        <Finished onMenu={onBack} onNext={onNext} stars={stars} earned={earned} title="Tu as tout réussi !" />
       ) : (
         <div className="relative z-[41] flex w-full flex-1 flex-col items-center px-4 pb-8 pt-2">
           <p className="m-0 mb-1 text-base font-bold text-[#7A5A3A]">
@@ -283,33 +301,5 @@ export function SpellSoundExercise({ exercise, level, onBack, onNext }: Props) {
         </div>
       )}
     </GameFrame>
-  );
-}
-
-function Finished({
-  onMenu,
-  onNext,
-  count,
-  earned,
-}: {
-  onMenu: () => void;
-  onNext: () => void;
-  count: number;
-  earned: number;
-}) {
-  return (
-    <div className="relative z-[41] flex flex-1 flex-col items-center justify-center gap-5 px-6 text-center">
-      <div style={{ fontSize: "clamp(64px,20vw,110px)", lineHeight: 1 }}>🤩</div>
-      <EarnBadge earned={earned} />
-      <div className="flex gap-1">
-        {Array.from({ length: count }).map((_, i) => (
-          <span key={i} style={{ fontSize: 28 }}>⭐</span>
-        ))}
-      </div>
-      <h2 className="m-0 font-black text-[#5A3A1E]" style={{ fontSize: "clamp(26px,7vw,40px)" }}>
-        Tu as tout réussi !
-      </h2>
-      <EndButtons onMenu={onMenu} onNext={onNext} />
-    </div>
   );
 }

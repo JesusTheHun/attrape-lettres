@@ -8,6 +8,8 @@ import {
   SOUND_LETTER_BANK,
 } from "./content";
 import type {
+  Difficulty,
+  ExerciseId,
   ExerciseMeta,
   FirstLetterLevel,
   LetterFace,
@@ -556,25 +558,34 @@ function spellIntruders(
 /* Hub catalog                                                                */
 /* -------------------------------------------------------------------------- */
 
+// `difficulty` is the reward weight (see rewards.sessionReward): 0 = training,
+// pays nothing; 1–4 = bonus points a full first-try run earns. It rises with
+// the hub progression so the point-optimal strategy is climbing, not farming.
 export const EXERCISES: ExerciseMeta[] = [
-  { id: "first-letter", name: "La première lettre", emoji: "🔤", levelCount: FIRST_LETTER_LEVELS.length },
-  { id: "fill-blank", name: "Complète le mot", emoji: "🧩", levelCount: SYLLABLE_LEVEL_COUNT, mode: "fill-blank" },
-  { id: "order-syllables", name: "Range les syllabes", emoji: "🔀", levelCount: SYLLABLE_LEVEL_COUNT, mode: "order" },
-  { id: "find-intruder", name: "Trouve l’intrus", emoji: "🕵️", levelCount: SYLLABLE_LEVEL_COUNT, mode: "order-distractor" },
-  { id: "spell-sound", name: "Fabrique le son", emoji: "🎧", levelCount: SOUND_LEVEL_COUNT },
-  { id: "spell-syllable", name: "Écris la syllabe", emoji: "✏️", levelCount: SPELL_SYLLABLE_LEVEL_COUNT, spell: "letters-exact" },
-  { id: "spell-syllable-plus", name: "La syllabe et les intrus", emoji: "🎯", levelCount: SPELL_SYLLABLE_LEVEL_COUNT, spell: "letters-extra" },
-  { id: "spell-two-syllables", name: "Écris deux syllabes", emoji: "📝", levelCount: SPELL_SYLLABLE_LEVEL_COUNT, spell: "letters-two" },
-  { id: "read-image", name: "Lis le mot", emoji: "🖼️", levelCount: READ_IMAGE_LEVEL_COUNT },
-  { id: "match-case", name: "Grande et petite lettre", emoji: "🔠", levelCount: LETTER_MATCH_LEVEL_COUNT, match: "case" },
-  { id: "match-script", name: "Lettres attachées", emoji: "✍️", levelCount: LETTER_MATCH_LEVEL_COUNT, match: "script" },
+  { id: "first-letter", name: "La première lettre", emoji: "🔤", levelCount: FIRST_LETTER_LEVELS.length, difficulty: 0 },
+  { id: "fill-blank", name: "Complète le mot", emoji: "🧩", levelCount: SYLLABLE_LEVEL_COUNT, mode: "fill-blank", difficulty: 0 },
+  { id: "order-syllables", name: "Range les syllabes", emoji: "🔀", levelCount: SYLLABLE_LEVEL_COUNT, mode: "order", difficulty: 1 },
+  { id: "find-intruder", name: "Trouve l’intrus", emoji: "🕵️", levelCount: SYLLABLE_LEVEL_COUNT, mode: "order-distractor", difficulty: 1 },
+  { id: "spell-sound", name: "Fabrique le son", emoji: "🎧", levelCount: SOUND_LEVEL_COUNT, difficulty: 2 },
+  { id: "spell-syllable", name: "Écris la syllabe", emoji: "✏️", levelCount: SPELL_SYLLABLE_LEVEL_COUNT, spell: "letters-exact", difficulty: 2 },
+  { id: "spell-syllable-plus", name: "La syllabe et les intrus", emoji: "🎯", levelCount: SPELL_SYLLABLE_LEVEL_COUNT, spell: "letters-extra", difficulty: 2 },
+  { id: "spell-two-syllables", name: "Écris deux syllabes", emoji: "📝", levelCount: SPELL_SYLLABLE_LEVEL_COUNT, spell: "letters-two", difficulty: 3 },
+  { id: "read-image", name: "Lis le mot", emoji: "🖼️", levelCount: READ_IMAGE_LEVEL_COUNT, difficulty: 2 },
+  { id: "match-case", name: "Grande et petite lettre", emoji: "🔠", levelCount: LETTER_MATCH_LEVEL_COUNT, match: "case", difficulty: 1 },
+  { id: "match-script", name: "Lettres attachées", emoji: "✍️", levelCount: LETTER_MATCH_LEVEL_COUNT, match: "script", difficulty: 2 },
   // The "écritures mêlées" twins: the two intruder spellers again, but now the
   // word takes one of three writings and the tray mixes forms — same letter in
   // the wrong case/script is a trap. They come LAST, after the child has met
   // majuscule↔minuscule (match-case) and l'attaché (match-script) on their own.
-  { id: "spell-syllable-plus-mixed", name: "La syllabe et les intrus mêlés", emoji: "🎭", levelCount: SPELL_SYLLABLE_LEVEL_COUNT, spell: "letters-extra", mixed: true },
-  { id: "spell-two-syllables-mixed", name: "Deux syllabes, écritures mêlées", emoji: "🖋️", levelCount: SPELL_SYLLABLE_LEVEL_COUNT, spell: "letters-two", mixed: true },
+  { id: "spell-syllable-plus-mixed", name: "La syllabe et les intrus mêlés", emoji: "🎭", levelCount: SPELL_SYLLABLE_LEVEL_COUNT, spell: "letters-extra", mixed: true, difficulty: 4 },
+  { id: "spell-two-syllables-mixed", name: "Deux syllabes, écritures mêlées", emoji: "🖋️", levelCount: SPELL_SYLLABLE_LEVEL_COUNT, spell: "letters-two", mixed: true, difficulty: 4 },
 ];
+
+/** Reward weight by exercise — EXERCISES is the single authority. */
+export function exerciseDifficulty(id: ExerciseId): Difficulty {
+  const meta = EXERCISES.find((e) => e.id === id);
+  return meta ? meta.difficulty : 0;
+}
 
 /** Extra hub chip for the "écritures mêlées" twins — names the twist plainly. */
 export const MIXED_HINT = "GRANDE, petite ou attachée — trouve la bonne";

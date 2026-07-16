@@ -169,26 +169,33 @@ export default function App() {
               const pts = preview(ex.id, lvl);
               // First clear is the jackpot (10) — a big gold star pill; repeats
               // decay to a small coin pill so the child sees the reward up front.
+              // Training exercises (difficulty 0) pay nothing: no pill at all.
               const jackpot = pts === 10;
               return (
                 <button
                   key={lvl}
                   onClick={() => open(ex.id, lvl)}
-                  aria-label={`Niveau ${lvl}, gagne ${pts} ${pts > 1 ? "étoiles" : "étoile"}`}
+                  aria-label={
+                    pts > 0
+                      ? `Niveau ${lvl}, gagne ${pts} ${pts > 1 ? "étoiles" : "étoile"}`
+                      : `Niveau ${lvl}, pour s'entraîner`
+                  }
                   className="relative flex aspect-square items-center justify-center rounded-2xl bg-white/80 text-2xl font-black text-[#5A3A1E] shadow transition active:scale-95"
                 >
                   {lvl}
-                  <span
-                    aria-hidden
-                    className={
-                      jackpot
-                        ? "absolute -right-2 -top-2 flex items-center gap-0.5 rounded-full bg-[#FFC107] px-2 py-0.5 text-sm font-black leading-none text-[#4A3B00] shadow ring-2 ring-white"
-                        : "absolute -right-1 -top-1 flex items-center gap-0.5 rounded-full bg-white px-1.5 py-0.5 text-[11px] font-black leading-none text-[#B07A00] shadow ring-1 ring-[#FFE08A]"
-                    }
-                  >
-                    +{pts}
-                    <span>{jackpot ? "⭐" : "🪙"}</span>
-                  </span>
+                  {pts > 0 && (
+                    <span
+                      aria-hidden
+                      className={
+                        jackpot
+                          ? "absolute -right-2 -top-2 flex items-center gap-0.5 rounded-full bg-[#FFC107] px-2 py-0.5 text-sm font-black leading-none text-[#4A3B00] shadow ring-2 ring-white"
+                          : "absolute -right-1 -top-1 flex items-center gap-0.5 rounded-full bg-white px-1.5 py-0.5 text-[11px] font-black leading-none text-[#B07A00] shadow ring-1 ring-[#FFE08A]"
+                      }
+                    >
+                      +{pts}
+                      <span>{jackpot ? "⭐" : "🪙"}</span>
+                    </span>
+                  )}
                 </button>
               );
             })}

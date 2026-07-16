@@ -71,14 +71,38 @@ describe("useProfile — points (per active child)", () => {
     let first = 0;
     let second = 0;
     act(() => {
-      first = result.current.award("first-letter", 1);
+      first = result.current.award("read-image", 1, 0, 8);
     });
     act(() => {
-      second = result.current.award("first-letter", 1);
+      second = result.current.award("read-image", 1, 0, 8);
     });
     expect(first).toBe(REWARD_CURVE[0]);
     expect(second).toBe(REWARD_CURVE[1]);
     expect(result.current.profile.balance).toBe(REWARD_CURVE[0] + REWARD_CURVE[1]);
+  });
+
+  it("first-try rounds add the accuracy bonus on top of the curve", () => {
+    const { result } = render();
+    act(() => result.current.createChild("Léa"));
+    let pts = 0;
+    act(() => {
+      // read-image has difficulty 2: a full-perfect 8-round run = curve + 2.
+      pts = result.current.award("read-image", 1, 8, 8);
+    });
+    expect(pts).toBe(REWARD_CURVE[0] + 2);
+  });
+
+  it("training exercises (difficulty 0) award nothing but still count in the ledger", () => {
+    const { result } = render();
+    act(() => result.current.createChild("Léa"));
+    let pts = 99;
+    act(() => {
+      pts = result.current.award("first-letter", 1, 8, 8); // even full-perfect
+    });
+    expect(pts).toBe(0);
+    expect(result.current.profile.balance).toBe(0);
+    expect(result.current.profile.ledger["first-letter:1"]).toBe(1);
+    expect(result.current.preview("first-letter", 1)).toBe(0); // hub shows no pill
   });
 
   it("spend fails when unaffordable and succeeds otherwise", () => {
@@ -90,7 +114,7 @@ describe("useProfile — points (per active child)", () => {
     });
     expect(ok).toBe(false);
     act(() => {
-      result.current.award("first-letter", 1); // +10
+      result.current.award("read-image", 1, 0, 8); // +10
     });
     act(() => {
       ok = result.current.spend(5);
@@ -103,7 +127,7 @@ describe("useProfile — points (per active child)", () => {
     const { result } = render();
     act(() => result.current.createChild("Léa"));
     act(() => {
-      result.current.award("first-letter", 1); // +10
+      result.current.award("read-image", 1, 0, 8); // +10
     });
     let bought = false;
     act(() => {
@@ -125,7 +149,7 @@ describe("useProfile — non-destructive mascot switch", () => {
     const { result } = render();
     act(() => result.current.createChild("Léa"));
     act(() => {
-      result.current.award("first-letter", 1); // +10, global to the child
+      result.current.award("read-image", 1, 0, 8); // +10, global to the child
       result.current.chooseSpecies("unicorn");
     });
     act(() => {
@@ -155,7 +179,7 @@ describe("useProfile — siblings are isolated", () => {
     act(() => result.current.createChild("Léa"));
     const lea = result.current.activeId!;
     act(() => {
-      result.current.award("first-letter", 1); // Léa: +10
+      result.current.award("read-image", 1, 0, 8); // Léa: +10
     });
 
     act(() => result.current.createChild("Tom")); // Tom becomes active, fresh
@@ -171,7 +195,7 @@ describe("useProfile — persistence", () => {
     const { result, unmount } = render();
     act(() => result.current.createChild("Léa"));
     act(() => {
-      result.current.award("first-letter", 1);
+      result.current.award("read-image", 1, 0, 8);
       result.current.chooseSpecies("fox");
     });
     unmount();

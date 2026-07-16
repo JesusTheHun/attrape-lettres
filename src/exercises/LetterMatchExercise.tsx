@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { GameFrame } from "../components/GameFrame";
-import { EarnBadge } from "../components/EarnBadge";
-import { EndButtons } from "../components/EndButtons";
+import { Finished } from "../components/Finished";
 import { Mascot } from "../mascot/Mascot";
 import { Tile } from "../components/Tile";
 import { useAudio } from "../hooks/useAudio";
@@ -12,6 +11,7 @@ import {
   letterMatchPrompt,
   letterMatchSuccess,
 } from "../levels";
+import { MISS_COOLDOWN_MS } from "../rewards";
 import { SCRIPT_FONT, faceLabel } from "../letterForms";
 import type { ExerciseId, LetterFace, LetterMatchKind, Mood, Verdict } from "../types";
 
@@ -52,8 +52,20 @@ export function LetterMatchExercise({
   const [flash, setFlash] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [earned, setEarned] = useState(0);
+  // One winnable star per round; a wrong tap greys it out on the spot. The ref
+  // mirrors the state so the award closure reads a never-stale count.
+  const [stars, setStars] = useState<boolean[]>(() => session.map(() => true));
+  const starsRef = useRef(stars);
+  // Picks are swallowed for a beat after a miss — spam can't machine-gun through.
+  const coolUntil = useRef(0);
   const locked = useRef(false);
   const mountedRef = useRef(true);
+
+  const missRound = useCallback((i: number) => {
+    if (!starsRef.current[i]) return;
+    starsRef.current = starsRef.current.map((s, j) => (j === i ? false : s));
+    setStars(starsRef.current);
+  }, []);
 
   const round = session[idx];
   // Both directions live in one run; the line to speak is read off this round.
@@ -91,10 +103,13 @@ export function LetterMatchExercise({
   const pick = useCallback(
     (face: LetterFace): Verdict => {
       if (locked.current) return "reject";
+      if (performance.now() < coolUntil.current) return "reject"; // silent while the shake plays
       audio.unlock();
       audio.pop();
       if (face.base !== round.prompt.base) {
         audio.nudge();
+        coolUntil.current = performance.now() + MISS_COOLDOWN_MS;
+        missRound(idx); // the star greys NOW, same beat as the shake
         return "reject";
       }
       locked.current = true;
@@ -113,7 +128,9 @@ export function LetterMatchExercise({
         locked.current = false;
         if (next >= session.length) {
           setMood("cheer");
-          setEarned(award(exercise, level));
+          setEarned(
+            award(exercise, level, starsRef.current.filter(Boolean).length, session.length)
+          );
           setDone(true);
           void audio.say("Bravo ! Tu as tout trouvé !");
         } else {
@@ -123,13 +140,19 @@ export function LetterMatchExercise({
       })();
       return "accept";
     },
-    [audio, award, exercise, fire, idx, level, round, session.length]
+    [audio, award, exercise, fire, idx, level, missRound, round, session.length]
   );
 
   return (
-    <GameFrame onBack={onBack} done={idx} total={session.length} canvasRef={canvasRef}>
+    <GameFrame
+      onBack={onBack}
+      done={done ? session.length : idx}
+      total={session.length}
+      stars={stars}
+      canvasRef={canvasRef}
+    >
       {done ? (
-        <Finished onMenu={onBack} onNext={onNext} count={session.length} earned={earned} />
+        <Finished onMenu={onBack} onNext={onNext} stars={stars} earned={earned} title="Tu as tout trouvé !" />
       ) : (
         <div className="relative z-[41] flex w-full flex-1 flex-col items-center px-4 pb-8 pt-2">
           <Mascot config={profile.config} mood={mood} />
@@ -178,33 +201,5 @@ export function LetterMatchExercise({
         </div>
       )}
     </GameFrame>
-  );
-}
-
-function Finished({
-  onMenu,
-  onNext,
-  count,
-  earned,
-}: {
-  onMenu: () => void;
-  onNext: () => void;
-  count: number;
-  earned: number;
-}) {
-  return (
-    <div className="relative z-[41] flex flex-1 flex-col items-center justify-center gap-5 px-6 text-center">
-      <div style={{ fontSize: "clamp(64px,20vw,110px)", lineHeight: 1 }}>🤩</div>
-      <EarnBadge earned={earned} />
-      <div className="flex gap-1">
-        {Array.from({ length: count }).map((_, i) => (
-          <span key={i} style={{ fontSize: 28 }}>⭐</span>
-        ))}
-      </div>
-      <h2 className="m-0 font-black text-[#5A3A1E]" style={{ fontSize: "clamp(26px,7vw,40px)" }}>
-        Tu as tout trouvé !
-      </h2>
-      <EndButtons onMenu={onMenu} onNext={onNext} />
-    </div>
   );
 }
