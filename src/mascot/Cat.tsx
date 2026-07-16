@@ -8,11 +8,11 @@ import { Aura, Bow, Cheeks, Crown, Eyes, FoldedLegs, GroundGlow, Halo, Leg, Mout
  * Cat — "Lynx Royal" timeline. Each stade 3→9 adds a clear, high-contrast beat
  * on the way to a majestic big-cat:
  *  0-2 (untouched) curled newborn → lifting head → first steps
- *  3 cheek tufts · 4 lynx ear-tufts · 5 neck ruff starts
+ *  3 whiskers sprout · 4 lynx ear-tufts · 5 neck ruff starts
  *  6 growing mane + sparkle · 7 big mane · 8 aura + XL mane + halo
  *  9 lion mane, gold crown, ground glow, sparkle burst.
- * The mane is a DARKER amber with an outline halo so it never melts into the
- * same-coloured head.
+ * The mane is a soft two-tone scallop ruff (see Mane) so the cat stays kawaii
+ * while still reading "lion" against the same-coloured head.
  */
 
 type Tuft = "none" | "small" | "big";
@@ -24,8 +24,8 @@ interface CSpec {
   sparkle: number;
   /** lion-mane plume length; undefined/0 = none. */
   mane?: number;
-  /** always-on lynx cheek tufts. */
-  cheek?: boolean;
+  /** whiskers — sprout at stade 3 (a newborn's bare face is its own beat). */
+  whiskers?: boolean;
   /** head halo opacity 0..1. */
   halo?: number;
   /** royal crown. */
@@ -34,39 +34,42 @@ interface CSpec {
   ground?: boolean;
 }
 
-const MANE = "#E0872F";
-const MANE_EDGE = "#A85A16";
+const MANE = "#FFC98A";
+const MANE_EDGE = "#E08A3C";
 
 const STAGES: CSpec[] = [
   { tail: 0.5, tuft: "none", aura: 0, sparkle: 0 }, // 0
   { tail: 0.6, tuft: "none", aura: 0, sparkle: 0 }, // 1
   { tail: 0.8, tuft: "none", aura: 0, sparkle: 0 }, // 2
-  { tail: 1.05, tuft: "none", aura: 0, sparkle: 0, cheek: true }, // 3 cheek tufts
-  { tail: 1.2, tuft: "small", aura: 0, sparkle: 0, cheek: true }, // 4 lynx ear-tufts
-  { tail: 1.4, tuft: "small", aura: 0, sparkle: 0, cheek: true, mane: 5 }, // 5 ruff
-  { tail: 1.55, tuft: "small", aura: 0.15, sparkle: 1, cheek: true, mane: 7 }, // 6 mane + sparkle
-  { tail: 1.7, tuft: "big", aura: 0.4, sparkle: 2, cheek: true, mane: 9 }, // 7 big mane
-  { tail: 1.95, tuft: "big", aura: 0.7, sparkle: 3, cheek: true, mane: 11, halo: 0.6 }, // 8 XL mane + halo
-  { tail: 2.4, tuft: "big", aura: 1, sparkle: 6, cheek: true, mane: 14, halo: 0.6, crown: true, ground: true }, // 9 lion king
+  { tail: 1.05, tuft: "none", aura: 0, sparkle: 0, whiskers: true }, // 3 whiskers
+  { tail: 1.2, tuft: "small", aura: 0, sparkle: 0, whiskers: true }, // 4 lynx ear-tufts
+  { tail: 1.4, tuft: "small", aura: 0, sparkle: 0, whiskers: true, mane: 5 }, // 5 ruff
+  { tail: 1.55, tuft: "small", aura: 0.15, sparkle: 1, whiskers: true, mane: 6.5 }, // 6 mane + sparkle
+  { tail: 1.6, tuft: "big", aura: 0.4, sparkle: 2, whiskers: true, mane: 8 }, // 7 big mane
+  { tail: 1.75, tuft: "big", aura: 0.7, sparkle: 3, whiskers: true, mane: 9.5, halo: 0.6 }, // 8 XL mane + halo
+  { tail: 2.0, tuft: "big", aura: 1, sparkle: 6, whiskers: true, mane: 11, halo: 0.6, crown: true, ground: true }, // 9 lion king
 ];
 
 const TUFT_LEN: Record<Tuft, number> = { none: 0, small: 4, big: 7 };
 
-/** Lion mane — a ring of plumes with a darker outline underlay so the spikes
- * read against the same-coloured head. */
+/** Lion mane, kawaii — an ARC of soft round fur scallops in warm two-tone
+ * (spiky dark plumes read "angry"; round pastel clumps read "plush"). The
+ * chest is left clear so the head keeps its silhouette instead of melting
+ * into a blob. */
 function Mane({ cx, cy, r, size }: { cx: number; cy: number; r: number; size: number }) {
-  const n = 15;
-  const ring = (len: number, col: string, prefix: string) =>
+  const n = 12;
+  const ring = (rad: number, cr: number, col: string, prefix: string) =>
     Array.from({ length: n }).map((_, i) => {
       const a = (i / n) * Math.PI * 2;
-      const x = cx + Math.cos(a) * r;
-      const y = cy + Math.sin(a) * r + r * 0.28;
-      return <Plume key={`${prefix}${i}`} x={x} y={y} color={col} len={len} wide={size * 0.6} rot={90 - (a * 180) / Math.PI} n={2} />;
+      if (Math.sin(a) > 0.62) return null; // skip the chest wedge
+      const x = cx + Math.cos(a) * rad;
+      const y = cy + Math.sin(a) * rad + r * 0.1;
+      return <circle key={`${prefix}${i}`} cx={x} cy={y} r={cr} fill={col} />;
     });
   return (
     <g>
-      {ring(size + 2.2, MANE_EDGE, "e")}
-      {ring(size, MANE, "f")}
+      {ring(r + size * 0.5, size * 0.92, MANE_EDGE, "e")}
+      {ring(r + size * 0.28, size * 0.72, MANE, "f")}
     </g>
   );
 }
@@ -86,7 +89,7 @@ export function Cat({ config, layout, stage, mood, uid, preview }: RigProps) {
   let spec = STAGES[Math.max(0, Math.min(9, stage))];
   // Shop thumbnail: keep the tail (a sold part) but drop mane/tufts/halo/crown/
   // glow so a ghost cat shows ONLY what this tile changes.
-  if (preview) spec = { ...spec, tuft: "none", aura: 0, sparkle: 0, mane: undefined, cheek: false, halo: undefined, crown: false, ground: false };
+  if (preview) spec = { ...spec, tuft: "none", aura: 0, sparkle: 0, mane: undefined, whiskers: false, halo: undefined, crown: false, ground: false };
   const tailF = spec.tail * (longTail ? 1 : 0.62);
   const raise = ramp(stage, [[0, 0], [2, 0.1], [4, 0.4], [6, 0.75], [9, 1]]);
   const earScale = ramp(stage, [[0, 0.44], [2, 0.5], [4, 0.58], [6, 0.64], [9, 0.68]]);
@@ -196,23 +199,19 @@ export function Cat({ config, layout, stage, mood, uid, preview }: RigProps) {
         </g>
       )}
 
-      {/* lynx cheek tufts (light, always-on from stade 3) */}
-      {spec.cheek &&
-        ([-1, 1] as const).map((d) => (
-          <Plume key={d} x={headCX + d * headR * 0.9} y={headCY + headR * 0.24} color="#FFE0C4" len={7} wide={5} rot={d * 72} n={3} />
-        ))}
-
       {/* face */}
       <Eyes cx={headCX} y={headCY} dx={headR * 0.4} r={eyeR} mood={mood} sleepy={stage === 0} />
       <Cheeks cx={headCX} y={headCY + headR * 0.36} dx={headR * 0.58} r={headR * 0.14} />
       <path d={`M${headCX - 2.4} ${headCY + headR * 0.3} L${headCX + 2.4} ${headCY + headR * 0.3} L${headCX} ${headCY + headR * 0.44} Z`} fill="#FF7C93" />
       <Mouth cx={headCX} y={headCY + headR * 0.52} w={headR * 0.15} mood={mood} />
-      {([-1, 1] as const).map((d) => (
-        <g key={d} stroke="#B79A82" strokeWidth={0.8} strokeLinecap="round">
-          <line x1={headCX + d * headR * 0.35} y1={headCY + headR * 0.4} x2={headCX + d * headR} y2={headCY + headR * 0.3} />
-          <line x1={headCX + d * headR * 0.35} y1={headCY + headR * 0.48} x2={headCX + d * headR} y2={headCY + headR * 0.5} />
-        </g>
-      ))}
+      {/* whiskers — the stade-3 beat */}
+      {spec.whiskers &&
+        ([-1, 1] as const).map((d) => (
+          <g key={d} stroke="#B79A82" strokeWidth={0.8} strokeLinecap="round">
+            <line x1={headCX + d * headR * 0.35} y1={headCY + headR * 0.4} x2={headCX + d * headR} y2={headCY + headR * 0.3} />
+            <line x1={headCX + d * headR * 0.35} y1={headCY + headR * 0.48} x2={headCX + d * headR} y2={headCY + headR * 0.5} />
+          </g>
+        ))}
 
       {/* royal crown (majestic) */}
       {spec.crown && <Crown cx={headCX} cy={headCY - headR * 0.5} r={headR * 0.95} band="#FFD54F" gem="#E0533B" />}
@@ -223,13 +222,27 @@ export function Cat({ config, layout, stage, mood, uid, preview }: RigProps) {
           front half closes the tube around the waist, duck head at 7+. */}
       {layout.standing && has(A.swimsuit) && <Swimsuit id={`${uid}-suit`} cx={bodyCX} cy={bodyCY} rx={bodyRX} ry={bodyRY} color="#4FC3F7" star={stage >= 6} />}
       {layout.standing && has(A.swimRing) && <SwimRing id={`${uid}-ringf`} cx={bodyCX} cy={bodyCY + bodyRY * 0.3} rx={bodyRX * 1.22} color="#FF6B6B" part="front" duck={stage >= 7} />}
-      {has(A.bellCollar) && (
-        <g>
-          <path d={`M${anchor.neck.x - anchor.neck.w} ${anchor.neck.y} Q${anchor.neck.x} ${anchor.neck.y + 6} ${anchor.neck.x + anchor.neck.w} ${anchor.neck.y}`} fill="none" stroke="#EF6F6C" strokeWidth={3.4} strokeLinecap="round" />
-          <circle cx={anchor.neck.x} cy={anchor.neck.y + 4} r={3} fill="#FFD54F" />
-          <circle cx={anchor.neck.x} cy={anchor.neck.y + 4} r={0.9} fill="#B98A22" />
-        </g>
-      )}
+      {/* collar grows up with the cat: kitten bell → studded leather + gold medal
+          from stade 5 (a baby bell on a lion reads wrong) */}
+      {has(A.bellCollar) &&
+        (stage >= 5 ? (
+          <g>
+            <path d={`M${anchor.neck.x - anchor.neck.w} ${anchor.neck.y} Q${anchor.neck.x} ${anchor.neck.y + 6} ${anchor.neck.x + anchor.neck.w} ${anchor.neck.y}`} fill="none" stroke="#6B4226" strokeWidth={3.6} strokeLinecap="round" />
+            {[0.18, 0.38, 0.62, 0.82].map((t) => {
+              const sx = (1 - t) * (1 - t) * (anchor.neck.x - anchor.neck.w) + 2 * (1 - t) * t * anchor.neck.x + t * t * (anchor.neck.x + anchor.neck.w);
+              const sy = (1 - t) * (1 - t) * anchor.neck.y + 2 * (1 - t) * t * (anchor.neck.y + 6) + t * t * anchor.neck.y;
+              return <circle key={t} cx={sx} cy={sy} r={0.9} fill="#FFD54F" />;
+            })}
+            <circle cx={anchor.neck.x} cy={anchor.neck.y + 5.4} r={2.9} fill="#FFD54F" stroke="#B98A22" strokeWidth={0.8} />
+            <circle cx={anchor.neck.x} cy={anchor.neck.y + 5.4} r={1.1} fill="none" stroke="#B98A22" strokeWidth={0.7} />
+          </g>
+        ) : (
+          <g>
+            <path d={`M${anchor.neck.x - anchor.neck.w} ${anchor.neck.y} Q${anchor.neck.x} ${anchor.neck.y + 6} ${anchor.neck.x + anchor.neck.w} ${anchor.neck.y}`} fill="none" stroke="#EF6F6C" strokeWidth={3.4} strokeLinecap="round" />
+            <circle cx={anchor.neck.x} cy={anchor.neck.y + 4} r={3} fill="#FFD54F" />
+            <circle cx={anchor.neck.x} cy={anchor.neck.y + 4} r={0.9} fill="#B98A22" />
+          </g>
+        ))}
       {has(A.bow) && <Bow x={anchor.headTop.x - headR * 0.5} y={anchor.headTop.y + headR * 0.18} s={0.95} color="#FF7EA8" />}
       {has(A.partyHat) && (
         <g>
