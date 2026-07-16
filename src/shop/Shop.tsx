@@ -1,8 +1,10 @@
-import { useRef, type ReactNode } from "react";
-import { useProfile } from "../hooks/useProfile";
+import { useRef, useState, type ReactNode } from "react";
+import { useAudio } from "../hooks/useAudio";
+import { applyOption, useProfile } from "../hooks/useProfile";
 import { CATALOG, DEFAULT_LOOKS, type DefaultLook } from "../mascot/catalog";
 import { Mascot } from "../mascot/Mascot";
 import type { CustomizationOption, Species } from "../types";
+import { SHOP_BOUGHT, SHOP_GREW, SHOP_NEED_MORE, shopCostLine } from "../vo/utterances";
 import { GrowthCard } from "./GrowthCard";
 import { ItemPreview } from "./ItemPreview";
 import { ShopItem } from "./ShopItem";
@@ -10,9 +12,10 @@ import { growBurst, pop, press } from "./anim";
 
 /* -------------------------------------------------------------------------- */
 /* Shop / dressing-room — the spending area.                                    */
-/* A live <Mascot> preview reflects the CURRENT config and re-renders from      */
-/* profile the instant anything is bought/equipped; a WAAPI pop celebrates it.  */
-/* Reads CATALOG (may be empty/partial) + the wallet; mutates only via          */
+/* Buying is a two-step ceremony a 6yo can follow: tapping an unowned tile is a */
+/* FREE try-on (the live mascot wears it, nothing is spent, VO says the price), */
+/* and only the big "Acheter · ⭐ N" button under the mascot spends. Owned      */
+/* items equip on tap, as before. Reads CATALOG + the wallet; mutates only via  */
 /* useProfile().buy / setConfig. Never touches storage. No hard errors.         */
 /* -------------------------------------------------------------------------- */
 
@@ -104,10 +107,43 @@ function DefaultTile({
 export function Shop({ onBack }: { onBack: () => void }) {
   const { profile, buy, setConfig } = useProfile();
   const { config, balance, owned } = profile;
+  const audio = useAudio();
   const previewRef = useRef<HTMLDivElement>(null);
+  const buyRef = useRef<HTMLButtonElement>(null);
+
+  /* The try-on "cart": at most ONE unowned option, worn by the preview mascot
+   * but NOT bought. Any real config change (equip, buy, factory look) clears it. */
+  const [cart, setCart] = useState<CustomizationOption | null>(null);
+  const cartAffordable = cart !== null && balance >= cart.cost;
+  const shownConfig = cart ? applyOption(config, cart) : config;
 
   const forMe = CATALOG.filter((o) => o.species === config.species);
   const defaults = DEFAULT_LOOKS[config.species];
+
+  // Free try-on: dress the preview, say the price. Nothing is spent here.
+  const tryOn = (o: CustomizationOption) => {
+    audio.unlock();
+    setCart(o);
+    pop(previewRef.current);
+    void audio.say(balance >= o.cost ? shopCostLine(o.cost) : `${shopCostLine(o.cost)} ${SHOP_NEED_MORE}`);
+  };
+
+  // The ONLY place shop items are paid for: the big button under the mascot.
+  const confirmBuy = () => {
+    if (!cart) return;
+    audio.unlock();
+    if (!buy(cart)) return; // wallet raced empty — soft no-op, never an error
+    pop(previewRef.current);
+    audio.success();
+    void audio.say(SHOP_BOUGHT);
+    setCart(null);
+  };
+
+  const cancelTry = () => {
+    audio.unlock();
+    setCart(null);
+    pop(previewRef.current);
+  };
 
   // Colours & style variants just apply (free re-apply once owned).
   const applyVariant = (o: CustomizationOption) => {
@@ -115,7 +151,7 @@ export function Shop({ onBack }: { onBack: () => void }) {
     pop(previewRef.current);
   };
 
-  // Accessories toggle: tapping the equipped one takes it off; else buy + equip.
+  // Accessories toggle: tapping the equipped one takes it off; else equip.
   const toggleAccessory = (o: CustomizationOption) => {
     if (config.accessories.includes(o.id)) {
       setConfig((c) => ({
@@ -130,6 +166,9 @@ export function Shop({ onBack }: { onBack: () => void }) {
 
   // Return one colour/style slot to its factory look (clearing it → rig default).
   const clearSlot = (kind: "colors" | "styles", slot: string) => {
+    audio.unlock();
+    audio.pop();
+    setCart(null);
     setConfig((c) => {
       const next = { ...c[kind] };
       delete next[slot];
@@ -149,6 +188,19 @@ export function Shop({ onBack }: { onBack: () => void }) {
     const locked = config.stage < (o.minStage ?? 0);
     const affordable = isOwned || balance >= o.cost;
 
+    // Owned = equip/toggle right away (free). Unowned = try-on, never a spend.
+    const onTap = () => {
+      if (isOwned) {
+        audio.unlock();
+        audio.pop();
+        setCart(null);
+        if (o.category === "accessory") toggleAccessory(o);
+        else applyVariant(o);
+      } else {
+        tryOn(o);
+      }
+    };
+
     return (
       <ShopItem
         key={o.id}
@@ -157,7 +209,8 @@ export function Shop({ onBack }: { onBack: () => void }) {
         equipped={equipped}
         locked={locked}
         affordable={affordable}
-        onTap={() => (o.category === "accessory" ? toggleAccessory(o) : applyVariant(o))}
+        trying={cart?.id === o.id}
+        onTap={onTap}
       />
     );
   };
@@ -245,17 +298,58 @@ export function Shop({ onBack }: { onBack: () => void }) {
           </div>
         </div>
 
+        {/* The live preview wears the cart item during a try-on (shownConfig),
+         * so a kid SEES the item on their friend before deciding to buy. */}
         <div ref={previewRef} className="drop-shadow-lg">
-          <Mascot config={config} mood="idle" size={128} />
+          <Mascot config={shownConfig} mood="idle" size={128} />
         </div>
-        <p className="text-sm font-bold" style={{ color: "#7A5A3A" }}>
-          Habille ton copain !
-        </p>
+
+        {cart ? (
+          <div className="flex w-full max-w-sm items-center justify-center gap-2">
+            <button
+              type="button"
+              onClick={cancelTry}
+              aria-label="Ne pas acheter"
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-xl font-black shadow active:scale-95 [touch-action:manipulation]"
+              style={{ background: "rgba(255,255,255,0.9)", color: "#9A7A5A", border: "none" }}
+            >
+              ✕
+            </button>
+            <button
+              ref={buyRef}
+              type="button"
+              disabled={!cartAffordable}
+              onPointerDown={() => press(buyRef.current)}
+              onClick={confirmBuy}
+              aria-label={
+                cartAffordable
+                  ? `Acheter ${cart.name} pour ${cart.cost} étoiles`
+                  : `Pas encore assez d'étoiles pour ${cart.name}`
+              }
+              className="rounded-full px-6 py-3 text-lg font-black shadow [touch-action:manipulation] [-webkit-tap-highlight-color:transparent]"
+              style={{
+                background: cartAffordable ? "#FFD54F" : "rgba(255,255,255,0.7)",
+                color: cartAffordable ? "#4A3B00" : "#B8A98E",
+                border: "none",
+                cursor: cartAffordable ? "pointer" : "default",
+                boxShadow: cartAffordable ? "0 6px 0 rgba(0,0,0,0.12)" : "none",
+              }}
+            >
+              {cartAffordable ? `Acheter · ⭐ ${cart.cost}` : `⭐ ${cart.cost} · pas encore`}
+            </button>
+          </div>
+        ) : (
+          <p className="text-sm font-bold" style={{ color: "#7A5A3A" }}>
+            Habille ton copain !
+          </p>
+        )}
       </header>
 
       <div className="flex w-full flex-col gap-5 px-5">
         <GrowthCard
           onGrew={() => {
+            audio.success();
+            void audio.say(SHOP_GREW);
             pop(previewRef.current);
             growBurst(previewRef.current);
           }}

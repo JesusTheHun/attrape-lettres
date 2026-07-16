@@ -15,6 +15,18 @@ import {
 /* exercises pass to audio.say(), or the lookup misses and it falls back.        */
 /* -------------------------------------------------------------------------- */
 
+/* Shop lines — spoken during try-on/purchase so a pre-reader hears what the
+ * visuals mean. Fixed strings + a finite cost vocabulary (catalog costs), so
+ * they can be baked like everything else; say() falls back to TTS meanwhile. */
+export const SHOP_BOUGHT = "C'est à toi !";
+export const SHOP_GREW = "Tu as grandi !";
+export const SHOP_NEED_MORE = "Il te manque des étoiles.";
+
+/** "Ça coûte N étoiles." — the spoken price of a tile being tried on. */
+export function shopCostLine(cost: number): string {
+  return cost === 1 ? "Ça coûte 1 étoile." : `Ça coûte ${cost} étoiles.`;
+}
+
 export function enumerateUtterances(): string[] {
   const out = new Set<string>();
 

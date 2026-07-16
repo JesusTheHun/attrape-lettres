@@ -6,7 +6,9 @@ import { press } from "./anim";
 /* -------------------------------------------------------------------------- */
 /* One buyable / equippable tile. Purely presentational — the parent computes  */
 /* every state flag and owns the actual buy()/setConfig() side-effect in onTap. */
-/* Never shows a hard error: unaffordable = desaturated + "pas encore".         */
+/* Tapping an UNOWNED tile is always a free try-on (the parent shows it on the  */
+/* live mascot + a buy bar); only growth-locked tiles are truly disabled. An    */
+/* unaffordable item can still be tried — buying it is gated, not seeing it.    */
 /* -------------------------------------------------------------------------- */
 
 const INK = "#5A3A1E";
@@ -21,12 +23,13 @@ interface ShopItemProps {
   locked: boolean;
   /** owned || balance >= cost. */
   affordable: boolean;
+  /** Being tried on right now (in the cart, worn by the preview mascot). */
+  trying: boolean;
   onTap: () => void;
 }
 
-export function ShopItem({ option, owned, equipped, locked, affordable, onTap }: ShopItemProps) {
+export function ShopItem({ option, owned, equipped, locked, affordable, trying, onTap }: ShopItemProps) {
   const ref = useRef<HTMLButtonElement>(null);
-  const disabled = locked || (!owned && !affordable);
   const minStage = option.minStage ?? 0;
 
   const price = `⭐ ${option.cost}`;
@@ -54,30 +57,33 @@ export function ShopItem({ option, owned, equipped, locked, affordable, onTap }:
       ? "à toi"
       : locked
         ? `coûte ${option.cost} points, à débloquer au niveau ${minStage + 1}`
-        : affordable
-          ? `coûte ${option.cost} points`
-          : `coûte ${option.cost} points, pas encore assez`;
+        : trying
+          ? `coûte ${option.cost} points, en train d'essayer`
+          : affordable
+            ? `coûte ${option.cost} points`
+            : `coûte ${option.cost} points, pas encore assez`;
 
   return (
     <button
       ref={ref}
       type="button"
-      disabled={disabled}
+      disabled={locked}
       aria-pressed={equipped}
       aria-label={`${option.name}, ${stateLabel}`}
       onPointerDown={() => press(ref.current)}
       onClick={onTap}
       className="relative flex min-h-[96px] select-none flex-col items-center justify-center gap-1 rounded-2xl p-3 text-center [touch-action:manipulation] [-webkit-tap-highlight-color:transparent]"
       style={{
-        background: equipped ? "#FFF6E0" : "rgba(255,255,255,0.9)",
+        background: equipped ? "#FFF6E0" : trying ? "#FFF9EB" : "rgba(255,255,255,0.9)",
         color: INK,
         border: "none",
-        cursor: disabled ? "default" : "pointer",
-        opacity: disabled ? 0.55 : 1,
-        filter: disabled && !locked ? "grayscale(0.85)" : "none",
+        cursor: locked ? "default" : "pointer",
+        opacity: locked ? 0.55 : 1,
         boxShadow: equipped
           ? "0 0 0 4px #66BB6A, 0 8px 16px rgba(0,0,0,0.12)"
-          : "0 6px 14px rgba(0,0,0,0.10)",
+          : trying
+            ? "0 0 0 4px #FFB300, 0 8px 16px rgba(0,0,0,0.12)"
+            : "0 6px 14px rgba(0,0,0,0.10)",
       }}
     >
       <ItemPreview
@@ -89,7 +95,7 @@ export function ShopItem({ option, owned, equipped, locked, affordable, onTap }:
       <span className="text-sm font-bold leading-tight">{option.name}</span>
       <span
         className="text-xs font-black"
-        style={{ color: equipped ? "#3E7B3E" : "#9A7A5A" }}
+        style={{ color: equipped ? "#3E7B3E" : trying ? "#B07A00" : "#9A7A5A" }}
       >
         {badge}
       </span>

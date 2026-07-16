@@ -208,7 +208,9 @@ export interface ProfileAPI {
 
 const Ctx = createContext<ProfileAPI | null>(null);
 
-function applyOption(c: MascotConfig, o: CustomizationOption): MascotConfig {
+/** What `config` looks like with this option applied. Pure — the shop also uses
+ * it to dress the live preview during a try-on, without touching the profile. */
+export function applyOption(c: MascotConfig, o: CustomizationOption): MascotConfig {
   switch (o.category) {
     case "accessory":
       return c.accessories.includes(o.id)
