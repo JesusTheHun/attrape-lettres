@@ -129,11 +129,14 @@ const COLOUR_ROWS: Array<[string, string, string, number]> = [
   ["bellyColor", "#FFB27A", "Ventre magma", 5],
   ["wingColor", "#5F6470", "Ailes nuit", 4],
   ["wingColor", "#F2C14E", "Ailes dorées", 4],
+  ["hornColor", "#F2C14E", "Cornes d'or", 4],
+  ["hornColor", "#4E5560", "Cornes noires", 4],
 ];
 const STYLE_ROWS: Array<[string, string, string, number[]]> = [
-  ["hornStyle", "bull", "Cornes de taureau", [3, 5, 7, 9]],
+  ["hornStyle", "double", "Cornes doubles", [3, 5, 7, 9]],
   ["crestStyle", "lava", "Crête de lave", [4, 6, 9]],
-  ["tailSize", "short", "Petite queue", [2, 5, 9]],
+  ["tailStyle", "club", "Queue massue", [0, 1, 5, 9]],
+  ["tailStyle", "flame", "Queue de feu", [2, 5, 9]],
 ];
 
 it.runIf(RUN)("renders items QA pages", () => {
@@ -160,6 +163,25 @@ it.runIf(RUN)("renders items QA pages", () => {
     return `<h2>${label}</h2>${strip(cells)}`;
   }).join("");
   out("qa-items-variants.html", page("Couleurs & styles — variantes vs origine", colourBoard + styleBoard));
+
+  // Close-ups of the fiddly bits (small parts unreadable on the 130px boards).
+  const zoom = (label: string, config: PConfig, stades: number[]) =>
+    `<h2>${label}</h2>${strip(stades.map((s) => ({ svg: petSvg(CandidateA, s, config, 240), caption: `stade ${s}` })))}`;
+  out(
+    "qa-zoom.html",
+    page(
+      "Zooms — pièces fines",
+      zoom("Cornes doubles", cfg({ styles: { hornStyle: "double" } }), [3, 5, 7]) +
+        zoom("Cornes noires / d'or", cfg({ colors: { hornColor: "#4E5560" } }), [2, 4]) +
+        zoom("Cornes d'or", cfg({ colors: { hornColor: "#F2C14E" } }), [2, 4]) +
+        zoom("Queue massue", cfg({ styles: { tailStyle: "club" } }), [0, 1, 5]) +
+        zoom("Queue de feu", cfg({ styles: { tailStyle: "flame" } }), [2, 5, 9]) +
+        zoom("Collier de croc", cfg({ accessories: [P_ACCESSORY.dragon.fang] }), [2, 4, 7]) +
+        zoom("Croc + cape ensemble", cfg({ accessories: [P_ACCESSORY.dragon.fang, P_ACCESSORY.dragon.cape] }), [4, 7]) +
+        zoom("Lunettes d'aviateur", cfg({ accessories: [P_ACCESSORY.dragon.goggles] }), [3, 5, 8]) +
+        zoom("Petit trésor", cfg({ accessories: [P_ACCESSORY.dragon.treasure] }), [0, 1, 4, 9])
+    )
+  );
 });
 
 /* ------------------------------------------------------------------------- */
@@ -329,6 +351,7 @@ it.runIf(RUN)("writes items.html", () => {
     bodyColor: "Recolore tout le corps, visible dès l'œuf.",
     bellyColor: "Le ventre est caché dans l'œuf au stade 0.",
     wingColor: "Les ailes poussent au stade 3.",
+    hornColor: "Les bosses de cornes pointent au stade 2 ; la couleur grandit avec elles.",
   };
   const colourEmoji: Record<string, string> = {
     "Écailles rouge braise": "🔥",
@@ -338,6 +361,8 @@ it.runIf(RUN)("writes items.html", () => {
     "Ventre magma": "🌋",
     "Ailes nuit": "🦇",
     "Ailes dorées": "⭐",
+    "Cornes d'or": "✨",
+    "Cornes noires": "🖤",
   };
   const colourCost: Record<string, number> = {
     "Écailles rouge braise": 20,
@@ -347,8 +372,10 @@ it.runIf(RUN)("writes items.html", () => {
     "Ventre magma": 22,
     "Ailes nuit": 24,
     "Ailes dorées": 24,
+    "Cornes d'or": 22,
+    "Cornes noires": 22,
   };
-  const colourGate: Record<string, number | undefined> = { bellyColor: 1, wingColor: 3 };
+  const colourGate: Record<string, number | undefined> = { bellyColor: 1, wingColor: 3, hornColor: 2 };
 
   const colours: ItemCard[] = COLOUR_ROWS.map(([slot, value, label, stade]) => ({
     name: label,
@@ -361,12 +388,12 @@ it.runIf(RUN)("writes items.html", () => {
 
   const styles: ItemCard[] = [
     {
-      name: "Cornes de taureau",
-      emoji: "🐂",
+      name: "Cornes doubles",
+      emoji: "🐉",
       cost: 45,
       minStage: 3,
-      reason: "Les vraies cornes poussent au stade 3 ; la courbe s'élargit avec elles.",
-      cells: [3, 5, 7, 9].map((s) => ({ svg: petSvg(CandidateA, s, cfg({ styles: { hornStyle: "bull" } }), 130), caption: `taureau · stade ${s}` })),
+      reason: "Deux paires de cornes — la grande + une petite devant, la couronne naturelle des dragons. Dès les vraies cornes (stade 3).",
+      cells: [3, 5, 7, 9].map((s) => ({ svg: petSvg(CandidateA, s, cfg({ styles: { hornStyle: "double" } }), 130), caption: `doubles · stade ${s}` })),
     },
     {
       name: "Crête de lave",
@@ -377,12 +404,20 @@ it.runIf(RUN)("writes items.html", () => {
       cells: [...pair(cfg({ styles: { crestStyle: "lava" } }), 4, "lave"), ...pair(cfg({ styles: { crestStyle: "lava" } }), 9, "lave").slice(1)],
     },
     {
-      name: "Petite queue",
-      emoji: "🦎",
-      cost: 32,
+      name: "Queue massue",
+      emoji: "🔨",
+      cost: 40,
       minStage: 1,
-      reason: "Au stade 0 la queue dépasse à peine de l'œuf — identique dans les deux tailles.",
-      cells: [...pair(cfg({ styles: { tailSize: "short" } }), 5, "petite"), ...pair(cfg({ styles: { tailSize: "short" } }), 9, "petite").slice(1)],
+      reason: "La pointe devient une boule à piques — mini-massue qui dépasse déjà de l'œuf, énorme au stade 9.",
+      cells: [0, 2, 5, 9].map((s) => ({ svg: petSvg(CandidateA, s, cfg({ styles: { tailStyle: "club" } }), 130), caption: `massue · stade ${s}` })),
+    },
+    {
+      name: "Queue de feu",
+      emoji: "☄️",
+      cost: 55,
+      minStage: 2,
+      reason: "Une flamme brûle au bout de la queue dès qu'il marche (stade 2) ; elle grandit avec lui.",
+      cells: [2, 5, 9].map((s) => ({ svg: petSvg(CandidateA, s, cfg({ styles: { tailStyle: "flame" } }), 130), caption: `feu · stade ${s}` })),
     },
   ];
 
@@ -391,22 +426,32 @@ it.runIf(RUN)("writes items.html", () => {
       name: "Cape de chevalier",
       emoji: "🦸",
       cost: 55,
-      reason: "Attachée par un fermoir d'or sur la gorge ; drapée derrière lui — et autour de l'œuf au stade 0.",
-      cells: worn(A.cape, [[0, "stade 0 · autour de l'œuf"], [1, "stade 1"], [2, "stades 2-3"], [4, "stades 4-6"], [7, "stades 7-9"]]),
+      minStage: 2,
+      reason: "Réservée au dragon qui tient debout (stade 2) — fermoir d'or sur la gorge, drapée derrière lui.",
+      cells: worn(A.cape, [[2, "stades 2-3"], [4, "stades 4-6"], [7, "stades 7-9"]]),
     },
     {
-      name: "Casque de chevalier",
-      emoji: "🪖",
-      cost: 75,
-      reason: "Dôme d'acier à plumet rouge posé sur le crâne ; aux grands stades ses propres cornes le transpercent.",
-      cells: worn(A.helmet, [[0, "stade 0 · sur l'œuf"], [1, "stade 1"], [2, "stades 2-3"], [4, "stades 4-6"], [7, "stades 7-9"]]),
+      name: "Lunettes d'aviateur",
+      emoji: "🥽",
+      cost: 65,
+      minStage: 3,
+      reason: "Elles arrivent avec les ailes (stade 3) — posées sur le front, jamais sur les yeux.",
+      cells: worn(A.goggles, [[3, "stade 3"], [4, "stades 4-6"], [7, "stades 7-9"]]),
     },
     {
-      name: "Bouclier",
-      emoji: "🛡️",
-      cost: 60,
-      reason: "Un écu bleu à flamme d'or, posé contre son flanc — il grandit avec lui.",
-      cells: worn(A.shield, [[0, "stade 0 · contre l'œuf"], [1, "stade 1"], [2, "stades 2-3"], [4, "stades 4-6"], [7, "stades 7-9"]]),
+      name: "Collier de croc",
+      emoji: "🦷",
+      cost: 45,
+      minStage: 2,
+      reason: "Son premier croc de lait accroché à un cordon, porté sur la gorge, sous le museau.",
+      cells: worn(A.fang, [[2, "stades 2-3"], [4, "stades 4-6"], [7, "stades 7-9"]]),
+    },
+    {
+      name: "Petit trésor",
+      emoji: "🪙",
+      cost: 70,
+      reason: "Un dragon couve son or dès l'œuf : trois pièces près de la coquille, le tas grandit avec lui et déborde au stade 7.",
+      cells: worn(A.treasure, [[0, "stade 0 · près de l'œuf"], [1, "stade 1"], [2, "stades 2-3"], [4, "stades 4-6"], [7, "stades 7-9 · le tas déborde"]]),
     },
     {
       name: "Flamme bleue",
@@ -415,20 +460,6 @@ it.runIf(RUN)("writes items.html", () => {
       minStage: 4,
       reason: "Le premium : un souffle légendaire bleu dès le stade 4, double souffle + braises bleues au stade 7, tempête bleue au stade 9.",
       cells: worn(A.blueFlame, [[4, "stades 4-6 · souffle bleu"], [7, "stades 7-8 · double souffle"], [9, "stade 9 · tempête bleue"]]),
-    },
-    {
-      name: "Maillot de bain",
-      emoji: "🩱",
-      cost: 60,
-      reason: "Tradition des espèces : l'œuf le porte, culotte au stade 1, maillot rayé debout, étoile de champion au stade 6.",
-      cells: worn(A.swimsuit, [[0, "stade 0 · l'œuf le porte"], [1, "stade 1 · culotte"], [2, "stades 2-3"], [4, "stades 4-5"], [6, "stades 6-9 · étoile"]]),
-    },
-    {
-      name: "Bouée",
-      emoji: "🛟",
-      cost: 75,
-      reason: "Tradition des espèces : l'œuf flotte dedans, puis il s'assoit dans la bouée ; canard au stade 7.",
-      cells: worn(A.swimRing, [[0, "stade 0 · l'œuf flotte"], [1, "stade 1"], [2, "stades 2-3"], [4, "stades 4-6"], [7, "stades 7-9 · canard"]]),
     },
   ];
 
@@ -446,28 +477,28 @@ it.runIf(RUN)("writes items.html", () => {
     .why{font-size:13px;color:#7A6248;margin:2px 0 0}
     .qa p,.qa li{font-size:13.5px}
   </style>
-  <h1>🐉 Garde-robe du dragon « Braise »</h1>
-  <p class="meta">Design validé : candidat A « Braise » (proposition v2) · 16 objets, tous implémentés et rendus sur son rig · 26/07/2026</p>
-  <div class="hero"><div>${petSvg(CandidateA, 4, cfg(), 120)}</div><div>Le voici au stade 4 — thème de la garde-robe : petit chevalier de feu. Couleurs profondes, cornes de taureau, cape/casque/bouclier, et un souffle bleu légendaire en premium.</div></div>
+  <h1>🐉 Garde-robe du dragon « Braise » — v2</h1>
+  <p class="meta">Design validé : candidat A « Braise » · garde-robe refaite après retours (exit maillot/bouée/bouclier/casque et « petite queue ») · 18 objets, tous implémentés et rendus sur son rig · 26/07/2026</p>
+  <div class="hero"><div>${petSvg(CandidateA, 4, cfg(), 120)}</div><div>Le voici au stade 4. Nouvelle garde-robe : la queue change de STYLE (massue, feu) — jamais de taille ; les cornes changent de forme (doubles) ET de couleur ; cape gardée mais réservée au stade 2+ ; et trois nouveaux trésors de dragon : lunettes d'aviateur, collier de croc, petit tas d'or. Premium inchangé : la Flamme bleue.</div></div>
 
-  <h3>🎨 Couleurs (7) — écrites dans <code>config.colors</code></h3>
+  <h3>🎨 Couleurs (9) — écrites dans <code>config.colors</code></h3>
   ${colours.map(itemCard).join("")}
-  <h3>💇 Styles (3) — écrits dans <code>config.styles</code></h3>
+  <h3>💇 Styles (4) — écrits dans <code>config.styles</code></h3>
   ${styles.map(itemCard).join("")}
-  <h3>🎒 Accessoires (6) — dont la paire de bain traditionnelle et 1 premium</h3>
+  <h3>🎒 Accessoires (5) — dont 1 premium</h3>
   ${accessories.map(itemCard).join("")}
 
   <section class="qa">
   <h3>🔍 Annexe QA</h3>
-  <p>Boucle visuelle : rendu vitest → capture Chrome headless → relecture de chaque PNG (6 planches accessoire × stades 0→9, planche couleurs/styles).</p>
+  <p>Boucle visuelle : rendu vitest → capture Chrome headless → relecture de chaque PNG (5 planches accessoire × stades 0→9, planche couleurs/styles).</p>
   <ul>
-    <li>✅ Fermoir de cape sur la gorge à chaque pose (ancres partagées), jamais sur le visage — y compris couché 0-1.</li>
-    <li>✅ Casque posé sur le dôme (touche, ne flotte pas) ; rien ne couvre les yeux ; les cornes des stades 7-9 dépassent du casque volontairement.</li>
-    <li>✅ Bouclier au sol contre le flanc, suit la taille du corps ; l'œuf y a droit aussi.</li>
-    <li>✅ Chaque couleur/style évident d'un coup d'œil (planches avant/après).</li>
-    <li>✅ Gates : ventre (1, caché dans l'œuf), ailes + cornes (3), crête + flamme bleue (4).</li>
+    <li>✅ Retours intégrés : maillot, bouée, bouclier et casque supprimés ; cape gated stade 2 (plus jamais sur l'œuf ni le bébé couché) ; « petite queue » remplacée par deux STYLES de queue qui grandissent normalement.</li>
+    <li>✅ Fermoir de cape et collier de croc sur la gorge à chaque pose (ancres partagées), jamais sur le visage ; si les deux sont portés, le cordon du croc descend d'un cran.</li>
+    <li>✅ Lunettes posées sur le front (touchent le dôme, jamais les yeux) ; le tas d'or est au sol, suit la taille du corps, déborde au stade 7.</li>
+    <li>✅ Chaque couleur/style évident d'un coup d'œil (planches avant/après) — cornes d'or vs noires lisibles dès les bosses du stade 2.</li>
+    <li>✅ Gates : ventre (1), cornes couleur (2), croc + cape + queue de feu (2), ailes + cornes doubles + lunettes (3), crête + flamme bleue (4).</li>
   </ul>
-  <p class="iter"><b>2 itérations</b> avant le vert : (1) cape et bouée invisibles au stade 0 — l'œuf élargi de la v2 les cachait entièrement → cape élargie, bouée agrandie autour de la coquille ; (2) le souffle bleu fuyait aux stades 2-3 (<code>ramp()</code> borne à son premier arrêt sous le stade 4) → gate explicite <code>stage >= 4</code>. <b>Doutes restants</b> : au stade 1 le casque recouvre la coquille-chapeau (les deux se disputent le dôme) ; le fermoir de cape frôle le menton aux stades couchés ; « Ailes nuit » sur « Écailles charbon » (si les deux sont achetés) sera peu contrasté — à vérifier au ship.</p>
+  <p class="iter"><b>Itérations v2 :</b> voir historique v1 (œuf élargi, gate <code>ramp()</code>). <b>Note ship :</b> la tradition inter-espèces « maillot + bouée sur chaque espèce » est volontairement rompue pour le dragon (décision utilisateur) — adapter <code>catalog.test.ts</code> en conséquence. <b>Doutes restants :</b> « Cornes d'or » et « Ailes dorées » portées ensemble font beaucoup de jaune ; la flamme de queue au stade 9 arrive près de l'anneau de braises — à re-goûter sur fond réel.</p>
   </section>`;
 
   out("items.html", html);

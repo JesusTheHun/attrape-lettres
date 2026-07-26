@@ -1,6 +1,6 @@
 import { INK, mix, pick, ramp } from "../../../mascot/growth";
 import { accessoryAnchors } from "../../../mascot/anchors";
-import { Aura, Cheeks, Eyes, FoldedLegs, GroundGlow, Leg, Mouth, SwimRing, Swimsuit } from "../../../mascot/parts";
+import { Aura, Cheeks, Eyes, FoldedLegs, GroundGlow, Leg, Mouth } from "../../../mascot/parts";
 import { P_ACCESSORY, P_COLOR_SLOT, P_STYLE_SLOT } from "./ids";
 import {
   BatWings,
@@ -11,13 +11,14 @@ import {
   Cracks,
   Crest,
   EggCup,
+  FangPendant,
   Fangs,
   FlamePuff,
+  Goggles,
+  GoldPile,
   Horns,
-  KnightHelmet,
   ShellCap,
   ShellShard,
-  Shield,
   SmokePuffs,
   Snout,
   SpadeTail,
@@ -25,12 +26,15 @@ import {
 } from "./dragonParts";
 
 /**
- * Candidate A — « Braise », le dragon de feu (PICKED design + its wardrobe).
- * Growth arc: see the v2 proposal. Items run adds:
- *  - colours: body ×4 (braise/charbon/nuit/terre), ventre magma, ailes ×2
- *  - styles: cornes de taureau · crête de lave · petite queue
- *  - accessories: cape + casque de chevalier, bouclier, premium « Flamme
- *    bleue » (legendary blue breath, own beats at 7+/9), swim pair.
+ * Candidate A — « Braise », le dragon de feu (PICKED design + its wardrobe v2).
+ * Growth arc: see the v2 proposal. Wardrobe (after user feedback — no swim
+ * pair, no shield/helmet, no tail-size item):
+ *  - colours: body ×4 (braise/charbon/nuit/terre), ventre magma, ailes ×2,
+ *    cornes ×2 (or/noires)
+ *  - styles: cornes doubles · crête de lave · queue massue · queue de feu
+ *  - accessories: cape de chevalier (stade 2+), lunettes d'aviateur (3+),
+ *    collier de croc (2+), petit trésor (dès l'œuf), premium « Flamme bleue »
+ *    (legendary blue breath, own beats at 7+/9).
  * NECK_K note: fox profile (0.86) — same low snout.
  */
 
@@ -83,9 +87,11 @@ export function CandidateA({ config, layout, stage, mood = "idle", uid, preview 
   const body = pick(config.colors, C.body, "#7DB874");
   const belly = pick(config.colors, C.belly, "#E9DFB2");
   const wingCol = pick(config.colors, C.wing, "#E2694F");
-  const bullHorns = pick(config.styles, S.horn, "straight") === "bull";
+  const hornCol = pick(config.colors, C.horn, HORN_FILL);
+  const hornEdge = hornCol === HORN_FILL ? HORN_EDGE : mix(hornCol, INK, 0.35);
+  const doubleHorns = pick(config.styles, S.horn, "straight") === "double";
   const lavaCrest = pick(config.styles, S.crest, "charbon") === "lava";
-  const longTail = pick(config.styles, S.tail, "long") === "long";
+  const tailPick = pick(config.styles, S.tail, "spade");
   const has = (id: string) => config.accessories.includes(id);
   const blue = has(A.blueFlame);
 
@@ -100,15 +106,15 @@ export function CandidateA({ config, layout, stage, mood = "idle", uid, preview 
   const tailEdge = mix(body, INK, 0.35);
   const crestCol = lavaCrest ? LAVA_CREST : CREST;
   const crestEdge = lavaCrest ? LAVA_CREST_EDGE : CREST_EDGE;
-  const tailK = longTail ? 1 : 0.72;
+  // The flame tail lights up with the walking stades; before that it stays a spade.
+  const tailTip = tailPick === "flame" && stage < 2 && !preview ? "spade" : (tailPick as "spade" | "club" | "flame");
+  const tailTipColor = tailTip === "club" ? mix(body, INK, 0.12) : tailTip === "spade" ? belly : undefined;
 
   /* -- Stade 0: hatching in the cracked egg ------------------------------ */
   if (spec.egg === "full") {
     return (
       <g>
-        {/* the egg is wide (x21-90): the ring must overshoot it to peek out */}
-        {has(A.swimRing) && <SwimRing id={`${uid}-ring`} cx={bodyCX + 3} cy={80} rx={36} color="#FFD54F" />}
-        {has(A.cape) && <CapeBack cx={bodyCX + 2} topY={63} w={41} h={31} />}
+        {has(A.treasure) && <GoldPile x={16} groundY={layout.feetY + 2} s={0.75} />}
         <ellipse cx={bodyCX} cy={bodyCY} rx={bodyRX} ry={bodyRY} fill={body} />
         <path d={`M${bodyCX} ${bodyCY - bodyRY * 0.5} L${headCX} ${headCY + headR * 0.4}`} stroke={body} strokeWidth={headR * 0.95} strokeLinecap="round" />
         <ellipse cx={headCX} cy={headCY} rx={headR} ry={headR * 0.96} fill={body} />
@@ -116,12 +122,9 @@ export function CandidateA({ config, layout, stage, mood = "idle", uid, preview 
         <Eyes cx={headCX} y={headCY - headR * 0.05} dx={headR * 0.36} r={eyeR * 0.85} mood={mood} sleepy={stage === 0} />
         <Cheeks cx={headCX} y={headCY + headR * 0.32} dx={headR * 0.62} r={headR * 0.13} />
         <Mouth cx={headCX} y={headCY + headR * 0.42} w={headR * 0.1} mood={mood} />
-        <EggCup uid={uid} speckle={EGG_SPECKLE} suitColor={has(A.swimsuit) ? "#5AA9E0" : undefined} />
+        <EggCup uid={uid} speckle={EGG_SPECKLE} />
         <ShellCap x={headCX + 2} y={headCY - headR * 0.86} s={1} tilt={10} speckle={EGG_SPECKLE} />
-        <SpadeTail p0={[81, 87]} p1={[89, 83]} p2={[87.5, 75]} w={4.5} color={body} edge={tailEdge} tipColor={belly} tipS={0.7} />
-        {has(A.shield) && <Shield x={bodyCX - bodyRX - 6} groundY={layout.feetY + 1} s={0.9} />}
-        {has(A.helmet) && <KnightHelmet hx={headCX} hy={headCY} headR={headR} />}
-        {has(A.cape) && <CapeClasp x={anchor.neck.x} y={anchor.neck.y} w={anchor.neck.w} />}
+        <SpadeTail p0={[81, 87]} p1={[89, 83]} p2={[87.5, 75]} w={4.5} color={body} edge={tailEdge} tip={tailTip} tipColor={tailTipColor} tipS={0.7} />
       </g>
     );
   }
@@ -130,22 +133,21 @@ export function CandidateA({ config, layout, stage, mood = "idle", uid, preview 
   if (!layout.standing) {
     return (
       <g>
-        {has(A.swimRing) && <SwimRing id={`${uid}-ring`} cx={bodyCX} cy={bodyCY + bodyRY * 0.15} rx={bodyRX * 1.15} color="#FFD54F" />}
-        {has(A.cape) && <CapeBack cx={bodyCX} topY={bodyCY - bodyRY * 0.95} w={bodyRX * 1.38} h={layout.feetY - (bodyCY - bodyRY * 0.95)} />}
+        {has(A.treasure) && <GoldPile x={bodyCX - bodyRX - 9} groundY={layout.feetY + 2} s={0.85} />}
         <SpadeTail
           p0={[bodyCX + bodyRX * 0.65, bodyCY + 2]}
-          p1={[bodyCX + bodyRX + 9 * tailK, bodyCY]}
-          p2={[bodyCX + bodyRX + 8 * tailK, bodyCY - 9 * tailK]}
+          p1={[bodyCX + bodyRX + 9, bodyCY]}
+          p2={[bodyCX + bodyRX + 8, bodyCY - 9]}
           w={5.5}
           color={body}
           edge={tailEdge}
-          tipColor={belly}
-          tipS={0.8 * tailK}
+          tip={tailTip}
+          tipColor={tailTipColor}
+          tipS={0.8}
         />
         <ellipse cx={bodyCX} cy={bodyCY} rx={bodyRX} ry={bodyRY} fill={body} />
         <ellipse cx={bodyCX} cy={bodyCY + bodyRY * 0.3} rx={bodyRX * 0.55} ry={bodyRY * 0.6} fill={belly} />
         <FoldedLegs bodyCX={bodyCX} bodyCY={bodyCY} bodyRX={bodyRX} color={body} hoof={INK} />
-        {has(A.swimsuit) && <Swimsuit id={`${uid}-suit`} cx={bodyCX} cy={bodyCY} rx={bodyRX} ry={bodyRY} color="#5AA9E0" lying />}
         <path d={`M${bodyCX} ${bodyCY - bodyRY * 0.5} L${headCX} ${headCY + headR * 0.4}`} stroke={body} strokeWidth={headR * 0.95} strokeLinecap="round" />
         <ellipse cx={headCX} cy={headCY} rx={headR} ry={headR * 0.96} fill={body} />
         <Snout hx={headCX} hy={headCY} headR={headR} color={belly} />
@@ -158,9 +160,6 @@ export function CandidateA({ config, layout, stage, mood = "idle", uid, preview 
             <ShellShard x={bodyCX - bodyRX * 0.62} y={bodyCY + bodyRY * 0.42} s={0.9} tilt={-10} speckle={EGG_SPECKLE} />
           </g>
         )}
-        {has(A.shield) && <Shield x={bodyCX - bodyRX - 6} groundY={layout.feetY + 1} s={0.9} />}
-        {has(A.helmet) && <KnightHelmet hx={headCX} hy={headCY} headR={headR} />}
-        {has(A.cape) && <CapeClasp x={anchor.neck.x} y={anchor.neck.y} w={anchor.neck.w} />}
       </g>
     );
   }
@@ -168,8 +167,8 @@ export function CandidateA({ config, layout, stage, mood = "idle", uid, preview 
   /* -- Stades 2-9: on its feet -------------------------------------------- */
   const tf = ramp(stage, [[2, 0], [5, 0.5], [9, 1]]);
   const tailRoot: [number, number] = [bodyCX + bodyRX * 0.45, bodyCY + bodyRY * 0.5];
-  const tailCtrl: [number, number] = [bodyCX + bodyRX * (1 + 0.5 * tailK), bodyCY + bodyRY * 0.9];
-  const tailEnd: [number, number] = [bodyCX + bodyRX * (1 + (0.42 + 0.1 * tf) * tailK), bodyCY + bodyRY * (0.45 - (0.5 + 0.55 * tf) * tailK)];
+  const tailCtrl: [number, number] = [bodyCX + bodyRX * 1.5, bodyCY + bodyRY * 0.9];
+  const tailEnd: [number, number] = [bodyCX + bodyRX * (1.42 + 0.1 * tf), bodyCY + bodyRY * (0.45 - (0.5 + 0.55 * tf))];
   const mouthY = headCY + headR * 0.52;
   const mouthW = headR * 0.13;
   // ramp() clamps below its first stop — gate by stage or the "blue from 4"
@@ -185,18 +184,16 @@ export function CandidateA({ config, layout, stage, mood = "idle", uid, preview 
 
       <BatWings cx={bodyCX} cy={bodyCY - bodyRY * 0.4} s={spec.wing} membrane={wingCol} edge={WING_EDGE} />
       {has(A.cape) && <CapeBack cx={bodyCX} topY={bodyCY - bodyRY * 0.62} w={bodyRX * 1.3} h={layout.feetY - 2 - (bodyCY - bodyRY * 0.62)} />}
-      <SpadeTail p0={tailRoot} p1={tailCtrl} p2={tailEnd} w={6 + 1.5 * tf} color={body} edge={tailEdge} tipColor={belly} tipS={(0.85 + 0.8 * tf) * (longTail ? 1 : 0.75)} />
+      <SpadeTail p0={tailRoot} p1={tailCtrl} p2={tailEnd} w={6 + 1.5 * tf} color={body} edge={tailEdge} tip={tailTip} tipColor={tailTipColor} tipS={0.85 + 0.8 * tf} />
 
       {layout.legs.filter((l) => l.back).map((l, i) => (
         <Leg key={`b${i}`} spec={l} w={legW} color={body} hoof={INK} />
       ))}
-      {has(A.swimRing) && <SwimRing id={`${uid}-ringb`} cx={bodyCX} cy={bodyCY + bodyRY * 0.3} rx={bodyRX * 1.22} color="#FFD54F" part="back" />}
 
       <ellipse cx={bodyCX} cy={bodyCY} rx={bodyRX} ry={bodyRY} fill={body} />
       {spec.cracks && <Cracks cx={bodyCX} cy={bodyCY} rx={bodyRX} ry={bodyRY} color={emberCol} />}
       <ellipse cx={bodyCX} cy={bodyCY + bodyRY * 0.3} rx={bodyRX * 0.55} ry={bodyRY * 0.6} fill={belly} />
       {spec.plates && <BellyPlates cx={bodyCX} cy={bodyCY + bodyRY * 0.3} rx={bodyRX * 0.55} ry={bodyRY * 0.6} line="#C4B584" />}
-      {has(A.swimsuit) && <Swimsuit id={`${uid}-suit`} cx={bodyCX} cy={bodyCY} rx={bodyRX} ry={bodyRY} color="#5AA9E0" star={stage >= 6} />}
 
       <path d={`M${bodyCX} ${bodyCY - bodyRY * 0.5} L${headCX} ${headCY + headR * 0.4}`} stroke={body} strokeWidth={headR * 0.95} strokeLinecap="round" />
       {layout.legs.filter((l) => !l.back).map((l, i) => (
@@ -205,7 +202,16 @@ export function CandidateA({ config, layout, stage, mood = "idle", uid, preview 
       {spec.fierce && layout.legs.filter((l) => !l.back).map((l, i) => <Claws key={`c${i}`} x={l.footX - 1.4} y={l.footY - 0.6} w={4} />)}
 
       <Crest hx={headCX} hy={headCY} headR={headR} n={spec.crest} color={crestCol} edge={crestEdge} />
-      <Horns hx={headCX} hy={headCY} headR={headR} h={spec.horn} variant={bullHorns ? "bull" : "straight"} color={HORN_FILL} edge={HORN_EDGE} tipDot={spec.goldTips ? "#FFD54F" : undefined} />
+      <Horns
+        hx={headCX}
+        hy={headCY}
+        headR={headR}
+        h={spec.horn}
+        variant={doubleHorns ? "double" : "straight"}
+        color={hornCol}
+        edge={hornEdge}
+        tipDot={spec.goldTips ? "#FFD54F" : undefined}
+      />
       <ellipse cx={headCX} cy={headCY} rx={headR} ry={headR * 0.96} fill={body} />
 
       <Snout hx={headCX} hy={headCY} headR={headR} color={belly} />
@@ -224,10 +230,11 @@ export function CandidateA({ config, layout, stage, mood = "idle", uid, preview 
       )}
 
       {/* accessories over the body */}
-      {has(A.swimRing) && <SwimRing id={`${uid}-ringf`} cx={bodyCX} cy={bodyCY + bodyRY * 0.3} rx={bodyRX * 1.22} color="#FFD54F" part="front" duck={stage >= 7} />}
-      {has(A.shield) && <Shield x={bodyCX - bodyRX - 7} groundY={layout.feetY + 1} s={bodyRY / 18} />}
-      {has(A.helmet) && <KnightHelmet hx={headCX} hy={headCY} headR={headR} />}
+      {stage >= 3 && has(A.goggles) && <Goggles x={headCX} y={headCY - headR * 0.72} headR={headR} />}
+      {/* if the cape clasp already sits on the throat, the fang cord drops a touch */}
+      {has(A.fang) && <FangPendant x={anchor.neck.x} y={anchor.neck.y + (has(A.cape) ? 3 : 0)} w={anchor.neck.w} />}
       {has(A.cape) && <CapeClasp x={anchor.neck.x} y={anchor.neck.y} w={anchor.neck.w} />}
+      {has(A.treasure) && <GoldPile x={bodyCX - bodyRX - 10} groundY={layout.feetY + 1} s={0.85 + 0.5 * tf} rich={stage >= 7} />}
 
       {emberN > 0 && (
         <g fill={emberCol}>

@@ -174,8 +174,8 @@ export function CloudWings({ cx, cy, s, edge }: { cx: number; cy: number; s: num
 
 /* -- Tail ----------------------------------------------------------------- */
 
-/** Quadratic tail stroke ending in a spade / lightning-bolt tip that follows
- * the curve's tangent. Optional gem set into the spade (candidate C). */
+/** Quadratic tail stroke ending in a spade / bolt / mace-club / flame tip that
+ * follows the curve's tangent. Optional gem set into the spade (candidate C). */
 export function SpadeTail({
   p0,
   p1,
@@ -195,7 +195,7 @@ export function SpadeTail({
   color: string;
   /** Outline colour — a same-as-body tail vanishes into the silhouette without it. */
   edge?: string;
-  tip?: "spade" | "bolt" | "none";
+  tip?: "spade" | "bolt" | "club" | "flame" | "none";
   tipColor?: string;
   tipS?: number;
   gem?: string;
@@ -217,14 +217,22 @@ export function SpadeTail({
           <path d="M1 -7 L4.5 -1.5 L2 -1.5 L4.5 4 L-2.5 -1 L0 -1 L-2.5 -7 Z" fill={tipColor ?? "#FFD54F"} stroke="#DFA92E" strokeWidth={0.7} strokeLinejoin="round" />
         </g>
       )}
+      {tip === "club" && <TailClub x={p2[0]} y={p2[1]} s={tipS} color={tipColor ?? color} edge={edge ?? INK} />}
+      {tip === "flame" && (
+        <g>
+          <circle cx={p2[0]} cy={p2[1]} r={w * 0.55} fill={color} stroke={edge} strokeWidth={edge ? 1 : 0} />
+          <FlamePuff x={p2[0]} y={p2[1]} s={tipS * 0.42} rot={ang + 90} />
+        </g>
+      )}
     </g>
   );
 }
 
 /* -- Head gear ------------------------------------------------------------ */
 
-/** Two little horns on the dome. Straight cones, curled ram horns, or wide
- * bull horns sweeping outward then up. */
+/** Two little horns on the dome. Straight cones, curled ram horns, or the
+ * double pair (a big cone + a smaller one in front — the classic dragon crown
+ * of four horns). */
 export function Horns({
   hx,
   hy,
@@ -239,7 +247,7 @@ export function Horns({
   hy: number;
   headR: number;
   h: number;
-  variant?: "straight" | "curly" | "bull";
+  variant?: "straight" | "curly" | "double";
   color: string;
   edge: string;
   tipDot?: string;
@@ -248,14 +256,17 @@ export function Horns({
   const horn = (d: number) => {
     const bx = hx + d * headR * 0.52;
     const by = hy - headR * 0.72;
-    if (variant === "bull") {
-      const hh = Math.max(h, headR * 0.28);
-      const path = `M${bx - d * 2} ${by + 2} Q${bx + d * hh * 1.05} ${by + hh * 0.2} ${bx + d * hh * 0.9} ${by - hh * 0.95}`;
+    if (variant === "double") {
+      // Small pair OUTSIDE and below the big one, at the silhouette edge —
+      // tucked between the horns it drowns in the head fill and the crest.
+      const cone = (cx: number, cy: number, hh: number, ww: number, lean: number) =>
+        `M${cx - d * ww} ${cy + 1.5} Q${cx + d * hh * 0.02} ${cy - hh * 0.6} ${cx + d * hh * lean} ${cy - hh} Q${cx + d * (ww + hh * 0.18)} ${cy - hh * 0.4} ${cx + d * ww} ${cy + 1.5} Z`;
+      const w = headR * 0.12 + h * 0.055;
       return (
-        <g key={d} fill="none" strokeLinecap="round">
-          <path d={path} stroke={edge} strokeWidth={headR * 0.2 + 1.6} />
-          <path d={path} stroke={color} strokeWidth={headR * 0.2} />
-          {tipDot && <circle cx={bx + d * hh * 0.9} cy={by - hh * 0.95} r={1.7} fill={tipDot} stroke={edge} strokeWidth={0.5} />}
+        <g key={d}>
+          <path d={cone(hx + d * headR * 0.82, hy - headR * 0.42, h * 0.62, w * 0.72, 0.85)} fill={color} stroke={edge} strokeWidth={0.8} strokeLinejoin="round" />
+          <path d={cone(bx, by, h, w, 0.5)} fill={color} stroke={edge} strokeWidth={0.8} strokeLinejoin="round" />
+          {tipDot && <circle cx={bx + d * h * 0.5} cy={by - h} r={1.7} fill={tipDot} stroke={edge} strokeWidth={0.5} />}
         </g>
       );
     }
@@ -693,6 +704,49 @@ export function Shield({ x, groundY, s }: { x: number; groundY: number; s: numbe
 }
 
 /* -- Accessories ----------------------------------------------------------- */
+
+/** Little hoard of gold coins on the ground beside him — a dragon guards his
+ * treasure from the egg on. `rich` spills extra coins (the high-stade beat). */
+export function GoldPile({ x, groundY, s, rich }: { x: number; groundY: number; s: number; rich?: boolean }) {
+  const coin = (cx: number, cy: number, r: number, key: string) => (
+    <g key={key}>
+      <circle cx={cx} cy={cy} r={r} fill="#FFD54F" stroke="#B07E1E" strokeWidth={0.9} />
+      <circle cx={cx} cy={cy} r={r * 0.45} fill="none" stroke="#B07E1E" strokeWidth={0.7} opacity={0.6} />
+    </g>
+  );
+  return (
+    <g>
+      {coin(x - 3.4 * s, groundY - 2 * s, 2.6 * s, "a")}
+      {coin(x + 3.2 * s, groundY - 2 * s, 2.7 * s, "b")}
+      {coin(x - 0.2 * s, groundY - 5.2 * s, 2.5 * s, "c")}
+      {rich && (
+        <g>
+          {coin(x + 7.6 * s, groundY - 1.5 * s, 2 * s, "d")}
+          {coin(x - 7.4 * s, groundY - 1.5 * s, 1.9 * s, "e")}
+          {coin(x + 3.1 * s, groundY - 7.8 * s, 2 * s, "f")}
+        </g>
+      )}
+    </g>
+  );
+}
+
+/** Cord necklace with a little white fang pendant, hung at the throat anchor
+ * (his first baby fang, kept as a trophy). */
+export function FangPendant({ x, y, w }: { x: number; y: number; w: number }) {
+  return (
+    <g>
+      <path d={`M${x - w} ${y - 1.2} Q${x} ${y + 2.2} ${x + w} ${y - 1.2}`} fill="none" stroke="#8D5A3B" strokeWidth={1.6} strokeLinecap="round" />
+      <path
+        d={`M${x - 1.9} ${y + 1.2} Q${x - 1.7} ${y + 6.2} ${x + 0.6} ${y + 7.6} Q${x + 2} ${y + 4} ${x + 1.5} ${y + 1}`}
+        fill="#FFFDF4"
+        stroke="#B8A98C"
+        strokeWidth={0.8}
+        strokeLinejoin="round"
+      />
+      <path d={`M${x - 2.3} ${y + 1.4} q2.2 1.7 4.2 0`} fill="none" stroke="#8D5A3B" strokeWidth={1.4} strokeLinecap="round" />
+    </g>
+  );
+}
 
 /** Aviator goggles resting on the upper dome (never over the eyes). */
 export function Goggles({ x, y, headR }: { x: number; y: number; headR: number }) {
