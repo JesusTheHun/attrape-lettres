@@ -1,5 +1,6 @@
 import type { Layout } from "../../../mascot/growth";
 import { INK } from "../../../mascot/growth";
+import { Sparkles } from "../../../mascot/parts";
 import type { Mood } from "../../../types";
 
 /**
@@ -733,12 +734,27 @@ export function GoldPile({ x, groundY, s, rich }: { x: number; groundY: number; 
       </g>
       {rich && (
         <g>
-          {stack(x - 9.4 * s, 2, 2.6 * s, "c")}
-          {flat(x + 12.6 * s, groundY - 1 * s, 2.4 * s, "d")}
-          {flat(x - 13.2 * s, groundY - 1 * s, 2.2 * s, "e")}
-          <circle cx={x - 8.6 * s} cy={groundY - 6.4 * s} r={1.7 * s} fill="#FFD54F" stroke="#B07E1E" strokeWidth={0.8} />
+          {stack(x - 8.6 * s, 2, 2.6 * s, "c")}
+          {flat(x + 10.8 * s, groundY - 1 * s, 2.4 * s, "d")}
+          {flat(x - 11.4 * s, groundY - 1 * s, 2.2 * s, "e")}
+          <circle cx={x - 7.8 * s} cy={groundY - 6.4 * s} r={1.7 * s} fill="#FFD54F" stroke="#B07E1E" strokeWidth={0.8} />
         </g>
       )}
+      {/* glints ON the gold (white-on-gold, or they vanish on the pale bg) */}
+      <Sparkles
+        points={[
+          [x - 2.9 * s, groundY - 5.1 * s, 1.15 * s],
+          [x + 8.9 * s, groundY - 3.3 * s, 0.95 * s],
+          ...(rich
+            ? ([
+                [x - 8.3 * s, groundY - 3.6 * s, 0.9 * s],
+                [x - 7.8 * s, groundY - 6.9 * s, 0.7 * s],
+                [x + 11.1 * s, groundY - 1.3 * s, 0.75 * s],
+              ] as Array<[number, number, number]>)
+            : []),
+        ]}
+        color="#FFFDF2"
+      />
     </g>
   );
 }

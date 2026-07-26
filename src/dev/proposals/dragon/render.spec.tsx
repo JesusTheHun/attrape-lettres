@@ -450,8 +450,8 @@ it.runIf(RUN)("writes items.html", () => {
       name: "Petit trésor",
       emoji: "🪙",
       cost: 70,
-      reason: "Un dragon couve son or dès l'œuf : trois pièces près de la coquille, le tas grandit avec lui et déborde au stade 7.",
-      cells: worn(A.treasure, [[0, "stade 0 · près de l'œuf"], [1, "stade 1"], [2, "stades 2-3"], [4, "stades 4-6"], [7, "stades 7-9 · le tas déborde"]]),
+      reason: "Un dragon couve son or dès l'œuf : quelques pièces scintillantes près de la coquille, puis le magot grossit avec lui — il déborde au stade 7 et devient géant au stade 9.",
+      cells: worn(A.treasure, [[0, "stade 0 · près de l'œuf"], [1, "stade 1"], [2, "stades 2-3"], [4, "stades 4-6"], [7, "stades 7-8 · ça déborde"], [9, "stade 9 · magot géant"]]),
     },
     {
       name: "Flamme bleue",

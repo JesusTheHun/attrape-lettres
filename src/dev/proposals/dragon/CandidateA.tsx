@@ -234,7 +234,8 @@ export function CandidateA({ config, layout, stage, mood = "idle", uid, preview 
       {/* if the cape clasp already sits on the throat, the fang cord drops a touch */}
       {has(A.fang) && <FangPendant x={anchor.neck.x} y={anchor.neck.y + (has(A.cape) ? 3 : 0)} w={anchor.neck.w} />}
       {has(A.cape) && <CapeClasp x={anchor.neck.x} y={anchor.neck.y} w={anchor.neck.w} />}
-      {has(A.treasure) && <GoldPile x={bodyCX - bodyRX - 10} groundY={layout.feetY + 1} s={0.85 + 0.5 * tf} rich={stage >= 7} />}
+      {/* the hoard REALLY grows with him: ×2.5 pile at stade 9 + spill from 7 */}
+      {has(A.treasure) && <GoldPile x={bodyCX - bodyRX - 5 - 4 * tf} groundY={layout.feetY + 1} s={0.9 + 1.4 * tf} rich={stage >= 7} />}
 
       {emberN > 0 && (
         <g fill={emberCol}>
