@@ -74,14 +74,14 @@ const out = (name: string, html: string) => {
 };
 
 it.runIf(RUN)("renders QA pages", () => {
-  // 1) One growth strip per candidate:
+  // PROPOSE run — one growth strip per candidate (+ an existing pet as style reference):
   // out("qa-candidate-a.html", page("Candidat A — croissance", strip(STAGES.map((s) => ({ svg: petSvg(CandidateA, s, cfg()), caption: `stade ${s}` })))));
 
-  // 2) One page per accessory, worn at EVERY stade (the placement spec):
+  // ITEMS run — one page per accessory, worn at EVERY stade (the placement spec):
   // for (const [key, id] of Object.entries(PROPOSAL_ACCESSORY)) {
-  //   out(`qa-acc-${key}.html`, page(`Accessoire — ${key}`, strip(STAGES.map((s) => ({ svg: petSvg(CandidateA, s, cfg({ accessories: [id] })), caption: `stade ${s}` })))));
+  //   out(`qa-acc-${key}.html`, page(`Accessoire — ${key}`, strip(STAGES.map((s) => ({ svg: petSvg(Picked, s, cfg({ accessories: [id] })), caption: `stade ${s}` })))));
   // }
 
-  // 3) Colour/style variant board vs factory look:
+  // ITEMS run — colour/style variant board vs factory look:
   // out("qa-variants.html", page("Couleurs & styles", …));
 });
