@@ -25,14 +25,19 @@ export function FitLine({ children, className = "", rowClassName = "", ariaLabel
     const inner = innerRef.current;
     if (!outer || !inner) return;
     const fit = () => {
-      // offsetWidth is a layout metric: the row's natural (untransformed)
-      // width, so re-fitting after a resize starts from the true size.
+      // offsetWidth/offsetHeight are layout metrics: the row's natural
+      // (untransformed) size, so re-fitting after a resize starts from the true
+      // size. `items-start` on the wrapper keeps them natural even once the
+      // wrapper's own height is pinned below — otherwise the row would stretch
+      // to the pinned height, and each re-fit would shrink it again (a
+      // ResizeObserver loop that collapses the row onto the tray beneath it).
       const natural = inner.offsetWidth;
+      const naturalHeight = inner.offsetHeight;
       const available = outer.clientWidth;
-      const k = natural > available ? available / natural : 1;
+      const k = natural > 0 && natural > available ? available / natural : 1;
       inner.style.transform = k < 1 ? `scale(${k})` : "";
       // Shrink the wrapper too, so the layout below stays snug against the row.
-      outer.style.height = k < 1 ? `${inner.offsetHeight * k}px` : "";
+      outer.style.height = k < 1 ? `${naturalHeight * k}px` : "";
     };
     fit();
     const ro = new ResizeObserver(fit);
@@ -42,7 +47,11 @@ export function FitLine({ children, className = "", rowClassName = "", ariaLabel
   }, []);
 
   return (
-    <div ref={outerRef} className={`flex w-full justify-center ${className}`} aria-label={ariaLabel}>
+    <div
+      ref={outerRef}
+      className={`flex w-full items-start justify-center ${className}`}
+      aria-label={ariaLabel}
+    >
       <div
         ref={innerRef}
         className={`flex w-max flex-none flex-nowrap items-center justify-center whitespace-nowrap ${rowClassName}`}
