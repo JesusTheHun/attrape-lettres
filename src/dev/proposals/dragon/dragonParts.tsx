@@ -223,13 +223,14 @@ export function SpadeTail({
 
 /* -- Head gear ------------------------------------------------------------ */
 
-/** Two little horns on the dome. Straight cones, or curled ram horns. */
+/** Two little horns on the dome. Straight cones, curled ram horns, or wide
+ * bull horns sweeping outward then up. */
 export function Horns({
   hx,
   hy,
   headR,
   h,
-  curly = false,
+  variant = "straight",
   color,
   edge,
   tipDot,
@@ -238,7 +239,7 @@ export function Horns({
   hy: number;
   headR: number;
   h: number;
-  curly?: boolean;
+  variant?: "straight" | "curly" | "bull";
   color: string;
   edge: string;
   tipDot?: string;
@@ -247,7 +248,18 @@ export function Horns({
   const horn = (d: number) => {
     const bx = hx + d * headR * 0.52;
     const by = hy - headR * 0.72;
-    if (curly) {
+    if (variant === "bull") {
+      const hh = Math.max(h, headR * 0.28);
+      const path = `M${bx - d * 2} ${by + 2} Q${bx + d * hh * 1.05} ${by + hh * 0.2} ${bx + d * hh * 0.9} ${by - hh * 0.95}`;
+      return (
+        <g key={d} fill="none" strokeLinecap="round">
+          <path d={path} stroke={edge} strokeWidth={headR * 0.2 + 1.6} />
+          <path d={path} stroke={color} strokeWidth={headR * 0.2} />
+          {tipDot && <circle cx={bx + d * hh * 0.9} cy={by - hh * 0.95} r={1.7} fill={tipDot} stroke={edge} strokeWidth={0.5} />}
+        </g>
+      );
+    }
+    if (variant === "curly") {
       const r = Math.max(h * 0.55, headR * 0.17);
       const path =
         `M${bx - d * 1.5} ${by + 2} ` +
@@ -378,12 +390,27 @@ export function BellyPlates({ cx, cy, rx, ry, line }: { cx: number; cy: number; 
 
 /* -- Fire / storm / treasure bits ----------------------------------------- */
 
-/** Small two-tone kawaii flame (points up at rot=0). */
-export function FlamePuff({ x, y, s, rot = 0 }: { x: number; y: number; s: number; rot?: number }) {
+/** Small two-tone kawaii flame (points up at rot=0). Recolourable for the
+ * legendary blue breath. */
+export function FlamePuff({
+  x,
+  y,
+  s,
+  rot = 0,
+  outer = "#FF7043",
+  inner = "#FFE082",
+}: {
+  x: number;
+  y: number;
+  s: number;
+  rot?: number;
+  outer?: string;
+  inner?: string;
+}) {
   return (
     <g transform={`translate(${x} ${y}) rotate(${rot}) scale(${s})`}>
-      <path d="M0 0 C-6 -6 -5 -15 0 -22 C5 -15 6 -6 0 0 Z" fill="#FF7043" />
-      <path d="M0 -3 C-3 -7 -3 -13 0 -17 C3 -13 3 -7 0 -3 Z" fill="#FFE082" />
+      <path d="M0 0 C-6 -6 -5 -15 0 -22 C5 -15 6 -6 0 0 Z" fill={outer} />
+      <path d="M0 -3 C-3 -7 -3 -13 0 -17 C3 -13 3 -7 0 -3 Z" fill={inner} />
     </g>
   );
 }
@@ -569,6 +596,98 @@ export function DustPuffs({ cx, y, spread }: { cx: number; y: number; spread: nu
     <g>
       {side(-1)}
       {side(1)}
+    </g>
+  );
+}
+
+/* -- Knight accessories (items run, candidate A) ---------------------------- */
+
+const CAPE = "#C64F4F";
+const CAPE_EDGE = "#8F3535";
+const METAL = "#C9CFD8";
+const METAL_EDGE = "#8A93A3";
+const GOLD_TRIM = "#F2C14E";
+const GOLD_TRIM_EDGE = "#B07E1E";
+
+/** Hero cape hanging from the shoulders, drawn BEHIND the body. */
+export function CapeBack({ cx, topY, w, h }: { cx: number; topY: number; w: number; h: number }) {
+  return (
+    <path
+      d={`M${cx - w * 0.62} ${topY} Q${cx} ${topY - 3} ${cx + w * 0.62} ${topY} C${cx + w * 0.9} ${topY + h * 0.55} ${cx + w * 0.82} ${topY + h * 0.9} ${cx + w * 0.7} ${topY + h} L${cx + w * 0.28} ${topY + h - 2} L${cx} ${topY + h} L${cx - w * 0.28} ${topY + h - 2} L${cx - w * 0.7} ${topY + h} C${cx - w * 0.82} ${topY + h * 0.9} ${cx - w * 0.9} ${topY + h * 0.55} ${cx - w * 0.62} ${topY} Z`}
+      fill={CAPE}
+      stroke={CAPE_EDGE}
+      strokeWidth={1.1}
+      strokeLinejoin="round"
+    />
+  );
+}
+
+/** The cape's gold clasp + throat cord, drawn OVER the chest. */
+export function CapeClasp({ x, y, w }: { x: number; y: number; w: number }) {
+  return (
+    <g>
+      <path d={`M${x - w} ${y - 1} Q${x} ${y + 2.5} ${x + w} ${y - 1}`} fill="none" stroke={GOLD_TRIM} strokeWidth={1.8} strokeLinecap="round" />
+      <circle cx={x} cy={y + 1.6} r={2.5} fill={GOLD_TRIM} stroke={GOLD_TRIM_EDGE} strokeWidth={0.8} />
+      <circle cx={x - 0.7} cy={y + 0.9} r={0.8} fill="#FFFDF4" opacity={0.8} />
+    </g>
+  );
+}
+
+/** Knight helmet: metal dome hugging the skull, rivets, cheek guards and a
+ * little red plume — the dragon's own horn tips still poke past it at the top
+ * stades, which is exactly the joke. */
+export function KnightHelmet({ hx, hy, headR }: { hx: number; hy: number; headR: number }) {
+  const y0 = hy - headR * 0.42;
+  const apex = hy - headR * 1.24;
+  return (
+    <g>
+      {/* plume */}
+      <path
+        d={`M${hx - 1.5} ${apex + 2} C${hx - 5} ${apex - 4} ${hx - 2} ${apex - 8} ${hx + 1} ${apex - 9} C${hx + 3.5} ${apex - 6} ${hx + 3} ${apex - 1} ${hx + 1.5} ${apex + 2} Z`}
+        fill={CAPE}
+        stroke={CAPE_EDGE}
+        strokeWidth={0.8}
+        strokeLinejoin="round"
+      />
+      {/* dome */}
+      <path
+        d={`M${hx - headR * 0.98} ${y0} C${hx - headR * 0.95} ${apex} ${hx + headR * 0.95} ${apex} ${hx + headR * 0.98} ${y0} L${hx + headR * 0.8} ${y0 + headR * 0.16} Q${hx} ${y0 + headR * 0.3} ${hx - headR * 0.8} ${y0 + headR * 0.16} Z`}
+        fill={METAL}
+        stroke={METAL_EDGE}
+        strokeWidth={1.1}
+        strokeLinejoin="round"
+      />
+      {/* brim ridge + rivets */}
+      <path d={`M${hx - headR * 0.9} ${y0 - headR * 0.06} Q${hx} ${y0 + headR * 0.1} ${hx + headR * 0.9} ${y0 - headR * 0.06}`} fill="none" stroke={METAL_EDGE} strokeWidth={1} opacity={0.7} />
+      {[-0.55, 0, 0.55].map((f) => (
+        <circle key={f} cx={hx + f * headR * 0.72} cy={y0 - headR * 0.02} r={0.9} fill={METAL_EDGE} />
+      ))}
+      <circle cx={hx - headR * 0.32} cy={(y0 + apex) / 2} r={headR * 0.09} fill="#FFFFFF" opacity={0.55} />
+    </g>
+  );
+}
+
+/** Kite shield resting on the ground against the flank — gold-trimmed, with a
+ * little flame emblem (this is a fire dragon's shield). */
+export function Shield({ x, groundY, s }: { x: number; groundY: number; s: number }) {
+  const w = 7.5 * s;
+  const h = 13 * s;
+  const topY = groundY - h;
+  return (
+    <g transform={`rotate(-8 ${x} ${groundY})`}>
+      <path
+        d={`M${x - w} ${topY + h * 0.12} Q${x} ${topY - h * 0.1} ${x + w} ${topY + h * 0.12} C${x + w} ${topY + h * 0.55} ${x + w * 0.55} ${topY + h * 0.85} ${x} ${topY + h} C${x - w * 0.55} ${topY + h * 0.85} ${x - w} ${topY + h * 0.55} ${x - w} ${topY + h * 0.12} Z`}
+        fill="#5E7EB5"
+        stroke={GOLD_TRIM}
+        strokeWidth={1.6}
+        strokeLinejoin="round"
+      />
+      <path
+        d={`M${x} ${topY + h * 0.3} C${x - 2.4 * s} ${topY + h * 0.52} ${x - 2 * s} ${topY + h * 0.68} ${x} ${topY + h * 0.82} C${x + 2 * s} ${topY + h * 0.68} ${x + 2.4 * s} ${topY + h * 0.52} ${x} ${topY + h * 0.3} Z`}
+        fill={GOLD_TRIM}
+        stroke={GOLD_TRIM_EDGE}
+        strokeWidth={0.7}
+      />
     </g>
   );
 }

@@ -1,8 +1,12 @@
 import { INK, mix, pick, ramp } from "../../../mascot/growth";
-import { Aura, Cheeks, Eyes, FoldedLegs, GroundGlow, Leg, Mouth } from "../../../mascot/parts";
+import { accessoryAnchors } from "../../../mascot/anchors";
+import { Aura, Cheeks, Eyes, FoldedLegs, GroundGlow, Leg, Mouth, SwimRing, Swimsuit } from "../../../mascot/parts";
+import { P_ACCESSORY, P_COLOR_SLOT, P_STYLE_SLOT } from "./ids";
 import {
   BatWings,
   BellyPlates,
+  CapeBack,
+  CapeClasp,
   Claws,
   Cracks,
   Crest,
@@ -10,8 +14,10 @@ import {
   Fangs,
   FlamePuff,
   Horns,
+  KnightHelmet,
   ShellCap,
   ShellShard,
+  Shield,
   SmokePuffs,
   Snout,
   SpadeTail,
@@ -19,14 +25,12 @@ import {
 } from "./dragonParts";
 
 /**
- * Candidate A — « Braise », le dragon de feu (RECOMMENDED, reboot garçon).
- * Deep-green fire drake with a charcoal mohawk, ember bat wings, fangs and
- * claws — the volcano wakes up inside him:
- *  0 hatching in the cracked egg (brief) · 1 shell cap + shard (brief)
- *  2 horn nubs · 3 ember bat wings + real horns · 4 charcoal mohawk crest
- *  5 belly scale plates + big tail spade · 6 first flame + embers
- *  7 fangs + claws + gold-tipped horns · 8 lava cracks + nostril smoke + ember aura
- *  9 fire storm: giant wings, big breath, lava ground glow, ember ring.
+ * Candidate A — « Braise », le dragon de feu (PICKED design + its wardrobe).
+ * Growth arc: see the v2 proposal. Items run adds:
+ *  - colours: body ×4 (braise/charbon/nuit/terre), ventre magma, ailes ×2
+ *  - styles: cornes de taureau · crête de lave · petite queue
+ *  - accessories: cape + casque de chevalier, bouclier, premium « Flamme
+ *    bleue » (legendary blue breath, own beats at 7+/9), swim pair.
  * NECK_K note: fox profile (0.86) — same low snout.
  */
 
@@ -64,21 +68,47 @@ const HORN_FILL = "#EDE3CE";
 const HORN_EDGE = "#B8A98C";
 const CREST = "#5F6470";
 const CREST_EDGE = "#3E4148";
+const LAVA_CREST = "#FF8A50";
+const LAVA_CREST_EDGE = "#C2502E";
 const WING_EDGE = "#A83E28";
 const EMBER = "#FF8A50";
+const BLUE_OUTER = "#5BC8FF";
+const BLUE_INNER = "#E8F7FF";
+const BLUE_EMBER = "#7FD1FF";
 
-export function CandidateA({ config, layout, stage, mood = "idle", uid }: PRigProps) {
-  const body = pick(config.colors, "bodyColor", "#7DB874");
-  const belly = pick(config.colors, "bellyColor", "#E9DFB2");
-  const wingCol = pick(config.colors, "wingColor", "#E2694F");
-  const spec = STAGES[Math.max(0, Math.min(9, stage))];
+export function CandidateA({ config, layout, stage, mood = "idle", uid, preview }: PRigProps) {
+  const C = P_COLOR_SLOT.dragon;
+  const S = P_STYLE_SLOT.dragon;
+  const A = P_ACCESSORY.dragon;
+  const body = pick(config.colors, C.body, "#7DB874");
+  const belly = pick(config.colors, C.belly, "#E9DFB2");
+  const wingCol = pick(config.colors, C.wing, "#E2694F");
+  const bullHorns = pick(config.styles, S.horn, "straight") === "bull";
+  const lavaCrest = pick(config.styles, S.crest, "charbon") === "lava";
+  const longTail = pick(config.styles, S.tail, "long") === "long";
+  const has = (id: string) => config.accessories.includes(id);
+  const blue = has(A.blueFlame);
+
+  let spec = STAGES[Math.max(0, Math.min(9, stage))];
+  // Shop thumbnail: strip the egg + all free per-stage magic so a ghost dragon
+  // shows only what a tile sells (sold styles/accessories stay visible).
+  if (preview) spec = { ...spec, egg: undefined, flame: 0, aura: 0, ember: 0, fierce: false, cracks: false, smoke: false, goldTips: false, ground: false };
+
   const { bodyCX, bodyCY, bodyRX, bodyRY, headCX, headCY, headR, eyeR } = layout;
+  const anchor = accessoryAnchors("fox", layout);
   const legW = 7;
   const tailEdge = mix(body, INK, 0.35);
+  const crestCol = lavaCrest ? LAVA_CREST : CREST;
+  const crestEdge = lavaCrest ? LAVA_CREST_EDGE : CREST_EDGE;
+  const tailK = longTail ? 1 : 0.72;
 
+  /* -- Stade 0: hatching in the cracked egg ------------------------------ */
   if (spec.egg === "full") {
     return (
       <g>
+        {/* the egg is wide (x21-90): the ring must overshoot it to peek out */}
+        {has(A.swimRing) && <SwimRing id={`${uid}-ring`} cx={bodyCX + 3} cy={80} rx={36} color="#FFD54F" />}
+        {has(A.cape) && <CapeBack cx={bodyCX + 2} topY={63} w={41} h={31} />}
         <ellipse cx={bodyCX} cy={bodyCY} rx={bodyRX} ry={bodyRY} fill={body} />
         <path d={`M${bodyCX} ${bodyCY - bodyRY * 0.5} L${headCX} ${headCY + headR * 0.4}`} stroke={body} strokeWidth={headR * 0.95} strokeLinecap="round" />
         <ellipse cx={headCX} cy={headCY} rx={headR} ry={headR * 0.96} fill={body} />
@@ -86,54 +116,87 @@ export function CandidateA({ config, layout, stage, mood = "idle", uid }: PRigPr
         <Eyes cx={headCX} y={headCY - headR * 0.05} dx={headR * 0.36} r={eyeR * 0.85} mood={mood} sleepy={stage === 0} />
         <Cheeks cx={headCX} y={headCY + headR * 0.32} dx={headR * 0.62} r={headR * 0.13} />
         <Mouth cx={headCX} y={headCY + headR * 0.42} w={headR * 0.1} mood={mood} />
-        <EggCup uid={uid} speckle={EGG_SPECKLE} />
+        <EggCup uid={uid} speckle={EGG_SPECKLE} suitColor={has(A.swimsuit) ? "#5AA9E0" : undefined} />
         <ShellCap x={headCX + 2} y={headCY - headR * 0.86} s={1} tilt={10} speckle={EGG_SPECKLE} />
         <SpadeTail p0={[81, 87]} p1={[89, 83]} p2={[87.5, 75]} w={4.5} color={body} edge={tailEdge} tipColor={belly} tipS={0.7} />
+        {has(A.shield) && <Shield x={bodyCX - bodyRX - 6} groundY={layout.feetY + 1} s={0.9} />}
+        {has(A.helmet) && <KnightHelmet hx={headCX} hy={headCY} headR={headR} />}
+        {has(A.cape) && <CapeClasp x={anchor.neck.x} y={anchor.neck.y} w={anchor.neck.w} />}
       </g>
     );
   }
 
+  /* -- Stade 1: hatched, shell souvenirs ---------------------------------- */
   if (!layout.standing) {
     return (
       <g>
-        <SpadeTail p0={[bodyCX + bodyRX * 0.65, bodyCY + 2]} p1={[bodyCX + bodyRX + 9, bodyCY]} p2={[bodyCX + bodyRX + 8, bodyCY - 9]} w={5.5} color={body} edge={tailEdge} tipColor={belly} tipS={0.8} />
+        {has(A.swimRing) && <SwimRing id={`${uid}-ring`} cx={bodyCX} cy={bodyCY + bodyRY * 0.15} rx={bodyRX * 1.15} color="#FFD54F" />}
+        {has(A.cape) && <CapeBack cx={bodyCX} topY={bodyCY - bodyRY * 0.95} w={bodyRX * 1.38} h={layout.feetY - (bodyCY - bodyRY * 0.95)} />}
+        <SpadeTail
+          p0={[bodyCX + bodyRX * 0.65, bodyCY + 2]}
+          p1={[bodyCX + bodyRX + 9 * tailK, bodyCY]}
+          p2={[bodyCX + bodyRX + 8 * tailK, bodyCY - 9 * tailK]}
+          w={5.5}
+          color={body}
+          edge={tailEdge}
+          tipColor={belly}
+          tipS={0.8 * tailK}
+        />
         <ellipse cx={bodyCX} cy={bodyCY} rx={bodyRX} ry={bodyRY} fill={body} />
         <ellipse cx={bodyCX} cy={bodyCY + bodyRY * 0.3} rx={bodyRX * 0.55} ry={bodyRY * 0.6} fill={belly} />
         <FoldedLegs bodyCX={bodyCX} bodyCY={bodyCY} bodyRX={bodyRX} color={body} hoof={INK} />
+        {has(A.swimsuit) && <Swimsuit id={`${uid}-suit`} cx={bodyCX} cy={bodyCY} rx={bodyRX} ry={bodyRY} color="#5AA9E0" lying />}
         <path d={`M${bodyCX} ${bodyCY - bodyRY * 0.5} L${headCX} ${headCY + headR * 0.4}`} stroke={body} strokeWidth={headR * 0.95} strokeLinecap="round" />
         <ellipse cx={headCX} cy={headCY} rx={headR} ry={headR * 0.96} fill={body} />
         <Snout hx={headCX} hy={headCY} headR={headR} color={belly} />
         <Eyes cx={headCX} y={headCY - headR * 0.05} dx={headR * 0.4} r={eyeR} mood={mood} sleepy={false} />
         <Cheeks cx={headCX} y={headCY + headR * 0.32} dx={headR * 0.62} r={headR * 0.13} />
         <Mouth cx={headCX} y={headCY + headR * 0.52} w={headR * 0.13} mood={mood} />
-        <ShellCap x={headCX + 3} y={headCY - headR * 0.88} s={0.82} tilt={-12} speckle={EGG_SPECKLE} />
-        <ShellShard x={bodyCX - bodyRX * 0.62} y={bodyCY + bodyRY * 0.42} s={0.9} tilt={-10} speckle={EGG_SPECKLE} />
+        {spec.egg === "bits" && (
+          <g>
+            <ShellCap x={headCX + 3} y={headCY - headR * 0.88} s={0.82} tilt={-12} speckle={EGG_SPECKLE} />
+            <ShellShard x={bodyCX - bodyRX * 0.62} y={bodyCY + bodyRY * 0.42} s={0.9} tilt={-10} speckle={EGG_SPECKLE} />
+          </g>
+        )}
+        {has(A.shield) && <Shield x={bodyCX - bodyRX - 6} groundY={layout.feetY + 1} s={0.9} />}
+        {has(A.helmet) && <KnightHelmet hx={headCX} hy={headCY} headR={headR} />}
+        {has(A.cape) && <CapeClasp x={anchor.neck.x} y={anchor.neck.y} w={anchor.neck.w} />}
       </g>
     );
   }
 
+  /* -- Stades 2-9: on its feet -------------------------------------------- */
   const tf = ramp(stage, [[2, 0], [5, 0.5], [9, 1]]);
   const tailRoot: [number, number] = [bodyCX + bodyRX * 0.45, bodyCY + bodyRY * 0.5];
-  const tailCtrl: [number, number] = [bodyCX + bodyRX * 1.5, bodyCY + bodyRY * 0.9];
-  const tailEnd: [number, number] = [bodyCX + bodyRX * (1.42 + 0.1 * tf), bodyCY + bodyRY * (0.45 - 0.5 - 0.55 * tf)];
+  const tailCtrl: [number, number] = [bodyCX + bodyRX * (1 + 0.5 * tailK), bodyCY + bodyRY * 0.9];
+  const tailEnd: [number, number] = [bodyCX + bodyRX * (1 + (0.42 + 0.1 * tf) * tailK), bodyCY + bodyRY * (0.45 - (0.5 + 0.55 * tf) * tailK)];
   const mouthY = headCY + headR * 0.52;
   const mouthW = headR * 0.13;
+  // ramp() clamps below its first stop — gate by stage or the "blue from 4"
+  // breath would leak down to the wobbly stades.
+  const flameS = blue && stage >= 4 ? Math.max(spec.flame, ramp(stage, [[4, 0.5], [6, 0.62], [7, 0.85], [9, 1.25]])) : spec.flame;
+  const emberN = blue && stage >= 7 ? Math.max(spec.ember, 4) : spec.ember;
+  const emberCol = blue ? BLUE_EMBER : EMBER;
 
   return (
     <g>
-      {spec.ground && <GroundGlow id={`${uid}-ground`} cx={50} y={layout.feetY + 2} rx={bodyRX + 18} color="#FF9A66" opacity={0.9} />}
-      {spec.aura > 0 && <Aura id={`${uid}-aura`} cx={bodyCX} cy={bodyCY - 2} r={bodyRX + 22} color="#FFB27A" opacity={spec.aura} />}
+      {spec.ground && <GroundGlow id={`${uid}-ground`} cx={50} y={layout.feetY + 2} rx={bodyRX + 18} color={blue ? "#9FD4FF" : "#FF9A66"} opacity={0.9} />}
+      {spec.aura > 0 && <Aura id={`${uid}-aura`} cx={bodyCX} cy={bodyCY - 2} r={bodyRX + 22} color={blue ? "#B8E2FF" : "#FFB27A"} opacity={spec.aura} />}
 
       <BatWings cx={bodyCX} cy={bodyCY - bodyRY * 0.4} s={spec.wing} membrane={wingCol} edge={WING_EDGE} />
-      <SpadeTail p0={tailRoot} p1={tailCtrl} p2={tailEnd} w={6 + 1.5 * tf} color={body} edge={tailEdge} tipColor={belly} tipS={0.85 + 0.8 * tf} />
+      {has(A.cape) && <CapeBack cx={bodyCX} topY={bodyCY - bodyRY * 0.62} w={bodyRX * 1.3} h={layout.feetY - 2 - (bodyCY - bodyRY * 0.62)} />}
+      <SpadeTail p0={tailRoot} p1={tailCtrl} p2={tailEnd} w={6 + 1.5 * tf} color={body} edge={tailEdge} tipColor={belly} tipS={(0.85 + 0.8 * tf) * (longTail ? 1 : 0.75)} />
 
       {layout.legs.filter((l) => l.back).map((l, i) => (
         <Leg key={`b${i}`} spec={l} w={legW} color={body} hoof={INK} />
       ))}
+      {has(A.swimRing) && <SwimRing id={`${uid}-ringb`} cx={bodyCX} cy={bodyCY + bodyRY * 0.3} rx={bodyRX * 1.22} color="#FFD54F" part="back" />}
+
       <ellipse cx={bodyCX} cy={bodyCY} rx={bodyRX} ry={bodyRY} fill={body} />
-      {spec.cracks && <Cracks cx={bodyCX} cy={bodyCY} rx={bodyRX} ry={bodyRY} color={EMBER} />}
+      {spec.cracks && <Cracks cx={bodyCX} cy={bodyCY} rx={bodyRX} ry={bodyRY} color={emberCol} />}
       <ellipse cx={bodyCX} cy={bodyCY + bodyRY * 0.3} rx={bodyRX * 0.55} ry={bodyRY * 0.6} fill={belly} />
       {spec.plates && <BellyPlates cx={bodyCX} cy={bodyCY + bodyRY * 0.3} rx={bodyRX * 0.55} ry={bodyRY * 0.6} line="#C4B584" />}
+      {has(A.swimsuit) && <Swimsuit id={`${uid}-suit`} cx={bodyCX} cy={bodyCY} rx={bodyRX} ry={bodyRY} color="#5AA9E0" star={stage >= 6} />}
 
       <path d={`M${bodyCX} ${bodyCY - bodyRY * 0.5} L${headCX} ${headCY + headR * 0.4}`} stroke={body} strokeWidth={headR * 0.95} strokeLinecap="round" />
       {layout.legs.filter((l) => !l.back).map((l, i) => (
@@ -141,8 +204,8 @@ export function CandidateA({ config, layout, stage, mood = "idle", uid }: PRigPr
       ))}
       {spec.fierce && layout.legs.filter((l) => !l.back).map((l, i) => <Claws key={`c${i}`} x={l.footX - 1.4} y={l.footY - 0.6} w={4} />)}
 
-      <Crest hx={headCX} hy={headCY} headR={headR} n={spec.crest} color={CREST} edge={CREST_EDGE} />
-      <Horns hx={headCX} hy={headCY} headR={headR} h={spec.horn} color={HORN_FILL} edge={HORN_EDGE} tipDot={spec.goldTips ? "#FFD54F" : undefined} />
+      <Crest hx={headCX} hy={headCY} headR={headR} n={spec.crest} color={crestCol} edge={crestEdge} />
+      <Horns hx={headCX} hy={headCY} headR={headR} h={spec.horn} variant={bullHorns ? "bull" : "straight"} color={HORN_FILL} edge={HORN_EDGE} tipDot={spec.goldTips ? "#FFD54F" : undefined} />
       <ellipse cx={headCX} cy={headCY} rx={headR} ry={headR * 0.96} fill={body} />
 
       <Snout hx={headCX} hy={headCY} headR={headR} color={belly} />
@@ -152,13 +215,24 @@ export function CandidateA({ config, layout, stage, mood = "idle", uid }: PRigPr
       <Mouth cx={headCX} y={mouthY} w={mouthW} mood={mood} />
       {spec.fierce && <Fangs cx={headCX} y={mouthY + 0.4} w={mouthW * 1.15} />}
 
-      {spec.flame > 0 && <FlamePuff x={headCX + headR * 0.3} y={headCY + headR * 0.6} s={spec.flame} rot={125} />}
+      {flameS > 0 && (
+        <g>
+          <FlamePuff x={headCX + headR * 0.3} y={headCY + headR * 0.6} s={flameS} rot={125} outer={blue ? BLUE_OUTER : undefined} inner={blue ? BLUE_INNER : undefined} />
+          {/* legendary double breath — the blue flame's own growth beat */}
+          {blue && stage >= 7 && <FlamePuff x={headCX + headR * 0.05} y={headCY + headR * 0.72} s={flameS * 0.55} rot={145} outer={BLUE_OUTER} inner={BLUE_INNER} />}
+        </g>
+      )}
 
-      {/* rising embers instead of sparkle stars — the fire-side of "magic" */}
-      {spec.ember > 0 && (
-        <g fill={EMBER}>
-          {Array.from({ length: spec.ember }).map((_, i) => {
-            const a = (i / spec.ember) * Math.PI * 2 + 0.8;
+      {/* accessories over the body */}
+      {has(A.swimRing) && <SwimRing id={`${uid}-ringf`} cx={bodyCX} cy={bodyCY + bodyRY * 0.3} rx={bodyRX * 1.22} color="#FFD54F" part="front" duck={stage >= 7} />}
+      {has(A.shield) && <Shield x={bodyCX - bodyRX - 7} groundY={layout.feetY + 1} s={bodyRY / 18} />}
+      {has(A.helmet) && <KnightHelmet hx={headCX} hy={headCY} headR={headR} />}
+      {has(A.cape) && <CapeClasp x={anchor.neck.x} y={anchor.neck.y} w={anchor.neck.w} />}
+
+      {emberN > 0 && (
+        <g fill={emberCol}>
+          {Array.from({ length: emberN }).map((_, i) => {
+            const a = (i / emberN) * Math.PI * 2 + 0.8;
             const r = 1.1 + (i % 3) * 0.55;
             return <circle key={i} cx={bodyCX + Math.cos(a) * (bodyRX + 12)} cy={bodyCY + Math.sin(a) * (bodyRY + 9) - 4} r={r} opacity={0.55 + 0.15 * (i % 3)} />;
           })}
