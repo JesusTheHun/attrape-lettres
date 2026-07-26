@@ -33,7 +33,8 @@ export interface AccessoryAnchors {
  * head, so its throat drops a touch less; the cat muzzle sits highest, so it can
  * drop the most. These are the only species-specific numbers here.
  */
-const NECK_K: Record<Species, number> = { unicorn: 0.9, cat: 0.94, fox: 0.86 };
+/* Rabbit: tiny nose high on the face like the cat — same drop. */
+const NECK_K: Record<Species, number> = { unicorn: 0.9, cat: 0.94, fox: 0.86, rabbit: 0.94 };
 
 export function accessoryAnchors(species: Species, layout: Layout): AccessoryAnchors {
   const { headCX, headCY, headR, bodyCX } = layout;

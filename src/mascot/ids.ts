@@ -11,6 +11,7 @@ export const COLOR_SLOT = {
   unicorn: { body: "bodyColor", horn: "hornColor", mane: "maneColor", tail: "tailColor" },
   cat: { body: "bodyColor", belly: "bellyColor", tail: "tailColor" },
   fox: { body: "bodyColor", belly: "bellyColor", tailTip: "tailTipColor" },
+  rabbit: { body: "bodyColor", belly: "bellyColor", inner: "innerEarColor" },
 } as const;
 
 /** Style config slots per species — written to config.styles[slot]. */
@@ -18,6 +19,7 @@ export const STYLE_SLOT = {
   unicorn: { tail: "tailStyle", horn: "hornStyle" },
   cat: { hair: "hair", tail: "tailSize" },
   fox: { fur: "furPattern", tail: "tailSize" },
+  rabbit: { ear: "earStyle", tail: "tailStyle", fur: "furPattern" },
 } as const;
 
 /** Accessory option ids — matched verbatim against config.accessories. */
@@ -42,5 +44,12 @@ export const ACCESSORY = {
     boots: "fox.accessory.boots",
     swimsuit: "fox.accessory.swimsuit",
     swimRing: "fox.accessory.swim-ring",
+  },
+  rabbit: {
+    bow: "rabbit.accessory.bow",
+    nightcap: "rabbit.accessory.nightcap",
+    stardust: "rabbit.accessory.stardust",
+    swimsuit: "rabbit.accessory.swimsuit",
+    swimRing: "rabbit.accessory.swim-ring",
   },
 } as const;

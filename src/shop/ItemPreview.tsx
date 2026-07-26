@@ -39,6 +39,9 @@ function ghostColors(species: Species): Record<string, string> {
 const STYLE_COLOR_SLOT: Partial<Record<Species, Record<string, string>>> = {
   unicorn: { [STYLE_SLOT.unicorn.tail]: COLOR_SLOT.unicorn.tail, [STYLE_SLOT.unicorn.horn]: COLOR_SLOT.unicorn.horn },
   cat: { [STYLE_SLOT.cat.tail]: COLOR_SLOT.cat.tail },
+  // Folded ears read via their lavender inner on the ghost body; star tail and
+  // flecks draw in their own gold/lavender, so the body stays ghost.
+  rabbit: { [STYLE_SLOT.rabbit.ear]: COLOR_SLOT.rabbit.inner },
 };
 
 function defaultColor(species: Species, colorSlot: string): string | undefined {
@@ -66,13 +69,16 @@ function focusFor(species: Species, category: CustomizationCategory, slot: strin
   const catTail = () => box(bodyCX + bodyRX * 0.9, bodyCY - bodyRY * 0.05, bodyRY * 1.25);
   const foxTail = () => box(bodyCX + bodyRX * 0.85, bodyCY + bodyRY * 0.45, bodyRY * 1.3);
   const belly = () => box(bodyCX, bodyCY + bodyRY * 0.28, bodyRX * 1.15);
+  const rabbitEars = () => box(headCX, headCY - headR * 1.1, headR * 1.6);
+  const rabbitTail = () => box(bodyCX - bodyRX * 0.95, bodyCY + bodyRY * 0.45, bodyRY * 1.2);
 
   if (category === "accessory") {
     const AA = ACCESSORY[species];
     if (value === ACCESSORY.unicorn.starClip) return undefined; // whole-image shimmer
-    if (value === ACCESSORY.unicorn.ribbon || value === ACCESSORY.cat.bellCollar || value === ACCESSORY.fox.scarf)
+    if (value === ACCESSORY.rabbit.stardust) return undefined; // whole-image star dust
+    if (value === ACCESSORY.unicorn.ribbon || value === ACCESSORY.cat.bellCollar || value === ACCESSORY.fox.scarf || value === ACCESSORY.rabbit.bow)
       return box(A.neck.x, A.neck.y, headR * 1.1);
-    if (value === ACCESSORY.cat.bow || value === ACCESSORY.cat.partyHat || value === ACCESSORY.fox.beanie)
+    if (value === ACCESSORY.cat.bow || value === ACCESSORY.cat.partyHat || value === ACCESSORY.fox.beanie || value === ACCESSORY.rabbit.nightcap)
       return box(A.headTop.x, headCY - headR * 0.55, headR * 1.4);
     if (value === ACCESSORY.unicorn.flowerCrown) return box(headCX, headCY - headR * 0.2, headR * 1.4);
     if (value === ACCESSORY.fox.boots) return box(bodyCX, feetY - 4, bodyRX * 1.25);
@@ -92,9 +98,12 @@ function focusFor(species: Species, category: CustomizationCategory, slot: strin
     } else if (species === "cat") {
       if (slot === COLOR_SLOT.cat.belly) return belly();
       if (slot === COLOR_SLOT.cat.tail) return catTail();
-    } else {
+    } else if (species === "fox") {
       if (slot === COLOR_SLOT.fox.belly) return belly();
       if (slot === COLOR_SLOT.fox.tailTip) return foxTail();
+    } else {
+      if (slot === COLOR_SLOT.rabbit.belly) return belly();
+      if (slot === COLOR_SLOT.rabbit.inner) return rabbitEars();
     }
     return undefined;
   }
@@ -105,10 +114,15 @@ function focusFor(species: Species, category: CustomizationCategory, slot: strin
     if (slot === STYLE_SLOT.unicorn.tail) return uniTail();
   } else if (species === "cat") {
     if (slot === STYLE_SLOT.cat.tail) return catTail();
-  } else {
+  } else if (species === "fox") {
     if (slot === STYLE_SLOT.fox.tail) return foxTail();
     // Spots/stripes sit on the torso and are tiny full-body — crop to the trunk.
     if (slot === STYLE_SLOT.fox.fur) return box(bodyCX, bodyCY, bodyRX * 1.15);
+  } else {
+    if (slot === STYLE_SLOT.rabbit.ear) return rabbitEars();
+    if (slot === STYLE_SLOT.rabbit.tail) return rabbitTail();
+    // Star-flecks sit on the torso — crop to the trunk like the fox pattern.
+    if (slot === STYLE_SLOT.rabbit.fur) return box(bodyCX, bodyCY, bodyRX * 1.15);
   }
   return undefined;
 }

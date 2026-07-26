@@ -10,7 +10,7 @@ import { GROWTH_STAGES, type Species } from "../types";
  * the baby's oversized head rode over.
  */
 
-const SPECIES: Species[] = ["unicorn", "cat", "fox"];
+const SPECIES: Species[] = ["unicorn", "cat", "fox", "rabbit"];
 const STAGES = Array.from({ length: GROWTH_STAGES }, (_, i) => i);
 
 // Upright head (standing): the drawn muzzle reaches ~0.74·headR below the head

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { CATALOG, DEFAULT_LOOKS } from "./catalog";
 import type { Species } from "../types";
 
-const SPECIES: Species[] = ["unicorn", "cat", "fox"];
+const SPECIES: Species[] = ["unicorn", "cat", "fox", "rabbit"];
 
 /* Growth gates derived from a per-stage visual render of every rig: an option is
  * gated only when the body part it dresses isn't visible yet at that stade
@@ -19,11 +19,19 @@ const EXPECTED_GATES: Record<string, number> = {
   "cat.color.tailColor.roux": 1,
   "cat.color.tailColor.noire": 1,
   "cat.style.tailSize.short": 1,
+  // Rabbit inner ears: the tint only "blooms" at stade 3; the ear fold can't
+  // show while the ears lie on the back (stades 0-1); the swimsuit is worn
+  // standing only (the lying nappy read as a backpack in the blind test).
+  "rabbit.color.innerEarColor.rose": 3,
+  "rabbit.color.innerEarColor.menthe": 3,
+  "rabbit.style.earStyle.pliees": 2,
+  "rabbit.accessory.swimsuit": 2,
   // Premium accessories gated by maturity.
   "unicorn.accessory.flower-crown": 2,
   "unicorn.accessory.star-clip": 4,
   "cat.accessory.party-hat": 4,
   "fox.accessory.boots": 4,
+  "rabbit.accessory.stardust": 4,
 };
 
 describe("catalog growth gates", () => {

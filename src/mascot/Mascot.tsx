@@ -4,6 +4,7 @@ import { layoutFor, stageScale } from "./growth";
 import { Unicorn } from "./Unicorn";
 import { Cat } from "./Cat";
 import { Fox } from "./Fox";
+import { Rabbit } from "./Rabbit";
 import { ACCESSORY } from "./ids";
 import { RainbowSheen } from "./parts";
 
@@ -23,6 +24,7 @@ const LABELS: Record<Species, string> = {
   unicorn: "Ma licorne",
   cat: "Mon chat",
   fox: "Mon renard",
+  rabbit: "Mon lapin",
 };
 
 const bob: Keyframe[] = [
@@ -71,6 +73,8 @@ export function Mascot({ config, mood, size = 88, preview = false, focus }: Masc
       <Cat config={config} layout={layout} stage={config.stage} mood={mood} uid={uid} preview={preview} />
     ) : config.species === "fox" ? (
       <Fox config={config} layout={layout} stage={config.stage} mood={mood} uid={uid} preview={preview} />
+    ) : config.species === "rabbit" ? (
+      <Rabbit config={config} layout={layout} stage={config.stage} mood={mood} uid={uid} preview={preview} />
     ) : (
       <Unicorn config={config} layout={layout} stage={config.stage} mood={mood} uid={uid} preview={preview} />
     );

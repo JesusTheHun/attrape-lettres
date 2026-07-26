@@ -163,11 +163,13 @@ type Story = StoryObj<typeof meta>;
 export const CroissanceLicorne: Story = { render: () => <GrowthBoard species="unicorn" label="🦄 Licorne" /> };
 export const CroissanceChat: Story = { render: () => <GrowthBoard species="cat" label="🐱 Chat" /> };
 export const CroissanceRenard: Story = { render: () => <GrowthBoard species="fox" label="🦊 Renard" /> };
+export const CroissanceLapin: Story = { render: () => <GrowthBoard species="rabbit" label="🐰 Lapin" /> };
 
 /* -- Accessoires : chaque accessoire × chaque stade, par pet ---------------- */
 export const AccessoiresLicorne: Story = { render: () => <AccessoryBoard species="unicorn" label="🦄 Licorne" /> };
 export const AccessoiresChat: Story = { render: () => <AccessoryBoard species="cat" label="🐱 Chat" /> };
 export const AccessoiresRenard: Story = { render: () => <AccessoryBoard species="fox" label="🦊 Renard" /> };
+export const AccessoiresLapin: Story = { render: () => <AccessoryBoard species="rabbit" label="🐰 Lapin" /> };
 
 /* -- Terrain de jeu : mascotte interactive ---------------------------------- */
 const NONE = "(aucun)";
@@ -185,7 +187,7 @@ export const Terrain: StoryObj<PlayArgs> = {
   name: "Terrain (interactif)",
   args: { species: "unicorn", stage: 2, accessory: "unicorn.accessory.ribbon", mood: "idle", size: 220 },
   argTypes: {
-    species: { control: "inline-radio", options: ["unicorn", "cat", "fox"] },
+    species: { control: "inline-radio", options: ["unicorn", "cat", "fox", "rabbit"] },
     stage: { control: { type: "range", min: 0, max: GROWTH_STAGES - 1, step: 1 } },
     mood: { control: "inline-radio", options: ["idle", "happy", "cheer"] },
     accessory: { control: "select", options: ALL_ACCESSORIES },

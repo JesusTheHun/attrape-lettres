@@ -55,9 +55,11 @@ function accessory(
 const U = COLOR_SLOT.unicorn;
 const CA = COLOR_SLOT.cat;
 const FO = COLOR_SLOT.fox;
+const RA = COLOR_SLOT.rabbit;
 const US = STYLE_SLOT.unicorn;
 const CS = STYLE_SLOT.cat;
 const FS = STYLE_SLOT.fox;
+const RS = STYLE_SLOT.rabbit;
 
 export const CATALOG: CustomizationOption[] = [
   /* ---- Unicorn ------------------------------------------------------- */
@@ -114,6 +116,28 @@ export const CATALOG: CustomizationOption[] = [
   accessory(ACCESSORY.fox.boots, "fox", "Bottes", "🥾", 200, 4),
   accessory(ACCESSORY.fox.swimsuit, "fox", "Maillot de bain", "🩱", 60),
   accessory(ACCESSORY.fox.swimRing, "fox", "Bouée", "🛟", 75),
+
+  /* ---- Rabbit --------------------------------------------------------- */
+  color("rabbit", RA.body, "souris", "#D6D3DE", "Pelage gris souris", "🐭", 18),
+  color("rabbit", RA.body, "caramel", "#EFC9A0", "Pelage caramel", "🍮", 18),
+  color("rabbit", RA.body, "peche", "#F8D3BC", "Pelage pêche", "🍑", 18),
+  color("rabbit", RA.body, "lilas", "#E4DCF2", "Pelage lilas", "💜", 20),
+  // The inner ears only "bloom" their colour at stade 3 — before that the
+  // tint is nearly invisible on the pale baby ear.
+  color("rabbit", RA.inner, "rose", "#F5A8C0", "Oreilles rose poudré", "🌸", 20, 3),
+  color("rabbit", RA.inner, "menthe", "#A8DDB8", "Oreilles menthe", "🌿", 20, 3),
+  color("rabbit", RA.belly, "creme", "#FFE8BC", "Ventre crème", "🍦", 16),
+  // Ears lie flat on the back until the rabbit stands at stade 2 — the fold
+  // wouldn't show on a lying baby.
+  style("rabbit", RS.ear, "pliees", "Oreilles pliées", "🐰", 45, 2),
+  style("rabbit", RS.tail, "etoile", "Queue étoile", "🌟", 50),
+  style("rabbit", RS.fur, "flocons", "Flocons d'étoiles", "❄️", 48),
+  accessory(ACCESSORY.rabbit.bow, "rabbit", "Nœud étoilé", "🎀", 45),
+  accessory(ACCESSORY.rabbit.nightcap, "rabbit", "Bonnet de nuit", "🌙", 60),
+  accessory(ACCESSORY.rabbit.stardust, "rabbit", "Poussière d'étoiles", "🌠", 200, 4),
+  // Worn standing only (stade 2+): the lying nappy-culotte read as a backpack.
+  accessory(ACCESSORY.rabbit.swimsuit, "rabbit", "Maillot de bain", "🩱", 60, 2),
+  accessory(ACCESSORY.rabbit.swimRing, "rabbit", "Bouée", "🛟", 75),
 ];
 
 /**
@@ -156,5 +180,13 @@ export const DEFAULT_LOOKS: Record<Species, DefaultLook[]> = {
     { category: "color", slot: FO.tailTip, value: "#FFFFFF", name: "Bout blanc" },
     { category: "style", slot: FS.fur, value: "plain", name: "Pelage uni", emoji: "🟠" },
     { category: "style", slot: FS.tail, value: "long", name: "Grande queue", emoji: "🦊" },
+  ],
+  rabbit: [
+    { category: "color", slot: RA.body, value: "#F6EFE3", name: "Pelage ivoire" },
+    { category: "color", slot: RA.inner, value: "#D9CCEE", name: "Oreilles lavande", minStage: 3 },
+    { category: "color", slot: RA.belly, value: "#FFFFFF", name: "Ventre blanc" },
+    { category: "style", slot: RS.ear, value: "hautes", name: "Oreilles hautes", emoji: "🐇", minStage: 2 },
+    { category: "style", slot: RS.tail, value: "pompon", name: "Queue pompon", emoji: "⚪" },
+    { category: "style", slot: RS.fur, value: "uni", name: "Pelage uni", emoji: "🤍" },
   ],
 };
