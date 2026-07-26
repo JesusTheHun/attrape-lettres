@@ -706,57 +706,243 @@ export function Shield({ x, groundY, s }: { x: number; groundY: number; s: numbe
 
 /* -- Accessories ----------------------------------------------------------- */
 
-/** Little hoard of gold beside him — a dragon guards his treasure from the egg
- * on. STACKS of flat coins (ellipses) + one upright coin face: a mound of
- * tangent circles reads as the poop emoji, never do that. `rich` spills extra
- * stacks (the high-stade beat). */
-export function GoldPile({ x, groundY, s, rich }: { x: number; groundY: number; s: number; rich?: boolean }) {
-  const flat = (cx: number, cy: number, r: number, key: string) => (
-    <g key={key}>
-      <ellipse cx={cx} cy={cy} rx={r} ry={r * 0.38} fill="#FFD54F" stroke="#B07E1E" strokeWidth={0.8} />
-      <ellipse cx={cx} cy={cy - r * 0.16} rx={r} ry={r * 0.34} fill="#FFE082" stroke="none" />
-    </g>
-  );
-  const stack = (cx: number, n: number, r: number, key: string) => (
-    <g key={key}>
-      {Array.from({ length: n }).map((_, i) => flat(cx + (i % 2 === 0 ? 0 : 0.7 * s), groundY - 1.2 * s - i * r * 0.62, r, `${key}${i}`))}
-    </g>
-  );
+/* -- The treasure hoard — 5 proposed drawings (user picks one) --------------
+ * All: gold coins + jewels with gemstones + glints. Flat-ellipse coins only —
+ * a mound of tangent circles reads as the poop emoji, never do that. */
+
+const T_GOLD = "#FFD54F";
+const T_GOLD_EDGE = "#B07E1E";
+const T_GOLD_LIGHT = "#FFE082";
+const RUBY = "#E0533B";
+const SAPPHIRE = "#5E7EB5";
+const EMERALD = "#4CAF7D";
+const AMETHYST = "#9575CD";
+
+function TCoin({ cx, cy, r }: { cx: number; cy: number; r: number }) {
   return (
     <g>
-      {stack(x - 3.2 * s, 3, 3 * s, "a")}
-      {stack(x + 3.4 * s, 2, 2.8 * s, "b")}
-      {/* upright coin leaning on the stacks — ring + notch make it a coin face */}
-      <g>
-        <circle cx={x + 8.2 * s} cy={groundY - 2.6 * s} r={2.6 * s} fill="#FFD54F" stroke="#B07E1E" strokeWidth={0.9} />
-        <circle cx={x + 8.2 * s} cy={groundY - 2.6 * s} r={1.5 * s} fill="none" stroke="#B07E1E" strokeWidth={0.7} opacity={0.7} />
-        <circle cx={x + 7.4 * s} cy={groundY - 3.4 * s} r={0.55 * s} fill="#FFFDF4" opacity={0.9} />
-      </g>
+      <ellipse cx={cx} cy={cy} rx={r} ry={r * 0.38} fill={T_GOLD} stroke={T_GOLD_EDGE} strokeWidth={0.8} />
+      <ellipse cx={cx} cy={cy - r * 0.16} rx={r} ry={r * 0.34} fill={T_GOLD_LIGHT} stroke="none" />
+    </g>
+  );
+}
+
+function TStack({ cx, baseY, n, r, s }: { cx: number; baseY: number; n: number; r: number; s: number }) {
+  return (
+    <g>
+      {Array.from({ length: n }).map((_, i) => (
+        <TCoin key={i} cx={cx + (i % 2 === 0 ? 0 : 0.7 * s)} cy={baseY - i * r * 0.62} r={r} />
+      ))}
+    </g>
+  );
+}
+
+/** Little gold crown (for the king's-loot variant). */
+function TCrown({ x, y, s }: { x: number; y: number; s: number }) {
+  return (
+    <g>
+      <path
+        d={`M${x - 2.8 * s} ${y} L${x - 2.8 * s} ${y - 1.8 * s} L${x - 1.4 * s} ${y - 0.7 * s} L${x} ${y - 2.6 * s} L${x + 1.4 * s} ${y - 0.7 * s} L${x + 2.8 * s} ${y - 1.8 * s} L${x + 2.8 * s} ${y} Q${x} ${y + 0.9 * s} ${x - 2.8 * s} ${y} Z`}
+        fill={T_GOLD}
+        stroke={T_GOLD_EDGE}
+        strokeWidth={0.7}
+        strokeLinejoin="round"
+      />
+      <circle cx={x} cy={y - 2.7 * s} r={0.55 * s} fill={RUBY} stroke={T_GOLD_EDGE} strokeWidth={0.4} />
+      <circle cx={x - 2.8 * s} cy={y - 1.9 * s} r={0.45 * s} fill={SAPPHIRE} stroke={T_GOLD_EDGE} strokeWidth={0.4} />
+      <circle cx={x + 2.8 * s} cy={y - 1.9 * s} r={0.45 * s} fill={SAPPHIRE} stroke={T_GOLD_EDGE} strokeWidth={0.4} />
+    </g>
+  );
+}
+
+/** 1 « La montagne d'or » — heaped flat coins climbing into a mound, gems set in. */
+function MoundHoard({ x, groundY, s, rich }: { x: number; groundY: number; s: number; rich?: boolean }) {
+  return (
+    <g>
       {rich && (
         <g>
-          {stack(x - 8.6 * s, 2, 2.6 * s, "c")}
-          {flat(x + 10.8 * s, groundY - 1 * s, 2.4 * s, "d")}
-          {flat(x - 11.4 * s, groundY - 1 * s, 2.2 * s, "e")}
-          <circle cx={x - 7.8 * s} cy={groundY - 6.4 * s} r={1.7 * s} fill="#FFD54F" stroke="#B07E1E" strokeWidth={0.8} />
+          <TCoin cx={x - 10.6 * s} cy={groundY - 1 * s} r={2.2 * s} />
+          <TCoin cx={x + 10.4 * s} cy={groundY - 1 * s} r={2.3 * s} />
         </g>
       )}
-      {/* glints ON the gold (white-on-gold, or they vanish on the pale bg) */}
+      <TCoin cx={x - 5.6 * s} cy={groundY - 1.2 * s} r={2.8 * s} />
+      <TCoin cx={x + 5.4 * s} cy={groundY - 1.2 * s} r={2.8 * s} />
+      <TCoin cx={x} cy={groundY - 1.4 * s} r={3 * s} />
+      <TCoin cx={x - 2.8 * s} cy={groundY - 3.4 * s} r={2.7 * s} />
+      <TCoin cx={x + 2.9 * s} cy={groundY - 3.4 * s} r={2.7 * s} />
+      <TCoin cx={x} cy={groundY - 5.4 * s} r={2.6 * s} />
+      <Gem x={x} y={groundY - 7.6 * s} s={1.9 * s} color={RUBY} />
+      <Gem x={x + 6.6 * s} y={groundY - 3.2 * s} s={1.4 * s} color={SAPPHIRE} />
+      {rich && <Gem x={x - 7 * s} y={groundY - 3.4 * s} s={1.5 * s} color={EMERALD} />}
       <Sparkles
         points={[
-          [x - 2.9 * s, groundY - 5.1 * s, 1.15 * s],
-          [x + 8.9 * s, groundY - 3.3 * s, 0.95 * s],
-          ...(rich
-            ? ([
-                [x - 8.3 * s, groundY - 3.6 * s, 0.9 * s],
-                [x - 7.8 * s, groundY - 6.9 * s, 0.7 * s],
-                [x + 11.1 * s, groundY - 1.3 * s, 0.75 * s],
-              ] as Array<[number, number, number]>)
-            : []),
+          [x - 3.4 * s, groundY - 4.6 * s, 1.05 * s],
+          [x + 1.8 * s, groundY - 6 * s, 0.85 * s],
+          ...(rich ? ([[x + 9.4 * s, groundY - 2.2 * s, 0.8 * s]] as Array<[number, number, number]>) : []),
         ]}
         color="#FFFDF2"
       />
     </g>
   );
+}
+
+/** 2 « Le coffre » — open wooden chest overflowing with gold and gems. */
+function ChestHoard({ x, groundY, s, rich }: { x: number; groundY: number; s: number; rich?: boolean }) {
+  const w = 6.8 * s;
+  const h = 5.6 * s;
+  const topY = groundY - h;
+  return (
+    <g>
+      {/* lid, open toward the back */}
+      <path
+        d={`M${x - w * 0.94} ${topY - 0.4 * s} L${x - w * 0.78} ${topY - 4.6 * s} Q${x} ${topY - 6.4 * s} ${x + w * 0.78} ${topY - 4.6 * s} L${x + w * 0.94} ${topY - 0.4 * s} Z`}
+        fill="#8F6039"
+        stroke="#6E4B2E"
+        strokeWidth={0.9}
+        strokeLinejoin="round"
+      />
+      {/* the loot bulging out */}
+      <TCoin cx={x - 3.4 * s} cy={topY - 0.6 * s} r={2.4 * s} />
+      <TCoin cx={x + 3.4 * s} cy={topY - 0.6 * s} r={2.4 * s} />
+      <TCoin cx={x} cy={topY - 1.5 * s} r={2.6 * s} />
+      <Gem x={x - 1.9 * s} y={topY - 3.2 * s} s={1.5 * s} color={RUBY} />
+      <Gem x={x + 2.3 * s} y={topY - 2.9 * s} s={1.3 * s} color={EMERALD} />
+      {/* the box */}
+      <rect x={x - w} y={topY} width={w * 2} height={h} rx={1.1 * s} fill="#A5744A" stroke="#6E4B2E" strokeWidth={1} />
+      <rect x={x - 1.1 * s} y={topY} width={2.2 * s} height={h} fill={T_GOLD} stroke={T_GOLD_EDGE} strokeWidth={0.7} />
+      <circle cx={x} cy={topY + h * 0.42} r={0.85 * s} fill={T_GOLD_LIGHT} stroke={T_GOLD_EDGE} strokeWidth={0.6} />
+      {/* spill in front */}
+      <TCoin cx={x - w - 1.6 * s} cy={groundY - 0.8 * s} r={2 * s} />
+      {rich && (
+        <g>
+          <TCoin cx={x + w + 1.8 * s} cy={groundY - 0.8 * s} r={2.1 * s} />
+          <TCoin cx={x + w + 4.6 * s} cy={groundY - 0.6 * s} r={1.7 * s} />
+          <Gem x={x - w - 3.6 * s} y={groundY - 1.4 * s} s={1.4 * s} color={SAPPHIRE} />
+        </g>
+      )}
+      <Sparkles
+        points={[
+          [x + 1.2 * s, topY - 4 * s, 1 * s],
+          [x - 3.6 * s, topY - 2.2 * s, 0.8 * s],
+          ...(rich ? ([[x + w + 2.4 * s, groundY - 2.4 * s, 0.75 * s]] as Array<[number, number, number]>) : []),
+        ]}
+        color="#FFFDF2"
+      />
+    </g>
+  );
+}
+
+/** 3 « Le butin du roi » — coin stacks under a crown and a fat ruby. */
+function CrownHoard({ x, groundY, s, rich }: { x: number; groundY: number; s: number; rich?: boolean }) {
+  return (
+    <g>
+      <TStack cx={x - 3 * s} baseY={groundY - 1.2 * s} n={3} r={2.9 * s} s={s} />
+      <TStack cx={x + 3.6 * s} baseY={groundY - 1.2 * s} n={2} r={2.7 * s} s={s} />
+      {rich && <TStack cx={x - 8.9 * s} baseY={groundY - 1.1 * s} n={2} r={2.4 * s} s={s} />}
+      <TCrown x={x - 3 * s} y={groundY - 5.6 * s} s={1.15 * s} />
+      <Gem x={x + 8.6 * s} y={groundY - 1.9 * s} s={1.9 * s} color={RUBY} />
+      {rich && <Gem x={x + 4 * s} y={groundY - 5.4 * s} s={1.3 * s} color={AMETHYST} />}
+      <Sparkles
+        points={[
+          [x - 0.4 * s, groundY - 7.4 * s, 1 * s],
+          [x + 9.6 * s, groundY - 3.4 * s, 0.8 * s],
+          ...(rich ? ([[x - 9.4 * s, groundY - 4.6 * s, 0.8 * s]] as Array<[number, number, number]>) : []),
+        ]}
+        color="#FFFDF2"
+      />
+    </g>
+  );
+}
+
+/** 4 « Le sac de butin » — cinched loot bag, coins pouring out, gem beside. */
+function BagHoard({ x, groundY, s, rich }: { x: number; groundY: number; s: number; rich?: boolean }) {
+  const bw = 4.6 * s;
+  const bh = 7 * s;
+  return (
+    <g>
+      <path
+        d={`M${x - 1.6 * s} ${groundY - bh} Q${x - bw} ${groundY - bh * 0.72} ${x - bw} ${groundY - bh * 0.34} Q${x - bw} ${groundY} ${x} ${groundY} Q${x + bw} ${groundY} ${x + bw} ${groundY - bh * 0.34} Q${x + bw} ${groundY - bh * 0.72} ${x + 1.6 * s} ${groundY - bh} Z`}
+        fill="#E3CFA3"
+        stroke="#A8895E"
+        strokeWidth={1}
+        strokeLinejoin="round"
+      />
+      {/* cinch + cord */}
+      <path d={`M${x - 1.9 * s} ${groundY - bh + 0.3 * s} Q${x} ${groundY - bh + 1.2 * s} ${x + 1.9 * s} ${groundY - bh + 0.3 * s}`} fill="none" stroke="#8D5A3B" strokeWidth={1.1 * s} strokeLinecap="round" />
+      {/* mouth flaring open above the cord, coins peeking */}
+      <TCoin cx={x} cy={groundY - bh - 0.8 * s} r={1.7 * s} />
+      <TCoin cx={x + 1.9 * s} cy={groundY - bh - 0.2 * s} r={1.4 * s} />
+      {/* pour of coins down the side */}
+      <TCoin cx={x + 4.4 * s} cy={groundY - 3.4 * s} r={1.7 * s} />
+      <TCoin cx={x + 6 * s} cy={groundY - 1 * s} r={2 * s} />
+      <TCoin cx={x + 8.9 * s} cy={groundY - 0.8 * s} r={1.8 * s} />
+      <Gem x={x - 6.4 * s} y={groundY - 1.6 * s} s={1.6 * s} color={EMERALD} />
+      {rich && (
+        <g>
+          <TCoin cx={x + 11.6 * s} cy={groundY - 0.6 * s} r={1.6 * s} />
+          <Gem x={x + 10.4 * s} y={groundY - 3 * s} s={1.3 * s} color={RUBY} />
+          <TStack cx={x - 9.6 * s} baseY={groundY - 1 * s} n={2} r={2.2 * s} s={s} />
+        </g>
+      )}
+      <Sparkles
+        points={[
+          [x + 0.9 * s, groundY - bh - 1.8 * s, 0.95 * s],
+          [x + 6.9 * s, groundY - 2.4 * s, 0.8 * s],
+          ...(rich ? ([[x - 8.8 * s, groundY - 4 * s, 0.8 * s]] as Array<[number, number, number]>) : []),
+        ]}
+        color="#FFFDF2"
+      />
+    </g>
+  );
+}
+
+/** 5 « Les joyaux » — big faceted gems planted in a bed of coins. */
+function JewelHoard({ x, groundY, s, rich }: { x: number; groundY: number; s: number; rich?: boolean }) {
+  return (
+    <g>
+      <TCoin cx={x - 4.6 * s} cy={groundY - 1 * s} r={2.6 * s} />
+      <TCoin cx={x} cy={groundY - 1.2 * s} r={2.9 * s} />
+      <TCoin cx={x + 4.8 * s} cy={groundY - 1 * s} r={2.6 * s} />
+      <TCoin cx={x - 2.2 * s} cy={groundY - 2.8 * s} r={2.3 * s} />
+      <TCoin cx={x + 2.4 * s} cy={groundY - 2.8 * s} r={2.3 * s} />
+      <Gem x={x} y={groundY - 5.6 * s} s={2.6 * s} color={RUBY} />
+      <Gem x={x - 5.2 * s} y={groundY - 4 * s} s={1.9 * s} color={SAPPHIRE} />
+      <Gem x={x + 5.4 * s} y={groundY - 3.8 * s} s={1.7 * s} color={EMERALD} />
+      {rich && (
+        <g>
+          <TCoin cx={x - 9.8 * s} cy={groundY - 0.8 * s} r={2 * s} />
+          <TCoin cx={x + 10 * s} cy={groundY - 0.8 * s} r={2 * s} />
+          <Gem x={x - 9.2 * s} y={groundY - 3 * s} s={1.4 * s} color={AMETHYST} />
+          <Gem x={x + 9.6 * s} y={groundY - 2.8 * s} s={1.2 * s} color={T_GOLD} />
+        </g>
+      )}
+      <Sparkles
+        points={[
+          [x + 1.8 * s, groundY - 7.4 * s, 1.1 * s],
+          [x - 6.4 * s, groundY - 5.6 * s, 0.85 * s],
+          [x + 6.8 * s, groundY - 5.2 * s, 0.8 * s],
+          ...(rich ? ([[x - 10.6 * s, groundY - 4.2 * s, 0.75 * s]] as Array<[number, number, number]>) : []),
+        ]}
+        color="#FFFDF2"
+      />
+    </g>
+  );
+}
+
+/** The treasure accessory — dispatches on the proposed drawing (1-5). */
+export function Treasure({ variant, x, groundY, s, rich }: { variant: string; x: number; groundY: number; s: number; rich?: boolean }) {
+  switch (variant) {
+    case "2":
+      return <ChestHoard x={x} groundY={groundY} s={s} rich={rich} />;
+    case "3":
+      return <CrownHoard x={x} groundY={groundY} s={s} rich={rich} />;
+    case "4":
+      return <BagHoard x={x} groundY={groundY} s={s} rich={rich} />;
+    case "5":
+      return <JewelHoard x={x} groundY={groundY} s={s} rich={rich} />;
+    default:
+      return <MoundHoard x={x} groundY={groundY} s={s} rich={rich} />;
+  }
 }
 
 /** Cord necklace with a little white fang pendant, hung at the throat anchor

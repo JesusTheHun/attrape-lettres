@@ -185,6 +185,45 @@ it.runIf(RUN)("renders items QA pages", () => {
 });
 
 /* ------------------------------------------------------------------------- */
+/* The deliverable — tresor.html (5 drawings for the treasure accessory).     */
+/* ------------------------------------------------------------------------- */
+
+it.runIf(RUN)("writes tresor.html", () => {
+  const TRESORS: Array<[string, string, string, boolean]> = [
+    ["1", "La montagne d'or", "Des pièces plates empilées en vraie montagne, un rubis planté au sommet, un saphir sur le flanc — l'or domine, les pierres couronnent.", false],
+    ["2", "Le coffre", "Le coffre en bois ouvert qui déborde : pièces bombées au-dessus, rubis + émeraude dans le tas, serrure d'or, pièces tombées devant. L'image « trésor » que tout enfant reconnaît.", true],
+    ["3", "Le butin du roi", "Des piles de pièces, une couronne d'or posée dessus (rubis + saphirs sertis) et un gros rubis appuyé contre — le magot d'un roi vaincu.", false],
+    ["4", "Le sac de butin", "Un sac de toile ficelé, plein à craquer : des pièces débordent du col et coulent en cascade sur le côté, une émeraude posée contre.", false],
+    ["5", "Les joyaux", "Trois grosses pierres taillées (rubis, saphir, émeraude) plantées dans un lit de pièces — la version la plus bijoux.", false],
+  ];
+  const A2 = P_ACCESSORY.dragon;
+  const sections = TRESORS.map(([v, name, pitch, reco]) => {
+    const cells = ([[0, "stade 0 · près de l'œuf"], [1, "stade 1"], [4, "stade 4"], [7, "stade 7 · ça déborde"], [9, "stade 9 · magot géant"]] as Array<[number, string]>).map(
+      ([st, cap]) => ({ svg: petSvg(CandidateA, st, cfg({ accessories: [A2.treasure], styles: { tresorVariant: v } }), 150), caption: cap })
+    );
+    return `<section class="dir ${reco ? "reco" : ""}"><h2>Proposition ${v} — « ${name} »${reco ? ' <span class="badge">⭐ Recommandée</span>' : ""}</h2><p>${pitch}</p>${strip(cells)}</section>`;
+  }).join("");
+  const html = `<!doctype html><meta charset="utf-8"><title>Le trésor — 5 propositions</title><style>
+    body{font-family:ui-rounded,'SF Pro Rounded',system-ui,sans-serif;background:#FFF7EC;color:#5A3A1E;margin:28px;max-width:1240px}
+    h1{font-size:26px;margin-bottom:4px} h2{font-size:19px;margin:8px 0}
+    .meta{color:#9A7A5A;font-weight:700;font-size:13px;margin-bottom:18px}
+    .banner{background:#FFE9C9;border:2px solid #F2C14E;border-radius:14px;padding:10px 16px;font-weight:800;margin:14px 0 26px}
+    .strip{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin:10px 0}
+    .cell{background:#fff;border-radius:14px;padding:78px 10px 8px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+    .cell p{font-size:11.5px;font-weight:800;margin:6px 0 0;max-width:150px}
+    .dir{background:rgba(255,255,255,.55);border-radius:18px;padding:14px 18px;margin:0 0 20px;border:2px solid transparent}
+    .dir.reco{border-color:#F2C14E;background:#FFFDF6}
+    .badge{background:#F2C14E;color:#5A3A1E;border-radius:999px;padding:2px 10px;font-size:13px;vertical-align:middle}
+    .dir p{font-size:13.5px;color:#7A6248}
+  </style>
+  <h1>🪙 Le trésor du dragon — 5 propositions de dessin</h1>
+  <p class="meta">Retour : « on devrait voir un trésor composé de pièces d'or et de bijoux avec des pierres précieuses ». Chaque proposition rendue sur le rig aux 5 stades clés (près de l'œuf → magot géant), avec sa croissance ×2.5 et ses éclats. · 26/07/2026</p>
+  <div class="banner">⭐ Recommandation : <b>2 « Le coffre »</b> — c'est l'icône universelle du trésor pour un enfant de 6 ans, et le seul dessin qui reste lisible « trésor » même tout petit près de l'œuf. Mon second choix : 3 « Le butin du roi » (la couronne raconte une histoire).</div>
+  ${sections}`;
+  out("tresor.html", html);
+});
+
+/* ------------------------------------------------------------------------- */
 /* The deliverable — proposal.html (designs only; items after the pick).      */
 /* ------------------------------------------------------------------------- */
 
