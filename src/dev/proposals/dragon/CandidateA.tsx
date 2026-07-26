@@ -92,8 +92,6 @@ export function CandidateA({ config, layout, stage, mood = "idle", uid, preview 
   const doubleHorns = pick(config.styles, S.horn, "straight") === "double";
   const lavaCrest = pick(config.styles, S.crest, "charbon") === "lava";
   const tailPick = pick(config.styles, S.tail, "spade");
-  // Proposal-only slot: which of the 5 treasure drawings — hardcoded after the pick.
-  const tresorV = pick(config.styles, "tresorVariant", "2");
   const has = (id: string) => config.accessories.includes(id);
   const blue = has(A.blueFlame);
 
@@ -116,7 +114,7 @@ export function CandidateA({ config, layout, stage, mood = "idle", uid, preview 
   if (spec.egg === "full") {
     return (
       <g>
-        {has(A.treasure) && <Treasure variant={tresorV} x={14} groundY={layout.feetY + 2} s={0.75} />}
+        {has(A.treasure) && <Treasure stage={stage} x={14} groundY={layout.feetY + 2} />}
         <ellipse cx={bodyCX} cy={bodyCY} rx={bodyRX} ry={bodyRY} fill={body} />
         <path d={`M${bodyCX} ${bodyCY - bodyRY * 0.5} L${headCX} ${headCY + headR * 0.4}`} stroke={body} strokeWidth={headR * 0.95} strokeLinecap="round" />
         <ellipse cx={headCX} cy={headCY} rx={headR} ry={headR * 0.96} fill={body} />
@@ -135,7 +133,7 @@ export function CandidateA({ config, layout, stage, mood = "idle", uid, preview 
   if (!layout.standing) {
     return (
       <g>
-        {has(A.treasure) && <Treasure variant={tresorV} x={bodyCX - bodyRX - 9} groundY={layout.feetY + 2} s={0.85} />}
+        {has(A.treasure) && <Treasure stage={stage} x={bodyCX - bodyRX - 9} groundY={layout.feetY + 2} />}
         <SpadeTail
           p0={[bodyCX + bodyRX * 0.65, bodyCY + 2]}
           p1={[bodyCX + bodyRX + 9, bodyCY]}
@@ -236,8 +234,8 @@ export function CandidateA({ config, layout, stage, mood = "idle", uid, preview 
       {/* if the cape clasp already sits on the throat, the fang cord drops a touch */}
       {has(A.fang) && <FangPendant x={anchor.neck.x} y={anchor.neck.y + (has(A.cape) ? 3 : 0)} w={anchor.neck.w} />}
       {has(A.cape) && <CapeClasp x={anchor.neck.x} y={anchor.neck.y} w={anchor.neck.w} />}
-      {/* the hoard REALLY grows with him: ×2.5 at stade 9 + spill from 7 */}
-      {has(A.treasure) && <Treasure variant={tresorV} x={bodyCX - bodyRX - 5 - 4 * tf} groundY={layout.feetY + 1} s={0.9 + 1.4 * tf} rich={stage >= 7} />}
+      {/* fixed-size coins/jewels — the QUANTITY grows with the stage */}
+      {has(A.treasure) && <Treasure stage={stage} x={bodyCX - bodyRX - 5 - 4 * tf} groundY={layout.feetY + 1} />}
 
       {emberN > 0 && (
         <g fill={emberCol}>

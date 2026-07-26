@@ -184,67 +184,14 @@ it.runIf(RUN)("renders items QA pages", () => {
   );
 });
 
-it.runIf(RUN)("renders tresor QA pages", () => {
-  // Placement spec per drawing: every stade at review size, plus the shop-size
-  // row (88 px) for the blind test — a treasure must read as one WITHOUT label.
+it.runIf(RUN)("renders tresor QA page", () => {
+  // Placement spec: every stade at review size, plus the shop-size row (88 px)
+  // for the blind test — a treasure must read as one WITHOUT label.
   const A3 = P_ACCESSORY.dragon;
-  for (const v of ["1", "2", "3", "4", "5"]) {
-    const tcfg = cfg({ accessories: [A3.treasure], styles: { tresorVariant: v } });
-    const big = strip(STAGES.map((s) => ({ svg: petSvg(CandidateA, s, tcfg), caption: `stade ${s}` })));
-    const small = strip([1, 4, 7, 9].map((s) => ({ svg: petSvg(CandidateA, s, tcfg, 88), caption: `88px · stade ${s}` })));
-    out(`qa-tresor-${v}.html`, page(`Trésor ${v} — placement`, big + `<h2>Taille boutique (88 px)</h2>` + small));
-  }
-});
-
-/* ------------------------------------------------------------------------- */
-/* The deliverable — tresor.html (5 drawings for the treasure accessory).     */
-/* ------------------------------------------------------------------------- */
-
-it.runIf(RUN)("writes tresor.html", () => {
-  const TRESORS: Array<[string, string, string, boolean]> = [
-    ["1", "La montagne d'or", "Des pièces plates empilées en vraie montagne, un rubis planté au sommet, un saphir sur le flanc — l'or domine, les pierres couronnent.", false],
-    ["2", "Le coffre", "Le coffre en bois ouvert qui déborde : pièces bombées au-dessus, rubis + émeraude dans le tas, serrure d'or, pièces tombées devant. L'image « trésor » que tout enfant reconnaît.", true],
-    ["3", "Le butin du roi", "Des piles de pièces, une couronne d'or posée dessus (rubis + saphirs sertis) et un gros rubis appuyé contre — le magot d'un roi vaincu.", false],
-    ["4", "Le sac de butin", "Un sac de toile ficelé, plein à craquer : des pièces débordent du col et coulent en cascade sur le côté, une émeraude posée contre.", false],
-    ["5", "Les joyaux", "Trois grosses pierres taillées (rubis, saphir, émeraude) plantées dans un lit de pièces — la version la plus bijoux.", false],
-  ];
-  const A2 = P_ACCESSORY.dragon;
-  const sections = TRESORS.map(([v, name, pitch, reco]) => {
-    const cells = ([[0, "stade 0 · près de l'œuf"], [1, "stade 1"], [4, "stade 4"], [7, "stade 7 · ça déborde"], [9, "stade 9 · magot géant"]] as Array<[number, string]>).map(
-      ([st, cap]) => ({ svg: petSvg(CandidateA, st, cfg({ accessories: [A2.treasure], styles: { tresorVariant: v } }), 150), caption: cap })
-    );
-    return `<section class="dir ${reco ? "reco" : ""}"><h2>Proposition ${v} — « ${name} »${reco ? ' <span class="badge">⭐ Recommandée</span>' : ""}</h2><p>${pitch}</p>${strip(cells)}</section>`;
-  }).join("");
-  const html = `<!doctype html><meta charset="utf-8"><title>Le trésor — 5 propositions</title><style>
-    body{font-family:ui-rounded,'SF Pro Rounded',system-ui,sans-serif;background:#FFF7EC;color:#5A3A1E;margin:28px;max-width:1240px}
-    h1{font-size:26px;margin-bottom:4px} h2{font-size:19px;margin:8px 0}
-    .meta{color:#9A7A5A;font-weight:700;font-size:13px;margin-bottom:18px}
-    .banner{background:#FFE9C9;border:2px solid #F2C14E;border-radius:14px;padding:10px 16px;font-weight:800;margin:14px 0 26px}
-    .strip{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin:10px 0}
-    .cell{background:#fff;border-radius:14px;padding:78px 10px 8px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.08)}
-    .cell p{font-size:11.5px;font-weight:800;margin:6px 0 0;max-width:150px}
-    .dir{background:rgba(255,255,255,.55);border-radius:18px;padding:14px 18px;margin:0 0 20px;border:2px solid transparent}
-    .dir.reco{border-color:#F2C14E;background:#FFFDF6}
-    .badge{background:#F2C14E;color:#5A3A1E;border-radius:999px;padding:2px 10px;font-size:13px;vertical-align:middle}
-    .dir p{font-size:13.5px;color:#7A6248}
-  </style>
-  <h1>🪙 Le trésor du dragon — 5 propositions de dessin</h1>
-  <p class="meta">Retour : « on devrait voir un trésor composé de pièces d'or et de bijoux avec des pierres précieuses ». Chaque proposition rendue sur le rig aux 5 stades clés (près de l'œuf → magot géant), avec sa croissance ×2.5 et ses éclats. · 26/07/2026</p>
-  <div class="banner">⭐ Recommandation : <b>2 « Le coffre »</b> — c'est l'icône universelle du trésor pour un enfant de 6 ans, et le seul dessin qui reste lisible « trésor » même tout petit près de l'œuf. Mon second choix : 3 « Le butin du roi » (la couronne raconte une histoire).</div>
-  ${sections}
-  <section class="dir">
-  <h2>🔍 Annexe QA — blind test</h2>
-  <p>Méthode : chaque proposition rendue aux 10 stades + rangée « taille boutique » (88 px), capture Chrome headless, relecture de chaque PNG en se demandant « qu'est-ce que je vois ? » SANS le nom. Verdict par plage de stades :</p>
-  <table class="arc" style="border-collapse:collapse;font-size:13px"><tr style="background:#FFF1DC"><th style="border:1px solid #EAD9BF;padding:4px 10px">Proposition</th><th style="border:1px solid #EAD9BF;padding:4px 10px">Stades 0-2 (mini)</th><th style="border:1px solid #EAD9BF;padding:4px 10px">Stades 3-6</th><th style="border:1px solid #EAD9BF;padding:4px 10px">Stades 7-9</th><th style="border:1px solid #EAD9BF;padding:4px 10px">88 px</th></tr>
-  <tr><td style="border:1px solid #EAD9BF;padding:4px 10px">1 Montagne</td><td style="border:1px solid #EAD9BF;padding:4px 10px">✗ « des miettes jaunes »</td><td style="border:1px solid #EAD9BF;padding:4px 10px">⚠️ « des crêpes avec une cerise ? »</td><td style="border:1px solid #EAD9BF;padding:4px 10px">✓ tas d'or + pierres</td><td style="border:1px solid #EAD9BF;padding:4px 10px">✓ dès stade 7 seulement</td></tr>
-  <tr><td style="border:1px solid #EAD9BF;padding:4px 10px"><b>2 Coffre</b></td><td style="border:1px solid #EAD9BF;padding:4px 10px">✓ « une petite malle »</td><td style="border:1px solid #EAD9BF;padding:4px 10px">✓✓ « coffre au trésor » immédiat</td><td style="border:1px solid #EAD9BF;padding:4px 10px">✓✓ coffre débordant d'or et de pierres</td><td style="border:1px solid #EAD9BF;padding:4px 10px">✓ à tous les stades testés</td></tr>
-  <tr><td style="border:1px solid #EAD9BF;padding:4px 10px">3 Butin du roi</td><td style="border:1px solid #EAD9BF;padding:4px 10px">✗ « du pop-corn ? »</td><td style="border:1px solid #EAD9BF;padding:4px 10px">✓ la couronne se lit vers le stade 4-5</td><td style="border:1px solid #EAD9BF;padding:4px 10px">✓ piles + couronne + rubis</td><td style="border:1px solid #EAD9BF;padding:4px 10px">⚠️ lisible à partir du stade 7</td></tr>
-  <tr><td style="border:1px solid #EAD9BF;padding:4px 10px">4 Sac de butin</td><td style="border:1px solid #EAD9BF;padding:4px 10px">✗ « une patate ? »</td><td style="border:1px solid #EAD9BF;padding:4px 10px">✓ sac + pièces (le cordon aide)</td><td style="border:1px solid #EAD9BF;padding:4px 10px">✓ sac + cascade d'or</td><td style="border:1px solid #EAD9BF;padding:4px 10px">⚠️ le sac beige se confond avec le ventre</td></tr>
-  <tr><td style="border:1px solid #EAD9BF;padding:4px 10px">5 Joyaux</td><td style="border:1px solid #EAD9BF;padding:4px 10px">✗ « des confettis »</td><td style="border:1px solid #EAD9BF;padding:4px 10px">⚠️ « des bonbons ? »</td><td style="border:1px solid #EAD9BF;padding:4px 10px">✓ pierres précieuses sur lit d'or</td><td style="border:1px solid #EAD9BF;padding:4px 10px">⚠️ gemmes ↔ bonbons ambigus</td></tr>
-  </table>
-  <p><b>Placement (les 5)</b> : ✅ au sol, suit la taille du corps à chaque pose (œuf → couché → debout → fier), rien ne flotte, rien ne couvre les yeux, rien de coupé par un vrai bord. <b>Conclusion du blind test :</b> seule la proposition 2 « Le coffre » se nomme toute seule À TOUS les stades ET à 88 px — c'est ce qui confirme la recommandation. Doute restant : au stade 7-9 le saphir tombé à gauche du coffre est un peu détaché du tas (lisible « gemme tombée », à resserrer si ça gêne).</p>
-  </section>`;
-  out("tresor.html", html);
+  const tcfg = cfg({ accessories: [A3.treasure] });
+  const big = strip(STAGES.map((s) => ({ svg: petSvg(CandidateA, s, tcfg), caption: `stade ${s}` })));
+  const small = strip([1, 4, 7, 9].map((s) => ({ svg: petSvg(CandidateA, s, tcfg, 88), caption: `88px · stade ${s}` })));
+  out("qa-tresor.html", page("Trésor — placement", big + `<h2>Taille boutique (88 px)</h2>` + small));
 });
 
 /* ------------------------------------------------------------------------- */
@@ -513,8 +460,8 @@ it.runIf(RUN)("writes items.html", () => {
       name: "Petit trésor",
       emoji: "🪙",
       cost: 70,
-      reason: "Un dragon couve son or dès l'œuf : quelques pièces scintillantes près de la coquille, puis le magot grossit avec lui — il déborde au stade 7 et devient géant au stade 9.",
-      cells: worn(A.treasure, [[0, "stade 0 · près de l'œuf"], [1, "stade 1"], [2, "stades 2-3"], [4, "stades 4-6"], [7, "stades 7-8 · ça déborde"], [9, "stade 9 · magot géant"]]),
+      reason: "La taille d'une pièce ne change jamais — c'est la QUANTITÉ qui grandit : une simple pièce d'or (stades 0-2), l'or + les bijoux — bague puis couronne (3-6), et le trésor complet aux bijoux sertis de pierres précieuses (7-9).",
+      cells: worn(A.treasure, [[0, "stades 0-2 · une pièce d'or"], [3, "stades 3-4 · l'or + la bague"], [5, "stades 5-6 · + la couronne"], [7, "stades 7-8 · pierres serties"], [9, "stade 9 · trésor complet"]]),
     },
     {
       name: "Flamme bleue",
