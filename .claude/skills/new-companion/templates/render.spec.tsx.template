@@ -84,4 +84,11 @@ it.runIf(RUN)("renders QA pages", () => {
 
   // ITEMS run — colour/style variant board vs factory look:
   // out("qa-variants.html", page("Couleurs & styles", …));
+
+  // ITEMS run — blind-test pairs (bare left, item right; NEUTRAL filename = index only,
+  // an item name in the path would leak the answer to the guesser subagent):
+  // out("qa-blind-01.html", page("", strip([
+  //   { svg: petSvg(Picked, 4, cfg()), caption: "" },
+  //   { svg: petSvg(Picked, 4, cfg({ accessories: [id] })), caption: "" },
+  // ])));
 });

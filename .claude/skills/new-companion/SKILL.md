@@ -168,7 +168,36 @@ colours/styles board (each slot's variants next to the factory look). Per cell:
 - "Would a 6-year-old say this looks like a <hat/scarf/…> on a <animal>?" If it
   needs explaining, it fails.
 
-### I3 — Deliverable `items.html`
+### I3 — Blind legibility test (fresh eyes, mandatory)
+
+Placement QA (I2) is biased: the author knows what it drew and sees intent, not
+pixels. After I2 is green, every accessory and every style variant must pass a
+blind guess by a fresh subagent simulating a child's first glance:
+
+- Render one pair page per item: SAME rig, same stade, bare on the left, item
+  applied on the right. Accessories get two pairs — one lying stade (0–1) and
+  one standing stade (4 is best; avoid 9, its spectacle confounds the guess).
+  Styles get one standing pair. Screenshot each.
+- **Neutral filenames** — `qa-blind-07.png`, NEVER the item name: the guesser
+  sees the path, and `qa-blind-beanie.png` leaks the answer. Same for text inside
+  the image: no page title, no cell caption naming the item — the pair must be
+  hint-free pixels. Keep the index ↔ item map to yourself.
+- Spawn one FRESH subagent per image (small/fast model, e.g. haiku — if a small
+  model reads it, a child will), with exactly this context and nothing more:
+  "Read <path>. It shows the same companion from a children's app twice:
+  left = without, right = with one accessory equipped. In one short sentence,
+  what is the accessory?" — styles instead: "…the two images differ in one way —
+  what changed?". One guess, first try, no hints, no retries.
+- **Pass** = the guess names the object a child would name (synonyms and FR/EN
+  both count: bonnet / beanie / cap). **Fail** = wrong object, body-part
+  confusion ("part of its mane?"), or vague ("some decoration"). Accessories
+  must pass on BOTH stade pairs.
+- On fail the item is not well-designed enough: redesign, re-render, re-screenshot
+  under a NEW index, spawn a NEW subagent — never re-ask one that has already
+  seen the item.
+- Record in the QA appendix: per item, the verbatim guess, verdict, redesign count.
+
+### I4 — Deliverable `items.html`
 
 Same shell as `proposal.html`. Structure:
 
@@ -180,7 +209,8 @@ Same shell as `proposal.html`. Structure:
    (lying→standing) always count, plus each beat stade; caption each cell with
    the stade range it covers ("stades 4–6"). Colour cards may show one
    before/after pair instead.
-3. **QA appendix** — checks run, iteration count, open doubts.
+3. **QA appendix** — checks run, iteration count, blind-test transcript (guess /
+   verdict / redesigns per item), open doubts.
 
 Then: `SendUserFile`, commit (`feat(mascot): garde-robe <species>`). Final
 message: which items you'd keep if forced to cut, + the decision asked of the
