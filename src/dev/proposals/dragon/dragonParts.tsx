@@ -705,25 +705,38 @@ export function Shield({ x, groundY, s }: { x: number; groundY: number; s: numbe
 
 /* -- Accessories ----------------------------------------------------------- */
 
-/** Little hoard of gold coins on the ground beside him — a dragon guards his
- * treasure from the egg on. `rich` spills extra coins (the high-stade beat). */
+/** Little hoard of gold beside him — a dragon guards his treasure from the egg
+ * on. STACKS of flat coins (ellipses) + one upright coin face: a mound of
+ * tangent circles reads as the poop emoji, never do that. `rich` spills extra
+ * stacks (the high-stade beat). */
 export function GoldPile({ x, groundY, s, rich }: { x: number; groundY: number; s: number; rich?: boolean }) {
-  const coin = (cx: number, cy: number, r: number, key: string) => (
+  const flat = (cx: number, cy: number, r: number, key: string) => (
     <g key={key}>
-      <circle cx={cx} cy={cy} r={r} fill="#FFD54F" stroke="#B07E1E" strokeWidth={0.9} />
-      <circle cx={cx} cy={cy} r={r * 0.45} fill="none" stroke="#B07E1E" strokeWidth={0.7} opacity={0.6} />
+      <ellipse cx={cx} cy={cy} rx={r} ry={r * 0.38} fill="#FFD54F" stroke="#B07E1E" strokeWidth={0.8} />
+      <ellipse cx={cx} cy={cy - r * 0.16} rx={r} ry={r * 0.34} fill="#FFE082" stroke="none" />
+    </g>
+  );
+  const stack = (cx: number, n: number, r: number, key: string) => (
+    <g key={key}>
+      {Array.from({ length: n }).map((_, i) => flat(cx + (i % 2 === 0 ? 0 : 0.7 * s), groundY - 1.2 * s - i * r * 0.62, r, `${key}${i}`))}
     </g>
   );
   return (
     <g>
-      {coin(x - 3.4 * s, groundY - 2 * s, 2.6 * s, "a")}
-      {coin(x + 3.2 * s, groundY - 2 * s, 2.7 * s, "b")}
-      {coin(x - 0.2 * s, groundY - 5.2 * s, 2.5 * s, "c")}
+      {stack(x - 3.2 * s, 3, 3 * s, "a")}
+      {stack(x + 3.4 * s, 2, 2.8 * s, "b")}
+      {/* upright coin leaning on the stacks — ring + notch make it a coin face */}
+      <g>
+        <circle cx={x + 8.2 * s} cy={groundY - 2.6 * s} r={2.6 * s} fill="#FFD54F" stroke="#B07E1E" strokeWidth={0.9} />
+        <circle cx={x + 8.2 * s} cy={groundY - 2.6 * s} r={1.5 * s} fill="none" stroke="#B07E1E" strokeWidth={0.7} opacity={0.7} />
+        <circle cx={x + 7.4 * s} cy={groundY - 3.4 * s} r={0.55 * s} fill="#FFFDF4" opacity={0.9} />
+      </g>
       {rich && (
         <g>
-          {coin(x + 7.6 * s, groundY - 1.5 * s, 2 * s, "d")}
-          {coin(x - 7.4 * s, groundY - 1.5 * s, 1.9 * s, "e")}
-          {coin(x + 3.1 * s, groundY - 7.8 * s, 2 * s, "f")}
+          {stack(x - 9.4 * s, 2, 2.6 * s, "c")}
+          {flat(x + 12.6 * s, groundY - 1 * s, 2.4 * s, "d")}
+          {flat(x - 13.2 * s, groundY - 1 * s, 2.2 * s, "e")}
+          <circle cx={x - 8.6 * s} cy={groundY - 6.4 * s} r={1.7 * s} fill="#FFD54F" stroke="#B07E1E" strokeWidth={0.8} />
         </g>
       )}
     </g>
