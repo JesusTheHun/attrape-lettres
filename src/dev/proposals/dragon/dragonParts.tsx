@@ -708,96 +708,133 @@ export function Shield({ x, groundY, s }: { x: number; groundY: number; s: numbe
 
 /* -- The treasure hoard ------------------------------------------------------
  * Design rule (user): a coin or a jewel NEVER changes size with growth — only
- * the QUANTITY grows. Three readings: stades 0-2 a single gold coin ·
- * 3-6 gold + jewellery (ring, then crown) · 7-9 a full hoard where the jewels
- * are set with precious stones and loose gems join the gold.
- * Flat-ellipse coins only — a mound of tangent circles reads as the poop
- * emoji, never do that. */
+ * the QUANTITY does: 0-2 a single gold coin · 3-6 gold + jewellery · 7-9 the
+ * full hoard, jewels set with precious stones.
+ * Art direction (DA jeunesse redlines): three golds and NO olive outlines —
+ * model with flat tones like the dragon itself; coins are cylinders (edge
+ * offset), the upright coin wears an engraved star; the heap is a tight 3:2
+ * shingled mound (never a ribbon); one shared ground shadow anchors the hoard
+ * in the dragon's world; gems are two-tone with tone-on-tone dark rims (white
+ * halos die on the cream background); sparkles are GOLD, white only on gold. */
 
-const T_GOLD = "#FFD54F";
-const T_GOLD_EDGE = "#B07E1E";
-const T_GOLD_LIGHT = "#FFE082";
+const OR_LIGHT = "#FFE08A";
+const OR = "#FFC94D";
+const OR_DEEP = "#E09B3A";
+const OR_EDGE = "#C9822E";
+const OR_PALE = "#FFDB6E";
 const RUBY = "#E0533B";
 const SAPPHIRE = "#5E7EB5";
 const EMERALD = "#4CAF7D";
 const AMETHYST = "#9575CD";
+const GEM_DARK: Record<string, string> = {
+  [RUBY]: "#B23B28",
+  [SAPPHIRE]: "#46618F",
+  [EMERALD]: "#37835C",
+  [AMETHYST]: "#74569F",
+};
 
-const COIN_R = 2.3;
+const COIN_R = 2.8;
+const COIN_RY = 1.15;
 
+/** Lying coin = a CYLINDER (edge slice under the face), not an outlined pill. */
 function TCoin({ cx, cy }: { cx: number; cy: number }) {
   return (
     <g>
-      <ellipse cx={cx} cy={cy} rx={COIN_R} ry={COIN_R * 0.38} fill={T_GOLD} stroke={T_GOLD_EDGE} strokeWidth={0.8} />
-      <ellipse cx={cx} cy={cy - COIN_R * 0.16} rx={COIN_R} ry={COIN_R * 0.34} fill={T_GOLD_LIGHT} stroke="none" />
+      <ellipse cx={cx} cy={cy + 0.7} rx={COIN_R} ry={COIN_RY} fill={OR_DEEP} />
+      <ellipse cx={cx} cy={cy} rx={COIN_R} ry={COIN_RY} fill={OR} />
+      <ellipse cx={cx} cy={cy} rx={1.64} ry={0.67} fill="none" stroke={OR_DEEP} strokeWidth={0.45} />
+      <ellipse cx={cx - 0.95} cy={cy - 0.35} rx={0.7} ry={0.3} fill={OR_LIGHT} />
     </g>
   );
 }
 
-/** THE gold coin, upright, face visible — the stade-0 "une simple pièce d'or". */
-function TUprightCoin({ cx, cy }: { cx: number; cy: number }) {
+/** The storybook coin: upright, engraved star, shaded rim — leans on the heap
+ * once there is one (`lean` in degrees, pivot at its ground contact). */
+function TUprightCoin({ cx, cy, lean = 0 }: { cx: number; cy: number; lean?: number }) {
+  return (
+    <g transform={`rotate(${lean} ${cx} ${cy + COIN_R})`}>
+      <circle cx={cx} cy={cy} r={COIN_R} fill={OR} stroke={OR_EDGE} strokeWidth={0.35} />
+      <circle cx={cx} cy={cy} r={2.18} fill={OR_PALE} />
+      {/* bottom-right shading crescent between rim and inner disc */}
+      <path
+        d={`M${cx + 2.63} ${cy + 0.96} A2.8 2.8 0 0 1 ${cx - 0.49} ${cy + 2.76} L${cx - 0.38} ${cy + 2.15} A2.18 2.18 0 0 0 ${cx + 2.05} ${cy + 0.75} Z`}
+        fill={OR_DEEP}
+        opacity={0.5}
+      />
+      <path
+        d={`M${cx} ${cy - 1.58} L${cx + 0.49} ${cy - 0.49} L${cx + 1.58} ${cy} L${cx + 0.49} ${cy + 0.49} L${cx} ${cy + 1.58} L${cx - 0.49} ${cy + 0.49} L${cx - 1.58} ${cy} L${cx - 0.49} ${cy - 0.49} Z`}
+        fill={OR_DEEP}
+      />
+      <circle cx={cx - 0.92} cy={cy - 0.92} r={0.48} fill="#FFF6D8" />
+    </g>
+  );
+}
+
+/** Two-tone faceted gem, tone-on-tone dark rim (no white halo on cream bg). */
+function TGem({ x, y, s, color }: { x: number; y: number; s: number; color: string }) {
+  const dark = GEM_DARK[color];
   return (
     <g>
-      <circle cx={cx} cy={cy} r={COIN_R} fill={T_GOLD} stroke={T_GOLD_EDGE} strokeWidth={0.9} />
-      <circle cx={cx} cy={cy} r={COIN_R * 0.58} fill="none" stroke={T_GOLD_EDGE} strokeWidth={0.7} opacity={0.7} />
-      <circle cx={cx - COIN_R * 0.32} cy={cy - COIN_R * 0.32} r={COIN_R * 0.22} fill="#FFFDF4" opacity={0.9} />
+      <path d={`M${x} ${y - s} L${x + s * 0.85} ${y} L${x} ${y + s} L${x - s * 0.85} ${y} Z`} fill={color} stroke={dark} strokeWidth={0.3} strokeLinejoin="round" />
+      <path d={`M${x - s * 0.85} ${y} L${x} ${y + s} L${x + s * 0.85} ${y} Z`} fill={dark} opacity={0.35} />
+      <circle cx={x - s * 0.2} cy={y - s * 0.3} r={s * 0.2} fill="#FFFFFF" opacity={0.85} />
     </g>
   );
 }
 
-/** Little gold ring (bague), stone-set from stade 7. */
+/** Gold ring: golden band with rim light + contact shade, mounted stone at 7+. */
 function TRing({ cx, cy, gem }: { cx: number; cy: number; gem?: boolean }) {
   return (
     <g>
-      <circle cx={cx} cy={cy} r={1.7} fill="none" stroke={T_GOLD_EDGE} strokeWidth={2.1} />
-      <circle cx={cx} cy={cy} r={1.7} fill="none" stroke={T_GOLD} strokeWidth={1.2} />
-      {gem && <Gem x={cx} y={cy - 2.3} s={1} color={RUBY} />}
+      <circle cx={cx} cy={cy} r={1.9} fill="none" stroke={OR} strokeWidth={1.4} />
+      <path d={`M${cx - 1.9} ${cy} A1.9 1.9 0 0 0 ${cx + 1.9} ${cy}`} fill="none" stroke={OR_DEEP} strokeWidth={0.5} />
+      <path d={`M${cx - 1.9} ${cy} A1.9 1.9 0 0 1 ${cx} ${cy - 1.9}`} fill="none" stroke={OR_LIGHT} strokeWidth={0.4} />
+      {gem && <TGem x={cx} y={cy - 2.6} s={1} color={RUBY} />}
     </g>
   );
 }
 
-/** Little gold crown (couronne), stone-set from stade 7. */
-function TCrown({ x, y, gems }: { x: number; y: number; gems?: boolean }) {
+/** Gold crown: base band + three peaks with light-gold balls + one set ruby.
+ * `y` is the band's bottom centre; tilted a touch (a crooked crown is cuter). */
+function TCrown({ x, y }: { x: number; y: number }) {
   const s = 1.15;
+  const bandTop = y - 1.0;
   return (
-    <g>
+    <g transform={`rotate(-6 ${x} ${y - 1.7})`}>
       <path
-        d={`M${x - 2.8 * s} ${y} L${x - 2.8 * s} ${y - 1.8 * s} L${x - 1.4 * s} ${y - 0.7 * s} L${x} ${y - 2.6 * s} L${x + 1.4 * s} ${y - 0.7 * s} L${x + 2.8 * s} ${y - 1.8 * s} L${x + 2.8 * s} ${y} Q${x} ${y + 0.9 * s} ${x - 2.8 * s} ${y} Z`}
-        fill={T_GOLD}
-        stroke={T_GOLD_EDGE}
-        strokeWidth={0.7}
-        strokeLinejoin="round"
+        d={`M${x - 2.8 * s} ${bandTop + 0.1} L${x - 1.87 * s} ${bandTop - 1.9 * s} L${x - 0.93 * s} ${bandTop - 0.4 * s} L${x} ${bandTop - 2.55 * s} L${x + 0.93 * s} ${bandTop - 0.4 * s} L${x + 1.87 * s} ${bandTop - 1.9 * s} L${x + 2.8 * s} ${bandTop + 0.1} Z`}
+        fill={OR}
       />
-      {gems && (
-        <g>
-          <circle cx={x} cy={y - 2.7 * s} r={0.55 * s} fill={RUBY} stroke={T_GOLD_EDGE} strokeWidth={0.4} />
-          <circle cx={x - 2.8 * s} cy={y - 1.9 * s} r={0.45 * s} fill={SAPPHIRE} stroke={T_GOLD_EDGE} strokeWidth={0.4} />
-          <circle cx={x + 2.8 * s} cy={y - 1.9 * s} r={0.45 * s} fill={SAPPHIRE} stroke={T_GOLD_EDGE} strokeWidth={0.4} />
-        </g>
-      )}
+      <circle cx={x - 1.87 * s} cy={bandTop - 1.9 * s} r={0.5} fill={OR_PALE} />
+      <circle cx={x} cy={bandTop - 2.55 * s} r={0.5} fill={OR_PALE} />
+      <circle cx={x + 1.87 * s} cy={bandTop - 1.9 * s} r={0.5} fill={OR_PALE} />
+      <rect x={x - 2.8 * s} y={bandTop} width={5.6 * s} height={1.0} rx={0.4} fill={OR} />
+      <path d={`M${x - 2.4 * s} ${y - 0.12} L${x + 2.4 * s} ${y - 0.12}`} stroke={OR_DEEP} strokeWidth={0.4} strokeLinecap="round" />
+      <circle cx={x} cy={y - 0.5} r={0.6} fill={RUBY} />
     </g>
   );
 }
 
-/** Heap slots, filled in order — the order grows a balanced PYRAMID (center
- * out, up before wide) so any N reads as a tidy little pile, never a line. */
+/** Heap slots — tight 2.9/1.8 shingle so any N reads as a 3:2 mound, never a
+ * ribbon. Fill order grows a balanced pyramid (centre out, up before wide). */
 const COIN_SLOTS: Array<[number, number]> = [
-  [0, -1.1], [-4.5, -1.1], [4.5, -1.1],
-  [-2.2, -3.5], [2.2, -3.5],
-  [-9, -1.1], [9, -1.1],
-  [0, -5.9],
-  [-6.7, -3.5], [6.7, -3.5],
-  [-4.4, -5.9], [4.4, -5.9],
-  [0, -8.3],
+  [0, -1.1], [-2.9, -1.1], [-1.45, -2.9],
+  [2.9, -1.1], [1.45, -2.9],
+  [-5.8, -1.1], [5.8, -1.1],
+  [0, -4.7],
+  [-4.35, -2.9], [4.35, -2.9],
+  [-2.9, -4.7], [2.9, -4.7],
+  [0, -6.5],
 ];
 
-/** Loose gems, in appearance order (each resting on the ground or ON a coin
- * that is guaranteed filled by the stade it appears at). */
+/** Loose gems, in appearance order — every one seated on a coin that is filled
+ * by the stade it appears at, or nestled against the mound's base. */
 const GEM_SLOTS: Array<[number, number, string]> = [
-  [16.6, -1.2, RUBY],
-  [-3.3, -5.2, SAPPHIRE],
-  [3.4, -5.2, EMERALD],
-  [-14.7, -1.1, AMETHYST],
-  [9.2, -3.6, RUBY],
+  [3.1, -3.3, RUBY],
+  [-3.1, -3.3, SAPPHIRE],
+  [8.0, -1.2, EMERALD],
+  [-6.6, -1.0, AMETHYST],
+  [6.0, -3.2, SAPPHIRE],
 ];
 
 interface TSpec {
@@ -822,9 +859,9 @@ const T_STAGES: TSpec[] = [
 
 /** y of the highest filled coin slot, for seating the crown on the heap. */
 function heapTopY(coins: number): number {
-  if (coins >= 13) return -8.3;
-  if (coins >= 8) return -5.9;
-  if (coins >= 4) return -3.5;
+  if (coins >= 13) return -6.5;
+  if (coins >= 8) return -4.7;
+  if (coins >= 3) return -2.9;
   return -1.1;
 }
 
@@ -835,43 +872,46 @@ export function Treasure({ stage, x, groundY }: { stage: number; x: number; grou
   if (spec.coins === 1) {
     return (
       <g>
+        <ellipse cx={x} cy={groundY + 0.6} rx={2.9} ry={0.7} fill="#000" opacity={0.1} />
         <TUprightCoin cx={x} cy={groundY - COIN_R} />
-        <Sparkles points={[[x + 1.6, groundY - COIN_R * 1.9, 0.85]]} color="#FFFDF2" />
+        <Sparkles points={[[x + 3.0, groundY - 7.0, 0.85]]} color={OR} />
       </g>
     );
   }
-  // Side pieces hug the heap while it is small, slide out as row 1 fills up.
-  const wide = spec.coins >= 8;
-  const upX = wide ? -11.8 : -8.4;
-  const ringX = wide ? 13.6 : 9.8;
+  // Side pieces hug the mound: the upright coin leans on row 1's left edge,
+  // the ring sits just past it, AWAY from the dragon (no more donut-on-toe).
+  const leftRow = spec.coins >= 6 ? -5.8 : -2.9;
+  const upX = leftRow - COIN_R * 2 + 1;
+  const ringX = spec.ring ? upX - COIN_R - 1.9 : upX;
+  const left = ringX - 1.9;
+  const right = (spec.coins >= 6 ? 5.8 : spec.coins >= 4 ? 2.9 : 0) + COIN_R + (set ? 1.4 : 0);
   return (
     <g>
-      {COIN_SLOTS.slice(0, spec.coins).map(([dx, dy], i) => (
-        <TCoin key={i} cx={x + dx} cy={groundY + dy} />
-      ))}
-      <TUprightCoin cx={x + upX} cy={groundY - COIN_R} />
-      {GEM_SLOTS.slice(0, spec.gems).map(([dx, dy, color], i) => (
-        <Gem key={i} x={x + dx} y={groundY + dy} s={1.5} color={color} />
-      ))}
+      {/* one shared ground shadow — same token as the pet's, glues it to the floor */}
+      <ellipse cx={x + (left + right) / 2} cy={groundY + 0.5} rx={(right - left) / 2 + 2} ry={1.2} fill="#000" opacity={0.1} />
+      {[...COIN_SLOTS.slice(0, spec.coins)]
+        .sort((a, b) => a[1] - b[1])
+        .map(([dx, dy], i) => (
+          <TCoin key={i} cx={x + dx} cy={groundY + dy} />
+        ))}
+      <TUprightCoin cx={x + upX} cy={groundY - COIN_R} lean={-12} />
       {spec.ring && <TRing cx={x + ringX} cy={groundY - 1.9} gem={set} />}
-      {spec.crown && <TCrown x={x} y={groundY + heapTopY(spec.coins) - 2.1} gems={set} />}
+      {GEM_SLOTS.slice(0, spec.gems).map(([dx, dy, color], i) => (
+        <TGem key={i} x={x + dx} y={groundY + dy} s={1.3} color={color} />
+      ))}
+      {spec.crown && <TCrown x={x} y={groundY + heapTopY(spec.coins) - 1.2} />}
       <Sparkles
         points={[
-          [x + upX + 1.4, groundY - COIN_R * 1.9, 0.8],
-          [x + 1.7, groundY + heapTopY(spec.coins) - 0.6, 0.9],
-          ...(set
-            ? ([
-                [x + ringX + 1.2, groundY - 4.2, 0.8],
-                [x - 6, groundY - 6.4, 0.75],
-              ] as Array<[number, number, number]>)
-            : []),
+          [x - 4.8, groundY + heapTopY(spec.coins) - 4.4, 1.1],
+          [x + 3.6, groundY + heapTopY(spec.coins) - 6.0, 0.85],
         ]}
-        color="#FFFDF2"
+        color={OR}
       />
+      {/* white glint allowed ONLY on gold, never on the bare background */}
+      {set && <Sparkles points={[[x + 1.5, groundY - 3.1, 0.7]]} color="#FFFFFF" />}
     </g>
   );
 }
-
 
 /** Cord necklace with a little white fang pendant, hung at the throat anchor
  * (his first baby fang, kept as a trophy). */

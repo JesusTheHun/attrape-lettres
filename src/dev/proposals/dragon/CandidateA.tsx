@@ -234,8 +234,16 @@ export function CandidateA({ config, layout, stage, mood = "idle", uid, preview 
       {/* if the cape clasp already sits on the throat, the fang cord drops a touch */}
       {has(A.fang) && <FangPendant x={anchor.neck.x} y={anchor.neck.y + (has(A.cape) ? 3 : 0)} w={anchor.neck.w} />}
       {has(A.cape) && <CapeClasp x={anchor.neck.x} y={anchor.neck.y} w={anchor.neck.w} />}
-      {/* fixed-size coins/jewels — the QUANTITY grows with the stage */}
-      {has(A.treasure) && <Treasure stage={stage} x={bodyCX - bodyRX - 5 - 4 * tf} groundY={layout.feetY + 1} />}
+      {/* fixed-size coins/jewels — the QUANTITY grows with the stage. x is
+          clamped left of the back hoof: the wobbly stades splay their legs and
+          the hoof otherwise catches the gold (DA redline B1). */}
+      {has(A.treasure) &&
+        (() => {
+          const backFootL = layout.legs[0].footX - 4.6;
+          const tRight = (stage >= 6 ? 8.6 : stage >= 3 ? 5.7 : 2.8) + (stage >= 7 ? 1.4 : 0);
+          const tX = Math.min(bodyCX - bodyRX - 5 - 4 * tf, backFootL - tRight - 1);
+          return <Treasure stage={stage} x={tX} groundY={layout.feetY + 1} />;
+        })()}
 
       {emberN > 0 && (
         <g fill={emberCol}>

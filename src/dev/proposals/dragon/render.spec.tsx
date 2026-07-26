@@ -179,7 +179,7 @@ it.runIf(RUN)("renders items QA pages", () => {
         zoom("Collier de croc", cfg({ accessories: [P_ACCESSORY.dragon.fang] }), [2, 4, 7]) +
         zoom("Croc + cape ensemble", cfg({ accessories: [P_ACCESSORY.dragon.fang, P_ACCESSORY.dragon.cape] }), [4, 7]) +
         zoom("Lunettes d'aviateur", cfg({ accessories: [P_ACCESSORY.dragon.goggles] }), [3, 5, 8]) +
-        zoom("Petit trésor", cfg({ accessories: [P_ACCESSORY.dragon.treasure] }), [0, 1, 4, 9])
+        zoom("Petit trésor", cfg({ accessories: [P_ACCESSORY.dragon.treasure] }), [0, 2, 3, 4, 9])
     )
   );
 });
