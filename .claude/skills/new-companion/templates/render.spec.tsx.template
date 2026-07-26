@@ -1,0 +1,87 @@
+/**
+ * Proposal render harness — copy into src/dev/proposals/<species>/render.spec.tsx
+ * and adapt the CANDIDATES / ITEMS tables. Gated behind PROPOSAL=<species> so a
+ * plain `pnpm test` never runs it:
+ *
+ *   PROPOSAL=<species> pnpm vitest run src/dev/proposals/<species>/render.spec.tsx
+ *
+ * Writes qa-*.html (screenshot targets for the visual QA loop) next to this file.
+ * The final proposal.html is authored separately once QA is green — reuse strip()
+ * to embed the approved SVG markup.
+ */
+import { it } from "vitest";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import type { ReactElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { layoutFor, stageScale } from "../../../mascot/growth";
+// import { CandidateA } from "./CandidateA"; …
+// import { PROPOSAL_ACCESSORY } from "./ids";
+
+const SPECIES = "<species>"; // e.g. "dragon"
+const RUN = process.env.PROPOSAL === SPECIES;
+const DIR = dirname(fileURLToPath(import.meta.url));
+const STAGES = Array.from({ length: 10 }, (_, i) => i);
+
+/** Proposal-side stand-in for MascotConfig (species not in the union yet). */
+export interface PConfig {
+  colors: Record<string, string>;
+  styles: Record<string, string>;
+  accessories: string[];
+}
+const cfg = (over: Partial<PConfig> = {}): PConfig => ({ colors: {}, styles: {}, accessories: [], ...over });
+
+/**
+ * Render one candidate at one stade, standalone. Mirrors Mascot.tsx: shared
+ * layoutFor geometry + feet-pivoted stage scale, overflow visible.
+ * `Rig` is a candidate component taking { config, layout, stage, uid }.
+ */
+function petSvg(Rig: (p: { config: PConfig; layout: ReturnType<typeof layoutFor>; stage: number; uid: string }) => ReactElement, stage: number, config: PConfig, size = 150): string {
+  const layout = layoutFor(stage);
+  const k = stageScale(stage);
+  const uid = `p${stage}${Math.abs(JSON.stringify(config).length)}`;
+  return renderToStaticMarkup(
+    <svg viewBox="0 0 100 100" width={size} height={size} style={{ overflow: "visible", display: "block" }}>
+      <ellipse cx={50} cy={layout.feetY + 3.5} rx={layout.bodyRX * 0.92 * k} ry={3.6} fill="#000" opacity={0.1} />
+      <g transform={`translate(50 ${layout.feetY}) scale(${k}) translate(-50 ${-layout.feetY})`}>
+        <Rig config={config} layout={layout} stage={stage} uid={uid} />
+      </g>
+    </svg>
+  );
+}
+
+/** A captioned row of cells. Top padding ≥70px: high stades overflow UP by design. */
+function strip(cells: { svg: string; caption: string }[]): string {
+  return `<div class="strip">${cells
+    .map((c) => `<div class="cell"><div class="art">${c.svg}</div><p>${c.caption}</p></div>`)
+    .join("")}</div>`;
+}
+
+function page(title: string, body: string): string {
+  return `<!doctype html><meta charset="utf-8"><title>${title}</title><style>
+    body{font-family:ui-rounded,'SF Pro Rounded',system-ui,sans-serif;background:#FFF7EC;color:#5A3A1E;margin:24px}
+    h2{font-size:18px;margin:20px 0 8px}
+    .strip{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end}
+    .cell{background:#fff;border-radius:14px;padding:80px 12px 8px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+    .cell p{font-size:12px;font-weight:800;margin:6px 0 0}
+  </style><h1>${title}</h1>${body}`;
+}
+
+const out = (name: string, html: string) => {
+  mkdirSync(DIR, { recursive: true });
+  writeFileSync(join(DIR, name), html);
+};
+
+it.runIf(RUN)("renders QA pages", () => {
+  // 1) One growth strip per candidate:
+  // out("qa-candidate-a.html", page("Candidat A — croissance", strip(STAGES.map((s) => ({ svg: petSvg(CandidateA, s, cfg()), caption: `stade ${s}` })))));
+
+  // 2) One page per accessory, worn at EVERY stade (the placement spec):
+  // for (const [key, id] of Object.entries(PROPOSAL_ACCESSORY)) {
+  //   out(`qa-acc-${key}.html`, page(`Accessoire — ${key}`, strip(STAGES.map((s) => ({ svg: petSvg(CandidateA, s, cfg({ accessories: [id] })), caption: `stade ${s}` })))));
+  // }
+
+  // 3) Colour/style variant board vs factory look:
+  // out("qa-variants.html", page("Couleurs & styles", …));
+});
