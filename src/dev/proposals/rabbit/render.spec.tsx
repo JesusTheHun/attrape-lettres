@@ -18,6 +18,7 @@ import { Fox } from "../../../mascot/Fox";
 import { CandidateA } from "./CandidateA";
 import { CandidateB } from "./CandidateB";
 import { CandidateC } from "./CandidateC";
+import { P_ACCESSORY } from "./ids";
 import type { PConfig, PRigProps } from "./rabbitParts";
 
 const SPECIES = "rabbit";
@@ -248,4 +249,269 @@ it.runIf(RUN)("writes proposal.html", () => {
   </section>`;
 
   out("proposal.html", html);
+});
+
+/* ------------------------------------------------------------------------- */
+/* Items run — wardrobe QA pages for the PICKED design (A « Lune »).          */
+/* ------------------------------------------------------------------------- */
+
+const COLOUR_ROWS: Array<[string, string, string, number]> = [
+  ["bodyColor", "#D6D3DE", "Pelage gris souris", 4],
+  ["bodyColor", "#EFC9A0", "Pelage caramel", 4],
+  ["bodyColor", "#F8D3BC", "Pelage pêche", 4],
+  ["bodyColor", "#E4DCF2", "Pelage lilas", 4],
+  ["innerEarColor", "#F5A8C0", "Oreilles rose poudré", 4],
+  ["innerEarColor", "#A8DDB8", "Oreilles menthe", 4],
+  ["bellyColor", "#FFE8BC", "Ventre crème", 4],
+];
+const STYLE_ROWS: Array<[string, string, string, number[]]> = [
+  ["earStyle", "pliees", "Oreilles pliées", [2, 4, 9]],
+  ["tailStyle", "etoile", "Queue étoile", [1, 5, 9]],
+  ["furPattern", "flocons", "Flocons d'étoiles", [1, 4, 9]],
+];
+
+it.runIf(RUN)("renders items QA pages", () => {
+  // One page per accessory, worn at EVERY stade (the placement spec).
+  for (const [key, id] of Object.entries(P_ACCESSORY.rabbit)) {
+    out(
+      `qa-acc-${key}.html`,
+      page(`Accessoire — ${key}`, strip(STAGES.map((s) => ({ svg: petSvg(CandidateA, s, cfg({ accessories: [id] })), caption: `stade ${s}` }))))
+    );
+  }
+  // Colour + style variants vs the factory look.
+  const colourBoard = COLOUR_ROWS.map(([slot, value, label, stade]) => {
+    const pairHtml = strip([
+      { svg: petSvg(CandidateA, stade), caption: "d'origine" },
+      { svg: petSvg(CandidateA, stade, cfg({ colors: { [slot]: value } })), caption: label },
+    ]);
+    return `<h2>${label} (stade ${stade})</h2>${pairHtml}`;
+  }).join("");
+  const styleBoard = STYLE_ROWS.map(([slot, value, label, stades]) => {
+    const cells = stades.flatMap((s) => [
+      { svg: petSvg(CandidateA, s), caption: `d'origine · stade ${s}` },
+      { svg: petSvg(CandidateA, s, cfg({ styles: { [slot]: value } })), caption: `${label} · stade ${s}` },
+    ]);
+    return `<h2>${label}</h2>${strip(cells)}`;
+  }).join("");
+  out("qa-items-variants.html", page("Couleurs & styles — variantes vs origine", colourBoard + styleBoard));
+});
+
+/* Blind legibility pairs — NEUTRAL indices, no titles/captions (the guesser
+ * must see hint-free pixels). Index ↔ item map lives only in this table. */
+const BLIND_PAIRS: Array<{ n: string; config: PConfig; stade: number }> = [
+  { n: "01", config: cfg({ accessories: [P_ACCESSORY.rabbit.bow] }), stade: 1 },
+  { n: "02", config: cfg({ accessories: [P_ACCESSORY.rabbit.bow] }), stade: 4 },
+  { n: "03", config: cfg({ accessories: [P_ACCESSORY.rabbit.nightcap] }), stade: 1 },
+  { n: "04", config: cfg({ accessories: [P_ACCESSORY.rabbit.nightcap] }), stade: 4 },
+  { n: "05", config: cfg({ accessories: [P_ACCESSORY.rabbit.swimsuit] }), stade: 1 },
+  { n: "06", config: cfg({ accessories: [P_ACCESSORY.rabbit.swimsuit] }), stade: 4 },
+  { n: "07", config: cfg({ accessories: [P_ACCESSORY.rabbit.swimRing] }), stade: 1 },
+  { n: "08", config: cfg({ accessories: [P_ACCESSORY.rabbit.swimRing] }), stade: 4 },
+  { n: "09", config: cfg({ accessories: [P_ACCESSORY.rabbit.stardust] }), stade: 4 },
+  { n: "10", config: cfg({ accessories: [P_ACCESSORY.rabbit.stardust] }), stade: 7 },
+  { n: "11", config: cfg({ styles: { earStyle: "pliees" } }), stade: 4 },
+  { n: "12", config: cfg({ styles: { tailSize: "petit" } }), stade: 6 },
+  { n: "13", config: cfg({ styles: { furPattern: "flocons" } }), stade: 4 },
+  // Round 2 — redesigned items get FRESH indices (and fresh guessers).
+  { n: "14", config: cfg({ accessories: [P_ACCESSORY.rabbit.nightcap] }), stade: 1 },
+  { n: "15", config: cfg({ accessories: [P_ACCESSORY.rabbit.nightcap] }), stade: 4 },
+  { n: "16", config: cfg({ accessories: [P_ACCESSORY.rabbit.swimsuit] }), stade: 1 },
+  { n: "17", config: cfg({ accessories: [P_ACCESSORY.rabbit.swimsuit] }), stade: 4 },
+  { n: "18", config: cfg({ accessories: [P_ACCESSORY.rabbit.stardust] }), stade: 4 },
+  { n: "19", config: cfg({ accessories: [P_ACCESSORY.rabbit.stardust] }), stade: 7 },
+  { n: "20", config: cfg({ styles: { earStyle: "pliees" } }), stade: 4 },
+  { n: "21", config: cfg({ styles: { tailSize: "petit" } }), stade: 5 },
+  { n: "22", config: cfg({ styles: { furPattern: "flocons" } }), stade: 4 },
+  // Round 3 — swimsuit straps, stardust scatter, longer ear fold, star tail
+  // (replaces the illegible "Petit pompon"), deeper flecks.
+  { n: "23", config: cfg({ accessories: [P_ACCESSORY.rabbit.swimsuit] }), stade: 1 },
+  { n: "24", config: cfg({ accessories: [P_ACCESSORY.rabbit.swimsuit] }), stade: 4 },
+  { n: "25", config: cfg({ accessories: [P_ACCESSORY.rabbit.stardust] }), stade: 4 },
+  { n: "26", config: cfg({ accessories: [P_ACCESSORY.rabbit.stardust] }), stade: 7 },
+  { n: "27", config: cfg({ styles: { earStyle: "pliees" } }), stade: 4 },
+  { n: "28", config: cfg({ styles: { tailStyle: "etoile" } }), stade: 5 },
+  { n: "29", config: cfg({ styles: { furPattern: "flocons" } }), stade: 4 },
+  // Round 4 — stardust re-paired at stade 5: stade 7's own free star-tipped
+  // ears confounded the guess (skill warning about spectacle stades).
+  { n: "30", config: cfg({ accessories: [P_ACCESSORY.rabbit.stardust] }), stade: 5 },
+  // Fold re-paired at stade 3 (plain lavender ears — gold dips at 4 turned the
+  // shape change into a colour riddle); star tail redrawn over the hip.
+  { n: "31", config: cfg({ styles: { earStyle: "pliees" } }), stade: 3 },
+  { n: "32", config: cfg({ styles: { tailStyle: "etoile" } }), stade: 5 },
+];
+
+it.runIf(RUN)("renders blind pair pages", () => {
+  for (const { n, config, stade } of BLIND_PAIRS) {
+    const pair = strip([
+      { svg: petSvg(CandidateA, stade, cfg(), 240), caption: "" },
+      { svg: petSvg(CandidateA, stade, config, 240), caption: "" },
+    ]);
+    out(`qa-blind-${n}.html`, `<!doctype html><meta charset="utf-8"><style>
+      body{background:#FFF7EC;margin:24px}
+      .strip{display:flex;gap:20px;align-items:flex-end}
+      .cell{background:#fff;border-radius:14px;padding:85px 14px 12px}
+    </style>${pair}`);
+  }
+});
+
+/* ------------------------------------------------------------------------- */
+/* The deliverable — items.html (wardrobe for A « Lune »).                    */
+/* ------------------------------------------------------------------------- */
+
+interface ItemCard {
+  name: string;
+  emoji: string;
+  cost: number;
+  minStage?: number;
+  reason: string;
+  cells: { svg: string; caption: string }[];
+}
+
+const itemCard = (card: ItemCard) =>
+  `<div class="card"><h4>${card.emoji} ${card.name} <span class="cost">${card.cost} pts</span>${
+    card.minStage ? `<span class="gate">🔒 stade ${card.minStage}</span>` : ""
+  }</h4><p class="why">${card.reason}</p>${strip(card.cells)}</div>`;
+
+it.runIf(RUN)("writes items.html", () => {
+  const A = P_ACCESSORY.rabbit;
+  const pair = (config: PConfig, stade: number, label: string) => [
+    { svg: petSvg(CandidateA, stade, cfg(), 130), caption: `d'origine · stade ${stade}` },
+    { svg: petSvg(CandidateA, stade, config, 130), caption: `${label} · stade ${stade}` },
+  ];
+  const worn = (id: string, stades: Array<[number, string]>) =>
+    stades.map(([s, cap]) => ({ svg: petSvg(CandidateA, s, cfg({ accessories: [id] }), 130), caption: cap }));
+  const styled = (slot: string, value: string, stades: Array<[number, string]>) =>
+    stades.map(([s, cap]) => ({ svg: petSvg(CandidateA, s, cfg({ styles: { [slot]: value } }), 130), caption: cap }));
+
+  const colourMeta: Record<string, { emoji: string; cost: number; minStage?: number; reason: string }> = {
+    "Pelage gris souris": { emoji: "🐭", cost: 18, reason: "Recolore tout le corps, visible dès le bébé." },
+    "Pelage caramel": { emoji: "🍮", cost: 18, reason: "Recolore tout le corps, visible dès le bébé." },
+    "Pelage pêche": { emoji: "🍑", cost: 18, reason: "Recolore tout le corps, visible dès le bébé." },
+    "Pelage lilas": { emoji: "💜", cost: 20, reason: "Recolore tout le corps, visible dès le bébé." },
+    "Oreilles rose poudré": { emoji: "🌸", cost: 20, minStage: 3, reason: "L'intérieur des oreilles ne « fleurit » qu'au stade 3 — avant, la couleur serait presque invisible." },
+    "Oreilles menthe": { emoji: "🌿", cost: 20, minStage: 3, reason: "Même raison : la couleur d'oreilles s'ouvre au stade 3." },
+    "Ventre crème": { emoji: "🍦", cost: 16, reason: "Réchauffe le ventre blanc, visible à tous les stades." },
+  };
+  const colours: ItemCard[] = COLOUR_ROWS.map(([slot, value, label, stade]) => ({
+    name: label,
+    ...colourMeta[label],
+    cells: pair(cfg({ colors: { [slot]: value } }), colourMeta[label].minStage ? 4 : stade, label.split(" ").slice(-1)[0]),
+  }));
+
+  const styles: ItemCard[] = [
+    {
+      name: "Oreilles pliées",
+      emoji: "🐰",
+      cost: 45,
+      minStage: 2,
+      reason: "Les oreilles sont couchées sur le dos avant le stade 2 — le pli ne se verrait pas.",
+      cells: styled("earStyle", "pliees", [[2, "stades 2-3"], [4, "stades 4-6 · bouts d'or pliés"], [9, "stades 7-9"]]),
+    },
+    {
+      name: "Queue étoile",
+      emoji: "🌟",
+      cost: 50,
+      reason: "Le pompon devient une étoile d'or — assortie au lapin de lune, visible même couché.",
+      cells: styled("tailStyle", "etoile", [[0, "stades 0-1 · couché"], [2, "stades 2-3"], [5, "stades 4-6"], [9, "stades 7-9"]]),
+    },
+    {
+      name: "Flocons d'étoiles",
+      emoji: "❄️",
+      cost: 48,
+      reason: "Des petites étoiles lavande saupoudrées sur le corps, dès le bébé.",
+      cells: styled("furPattern", "flocons", [[1, "stades 0-1 · couché"], [4, "stades 2-6"], [9, "stades 7-9"]]),
+    },
+  ];
+
+  const accessories: ItemCard[] = [
+    {
+      name: "Nœud étoilé",
+      emoji: "🎀",
+      cost: 45,
+      reason: "Un nœud bleu nuit à étoile d'or, posé sur la gorge par les ancres partagées — jamais sur le visage.",
+      cells: worn(A.bow, [[0, "stade 0"], [1, "stade 1"], [2, "stades 2-3"], [4, "stades 4-6"], [7, "stades 7-9"]]),
+    },
+    {
+      name: "Bonnet de nuit",
+      emoji: "🌙",
+      cost: 60,
+      reason: "Un bonnet de dodo qui retombe sur le côté, pompon au bout ; les grandes oreilles dépassent.",
+      cells: worn(A.nightcap, [[0, "stade 0"], [1, "stade 1"], [2, "stades 2-3"], [4, "stades 4-6"], [7, "stades 7-9"]]),
+    },
+    {
+      name: "Poussière d'étoiles",
+      emoji: "🌠",
+      cost: 200,
+      minStage: 4,
+      reason: "Le premium : de la poussière d'étoiles d'or tourne autour de lui dès le stade 4, s'épaissit au stade 7, et une étoile filante le rejoint au stade 9.",
+      cells: worn(A.stardust, [[4, "stades 4-6 · poussière d'or"], [7, "stades 7-8 · plus dense"], [9, "stade 9 · étoile filante"]]),
+    },
+    {
+      name: "Maillot de bain",
+      emoji: "🩱",
+      cost: 60,
+      minStage: 2,
+      reason: "Tradition des espèces — maillot rayé à bretelles, porté debout (stade 2), étoile de champion au stade 6.",
+      cells: worn(A.swimsuit, [[2, "stades 2-3"], [4, "stades 4-5"], [6, "stades 6-9 · étoile"]]),
+    },
+    {
+      name: "Bouée",
+      emoji: "🛟",
+      cost: 75,
+      reason: "Tradition des espèces : le bébé couché dort DESSUS, puis il s'assoit dedans ; canard au stade 7.",
+      cells: worn(A.swimRing, [[0, "stade 0 · il dort dessus"], [1, "stade 1"], [2, "stades 2-3"], [4, "stades 4-6"], [7, "stades 7-9 · canard"]]),
+    },
+  ];
+
+  const html = `<!doctype html><meta charset="utf-8"><title>Garde-robe — Mon lapin « Lune »</title><style>
+    body{font-family:ui-rounded,'SF Pro Rounded',system-ui,sans-serif;background:#FFF7EC;color:#5A3A1E;margin:28px;max-width:1240px}
+    h1{font-size:26px;margin-bottom:4px} h3{font-size:18px;margin:26px 0 10px} h4{font-size:15px;margin:0 0 4px}
+    .meta{color:#9A7A5A;font-weight:700;font-size:13px;margin-bottom:18px}
+    .hero{display:flex;align-items:center;gap:16px;background:#FFFDF6;border:2px solid #F2C14E;border-radius:16px;padding:10px 16px;margin:0 0 22px;font-weight:800}
+    .strip{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin:10px 0}
+    .cell{background:#fff;border-radius:14px;padding:78px 10px 8px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+    .cell p{font-size:11.5px;font-weight:800;margin:6px 0 0;max-width:150px}
+    .card{background:rgba(255,255,255,.55);border-radius:16px;padding:12px 14px;margin:0 0 16px}
+    .cost{background:#DDF3D8;border-radius:999px;padding:2px 8px;font-size:12px;margin-left:8px}
+    .gate{background:#FFE1EC;border-radius:999px;padding:2px 8px;font-size:12px;margin-left:6px}
+    .why{font-size:13px;color:#7A6248;margin:2px 0 0}
+    .qa p,.qa li{font-size:13.5px}
+    table.blind{border-collapse:collapse;font-size:12.5px;margin:8px 0}
+    table.blind th,table.blind td{border:1px solid #EAD9BF;padding:4px 8px;text-align:left;background:#fff}
+    table.blind th{background:#FFF1DC}
+  </style>
+  <h1>🐰 Garde-robe du lapin « Lune »</h1>
+  <p class="meta">Design validé : candidat A « Lune » · 15 objets, tous implémentés et rendus sur son rig · 26/07/2026</p>
+  <div class="hero"><div>${petSvg(CandidateA, 4, cfg(), 120)}</div><div>Le voici au stade 4 — thème de la garde-robe : petit gardien de la lune. Douceurs lavande et or, bonnet de dodo, queue étoile, et de la poussière d'étoiles en premium.</div></div>
+
+  <h3>🎨 Couleurs (7) — écrites dans <code>config.colors</code></h3>
+  ${colours.map(itemCard).join("")}
+  <h3>💇 Styles (3) — écrits dans <code>config.styles</code></h3>
+  ${styles.map(itemCard).join("")}
+  <h3>🎒 Accessoires (5) — dont la paire de bain traditionnelle et 1 premium</h3>
+  ${accessories.map(itemCard).join("")}
+
+  <section class="qa">
+  <h3>🔍 Annexe QA</h3>
+  <p><b>Boucle placement</b> : rendu vitest → capture Chrome headless → relecture de chaque PNG (5 planches accessoire × stades 0→9, planche couleurs/styles). Nœud sur la gorge à chaque pose (ancres partagées, profil chat 0.94) ; bonnet posé sur le dôme, oreilles dépassent ; rien ne couvre les yeux ; tout suit la tête qui rétrécit. <b>2 itérations</b> de placement (pompon repositionné bas de croupe ; profondeur des couleurs d'oreilles/ventre).</p>
+  <p><b>Test de lisibilité en aveugle</b> (obligatoire) : chaque accessoire/style montré à un agent NEUF (haiku) en paire sans/avec, fichiers neutres <code>qa-blind-NN.png</code>, une seule tentative. Verdicts verbatim :</p>
+  <table class="blind"><tr><th>Objet</th><th>Paire</th><th>Réponse verbatim (agent neuf)</th><th>Verdict</th><th>Refontes</th></tr>
+  <tr><td rowspan="2">🎀 Nœud étoilé</td><td>couché (1)</td><td>« a blue bow tie around the creature's neck »</td><td>✅</td><td rowspan="2">0</td></tr>
+  <tr><td>debout (4)</td><td>« a blue bow tie around the neck »</td><td>✅</td></tr>
+  <tr><td rowspan="2">🌙 Bonnet de nuit</td><td>couché (1)</td><td>v1 « a blue nightcap with a star » · v2 « a blue nightcap with a white stripe »</td><td>✅</td><td rowspan="2">1 — v1 debout lu « blue crown » (cône symétrique entre les 2 oreilles droites) → pointe retombante SOUS le bord + pompon pendant</td></tr>
+  <tr><td>debout (4)</td><td>v1 « a blue crown » ❌ · v2 « a blue nightcap placed on the companion's head »</td><td>✅</td></tr>
+  <tr><td rowspan="2">🩱 Maillot de bain</td><td>couché (1)</td><td>v1 « a blue backpack » · v2 « striped shirt » · v3 « striped shell or backpack »</td><td>❌ assumé</td><td rowspan="2">3 — culotte réduite, maillot descendu aux hanches, bretelles ajoutées ; sans eau il se lit « vêtement rayé / marin ». Tradition inter-espèces conservée, gate stade 2 (plus de vue couchée), limite documentée</td></tr>
+  <tr><td>debout (4)</td><td>v1 « striped shirt » · v2 « striped scarf » · v3 « striped sailor outfit/vest »</td><td>❌ assumé</td></tr>
+  <tr><td rowspan="2">🛟 Bouée</td><td>couché (1)</td><td>« a yellow and white striped inflatable swim ring or floatie tube »</td><td>✅</td><td rowspan="2">0</td></tr>
+  <tr><td>debout (4)</td><td>« a yellow and white striped flotation ring around the waist »</td><td>✅</td></tr>
+  <tr><td rowspan="2">🌠 Poussière d'étoiles</td><td>stade 4</td><td>v1 « magical sparkle effect (small stars) » ✅ · v2 « golden crown » ❌ · v3 « magical sparkle/star aura glowing around »</td><td>✅</td><td rowspan="2">2 — la traînée de comète lue « baguette magique » puis « couronne » → poussière d'or éparpillée AUTOUR du corps, zone au-dessus de la tête interdite ; paire 2 déplacée du stade 7 (ses étoiles d'oreilles gratuites parasitaient) au stade 5 : « golden stars/diamonds floating around it »</td></tr>
+  <tr><td>stade 5</td><td>« sparkle accessory — golden stars/diamonds floating around it »</td><td>✅</td></tr>
+  <tr><td>🐰 Oreilles pliées</td><td>debout (3)</td><td>v1 « ears are shorter » · v2 « ears changed colour » · v3 (stade 3, sans bouts d'or) « ears changed from upright and long to shorter and floppy »</td><td>✅</td><td>2 — pli 58°→100°, pointe pliée allongée ; paire déplacée au stade 3 (les bouts d'or du stade 4 en faisaient une devinette de couleurs)</td></tr>
+  <tr><td>🌟 Queue étoile</td><td>debout (5)</td><td>« holding a star instead of a pouch »</td><td>✅ avec réserve</td><td>2 — remplace « Petit pompon » (2 échecs : « queue déplacée », « objet perdu ») ; étoile redessinée PAR-DESSUS la hanche ; l'étoile est nommée, mais lue « tenue » plutôt que « queue » (pose de face)</td></tr>
+  <tr><td>❄️ Flocons d'étoiles</td><td>debout (4)</td><td>v1 « pupils smaller » · v2 « ears tilted » · v3 « small sparkle/star shapes scattered across the companion's chest »</td><td>✅</td><td>2 — étoiles agrandies ×2, lavande foncé #B8A6E0, étalées corps + ventre</td></tr>
+  </table>
+  <p class="iter"><b>Doutes restants</b> : le maillot sans eau se lit « vêtement rayé / marin » même après 3 versions (bretelles gardées : c'est la plus lisible) — c'est la tradition inter-espèces, l'enfant l'achète sous son nom « Maillot de bain » 🩱 ; les oreilles pliées perdent les étoiles de bouts d'oreilles aux stades 7-9 (elles pointent vers le bas) — beat remplacé par les bouts d'or pliés ; la poussière d'or du premium cohabite avec les étincelles gratuites des stades 6+ (l'or est plus dense et plus foncé).</p>
+  </section>`;
+
+  out("items.html", html);
 });
