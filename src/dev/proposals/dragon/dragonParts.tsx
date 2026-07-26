@@ -285,7 +285,8 @@ export function Horns({
 }
 
 /** Row of crest bumps fanned along the head dome, between the horns.
- * `round` swaps pointy triangles for soft bubbles; `gems` tips each spike. */
+ * `round` swaps pointy triangles for soft bubbles; `gems` tips each spike;
+ * `scale` grows the bumps (bone back-plates are big rounded ones). */
 export function Crest({
   hx,
   hy,
@@ -295,6 +296,7 @@ export function Crest({
   color,
   edge,
   gems,
+  scale = 1,
 }: {
   hx: number;
   hy: number;
@@ -304,6 +306,7 @@ export function Crest({
   color: string;
   edge: string;
   gems?: string[];
+  scale?: number;
 }) {
   if (n <= 0) return null;
   const items = Array.from({ length: n }).map((_, i) => {
@@ -313,14 +316,14 @@ export function Crest({
     const ry = -Math.cos(a);
     const bx = hx + rx * headR * 0.9;
     const by = hy + ry * headR * 0.88;
-    const hgt = headR * (0.36 - 0.08 * Math.abs(t - 0.5) * 2);
+    const hgt = headR * (0.36 - 0.08 * Math.abs(t - 0.5) * 2) * scale;
     const px = -ry;
     const py = rx;
-    const wHalf = headR * 0.12;
+    const wHalf = headR * 0.12 * scale;
     if (round) {
       return (
         <g key={i}>
-          <circle cx={bx + rx * hgt * 0.42} cy={by + ry * hgt * 0.42} r={headR * 0.14} fill={color} stroke={edge} strokeWidth={0.8} />
+          <circle cx={bx + rx * hgt * 0.42} cy={by + ry * hgt * 0.42} r={headR * 0.14 * scale} fill={color} stroke={edge} strokeWidth={0.8} />
         </g>
       );
     }
@@ -420,6 +423,152 @@ export function Gem({ x, y, s, color }: { x: number; y: number; s: number; color
     <g transform={`translate(${x} ${y})`}>
       <path d={`M0 ${-s} L${s * 0.85} 0 L0 ${s} L${-s * 0.85} 0 Z`} fill={color} stroke="#FFFFFF" strokeWidth={s * 0.22} strokeLinejoin="round" />
       <circle cx={-s * 0.2} cy={-s * 0.25} r={s * 0.18} fill="#FFFFFF" opacity={0.85} />
+    </g>
+  );
+}
+
+/* -- Boy-coded parts (reboot) ---------------------------------------------- */
+
+/** Jagged straight-edged storm wings — angular where BatWings is scalloped. */
+export function AngularWings({ cx, cy, s, membrane, edge }: { cx: number; cy: number; s: number; membrane: string; edge: string }) {
+  if (s <= 0) return null;
+  const wing = (d: number) => {
+    const sx = cx + d * 9;
+    const sy = cy;
+    const pts: Array<[number, number]> = [
+      [0, 0],
+      [6, -12],
+      [22, -18],
+      [17.5, -8.5],
+      [15.5, -3.5],
+      [10.5, -6.5],
+      [8, -1],
+    ];
+    const path = pts.map(([x, y], i) => `${i === 0 ? "M" : "L"}${sx + d * x * s} ${sy + y * s}`).join(" ") + " Z";
+    return (
+      <g key={d}>
+        <path d={path} fill={membrane} stroke={edge} strokeWidth={1.1} strokeLinejoin="round" />
+        <g stroke={edge} strokeWidth={0.8} opacity={0.55} fill="none">
+          <path d={`M${sx + d * 2 * s} ${sy - 2 * s} L${sx + d * 20 * s} ${sy - 16.5 * s}`} />
+          <path d={`M${sx + d * 2 * s} ${sy - s} L${sx + d * 14.5 * s} ${sy - 4.5 * s}`} />
+        </g>
+      </g>
+    );
+  };
+  return (
+    <g>
+      {wing(-1)}
+      {wing(1)}
+    </g>
+  );
+}
+
+/** Spiky mace-ball tail tip (drawn at p2 of a SpadeTail with tip="none"). */
+export function TailClub({ x, y, s, color, edge }: { x: number; y: number; s: number; color: string; edge: string }) {
+  const spikes = Array.from({ length: 7 }).map((_, i) => {
+    const a = (i / 7) * Math.PI * 2 - Math.PI / 2;
+    const bx = x + Math.cos(a) * 3.1 * s;
+    const by = y + Math.sin(a) * 3.1 * s;
+    const tx = x + Math.cos(a) * 5.4 * s;
+    const ty = y + Math.sin(a) * 5.4 * s;
+    const px = -Math.sin(a) * 1.15 * s;
+    const py = Math.cos(a) * 1.15 * s;
+    return <path key={i} d={`M${bx - px} ${by - py} L${tx} ${ty} L${bx + px} ${by + py} Z`} fill={color} stroke={edge} strokeWidth={0.7} strokeLinejoin="round" />;
+  });
+  return (
+    <g>
+      {spikes}
+      <circle cx={x} cy={y} r={3.4 * s} fill={color} stroke={edge} strokeWidth={0.9} />
+      <circle cx={x - s} cy={y - s} r={0.9 * s} fill="#FFFFFF" opacity={0.45} />
+    </g>
+  );
+}
+
+/** Bone casque — a solid frill band hugging the upper dome (triceratops vibe). */
+export function FrillBand({ hx, hy, headR, f, color, edge }: { hx: number; hy: number; headR: number; f: number; color: string; edge: string }) {
+  if (f <= 0) return null;
+  const r = headR * (1.02 + 0.16 * f);
+  const a0 = (-118 * Math.PI) / 180;
+  const a1 = (-62 * Math.PI) / 180;
+  const arc = (rr: number, from: number, to: number) =>
+    `M${hx + Math.cos(from) * rr} ${hy + Math.sin(from) * rr} A${rr} ${rr} 0 0 1 ${hx + Math.cos(to) * rr} ${hy + Math.sin(to) * rr}`;
+  return (
+    <g fill="none" strokeLinecap="round">
+      <path d={arc(r, a0 - 0.5, a1 + 0.5)} stroke={edge} strokeWidth={headR * 0.34 * f + 1.6} />
+      <path d={arc(r, a0 - 0.5, a1 + 0.5)} stroke={color} strokeWidth={headR * 0.34 * f} />
+    </g>
+  );
+}
+
+/** Glowing lava/charge cracks — short zigzags on the body flanks. */
+export function Cracks({ cx, cy, rx, ry, color }: { cx: number; cy: number; rx: number; ry: number; color: string }) {
+  const zig = (x: number, y: number, d: number) =>
+    `M${x} ${y} l${2.4 * d} -2.6 l${2.4 * d} 2.6 l${2.4 * d} -2.6`;
+  return (
+    <g fill="none" stroke={color} strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+      <path d={zig(cx - rx * 0.88, cy - ry * 0.25, 1)} />
+      <path d={zig(cx + rx * 0.35, cy - ry * 0.55, 1)} />
+      <path d={zig(cx - rx * 0.5, cy + ry * 0.42, 1)} opacity={0.85} />
+    </g>
+  );
+}
+
+/** Two little smoke curls drifting OUTWARD from the nostrils — mostly sideways
+ * so they clear the eyes (rising straight up read as tears next to them). */
+export function SmokePuffs({ hx, hy, headR }: { hx: number; hy: number; headR: number }) {
+  const puff = (d: number) => {
+    const x = hx + d * headR * 0.24;
+    const y = hy + headR * 0.3;
+    return (
+      <g key={d} fill="#C3C7CE" opacity={0.85}>
+        <circle cx={x + d * headR * 0.28} cy={y - 1} r={1.4} />
+        <circle cx={x + d * headR * 0.52} cy={y - 3} r={1.9} />
+        <circle cx={x + d * headR * 0.82} cy={y - 5.6} r={2.5} opacity={0.8} />
+      </g>
+    );
+  };
+  return (
+    <g>
+      {puff(-1)}
+      {puff(1)}
+    </g>
+  );
+}
+
+/** White claw nicks on a foot (drawn over the dark hoof). */
+export function Claws({ x, y, w }: { x: number; y: number; w: number }) {
+  return (
+    <g fill="#FFFFFF" opacity={0.95}>
+      {[-0.3, 0.12, 0.54].map((f) => (
+        <path key={f} d={`M${x + f * w} ${y - 1} l1.1 2.6 l1.1 -2.6 Z`} />
+      ))}
+    </g>
+  );
+}
+
+/** Two tiny fangs peeking from the mouth corners. */
+export function Fangs({ cx, y, w }: { cx: number; y: number; w: number }) {
+  return (
+    <g fill="#FFFFFF" stroke={INK} strokeWidth={0.35}>
+      <path d={`M${cx - w} ${y - 0.6} l0.9 3 l1.5 -2.4 Z`} />
+      <path d={`M${cx + w} ${y - 0.6} l-0.9 3 l-1.5 -2.4 Z`} />
+    </g>
+  );
+}
+
+/** Little dust clouds kicked up at the feet (the tank's stomp). */
+export function DustPuffs({ cx, y, spread }: { cx: number; y: number; spread: number }) {
+  const side = (d: number) => (
+    <g key={d} fill="#D6CDBB" opacity={0.75}>
+      <circle cx={cx + d * spread} cy={y - 1.5} r={2.6} />
+      <circle cx={cx + d * (spread + 4)} cy={y - 0.5} r={1.8} />
+      <circle cx={cx + d * (spread - 3)} cy={y + 0.5} r={1.5} />
+    </g>
+  );
+  return (
+    <g>
+      {side(-1)}
+      {side(1)}
     </g>
   );
 }
