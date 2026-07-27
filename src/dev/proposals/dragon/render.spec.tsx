@@ -179,7 +179,8 @@ it.runIf(RUN)("renders items QA pages", () => {
         zoom("Collier de croc", cfg({ accessories: [P_ACCESSORY.dragon.fang] }), [2, 4, 7]) +
         zoom("Croc + cape ensemble", cfg({ accessories: [P_ACCESSORY.dragon.fang, P_ACCESSORY.dragon.cape] }), [4, 7]) +
         zoom("Lunettes d'aviateur", cfg({ accessories: [P_ACCESSORY.dragon.goggles] }), [3, 5, 8]) +
-        zoom("Petit trésor", cfg({ accessories: [P_ACCESSORY.dragon.treasure] }), [0, 2, 3, 4, 9])
+        zoom("Petit trésor", cfg({ accessories: [P_ACCESSORY.dragon.treasure] }), [0, 3, 5]) +
+        zoom("Coffre au trésor (stades 7-9)", cfg({ accessories: [P_ACCESSORY.dragon.treasure] }), [7, 8, 9])
     )
   );
 });
@@ -460,8 +461,8 @@ it.runIf(RUN)("writes items.html", () => {
       name: "Petit trésor",
       emoji: "🪙",
       cost: 70,
-      reason: "La taille d'une pièce ne change jamais — c'est la QUANTITÉ qui grandit : une simple pièce d'or (stades 0-2), l'or + les bijoux — bague puis couronne (3-6), et le trésor complet aux bijoux sertis de pierres précieuses (7-9).",
-      cells: worn(A.treasure, [[0, "stades 0-2 · une pièce d'or"], [3, "stades 3-4 · l'or + la bague"], [5, "stades 5-6 · + la couronne"], [7, "stades 7-8 · pierres serties"], [9, "stade 9 · trésor complet"]]),
+      reason: "La taille d'une pièce ne change jamais — c'est la QUANTITÉ qui grandit : une simple pièce d'or (stades 0-2), l'or + les bijoux — bague puis couronne (3-6), puis le coffre en bois qui déborde de pièces et de bijoux sertis (7-9).",
+      cells: worn(A.treasure, [[0, "stades 0-2 · une pièce d'or"], [3, "stades 3-4 · l'or + la bague"], [5, "stades 5-6 · + la couronne"], [7, "stades 7-8 · le coffre déborde"], [9, "stade 9 · coffre au trésor complet"]]),
     },
     {
       name: "Flamme bleue",
@@ -504,11 +505,11 @@ it.runIf(RUN)("writes items.html", () => {
   <ul>
     <li>✅ Retours intégrés : maillot, bouée, bouclier et casque supprimés ; cape gated stade 2 (plus jamais sur l'œuf ni le bébé couché) ; « petite queue » remplacée par deux STYLES de queue qui grandissent normalement.</li>
     <li>✅ Fermoir de cape et collier de croc sur la gorge à chaque pose (ancres partagées), jamais sur le visage ; si les deux sont portés, le cordon du croc descend d'un cran.</li>
-    <li>✅ Lunettes posées sur le front (touchent le dôme, jamais les yeux) ; le tas d'or est au sol, suit la taille du corps, déborde au stade 7.</li>
+    <li>✅ Lunettes posées sur le front (touchent le dôme, jamais les yeux) ; le trésor est au sol : pièce seule (0-2), tas + bijoux (3-6), coffre en bois qui déborde côté dragon (7-9) — quantité qui grandit, jamais la taille des pièces.</li>
     <li>✅ Chaque couleur/style évident d'un coup d'œil (planches avant/après) — cornes d'or vs noires lisibles dès les bosses du stade 2.</li>
     <li>✅ Gates : ventre (1), cornes couleur (2), croc + cape + queue de feu (2), ailes + cornes doubles + lunettes (3), crête + flamme bleue (4).</li>
   </ul>
-  <p class="iter"><b>Itérations v2 :</b> voir historique v1 (œuf élargi, gate <code>ramp()</code>). <b>Note ship :</b> la tradition inter-espèces « maillot + bouée sur chaque espèce » est volontairement rompue pour le dragon (décision utilisateur) — adapter <code>catalog.test.ts</code> en conséquence. <b>Doutes restants :</b> « Cornes d'or » et « Ailes dorées » portées ensemble font beaucoup de jaune ; la flamme de queue au stade 9 arrive près de l'anneau de braises — à re-goûter sur fond réel.</p>
+  <p class="iter"><b>Itérations v2 :</b> voir historique v1 (œuf élargi, gate <code>ramp()</code>). <b>Coffre (stades 7-9) :</b> contre-review par DA jeunesse — NO-GO v2 (couvercle noyé par le monticule au s9, or tombé caché derrière la pièce-héros, perles sans fil lues comme rivets) puis GO v3 après corrections chiffrées ; mineurs tolérés : brillance blanche des gemmes (TGem partagé avec 0-6), collier lu « texture dorée » à 88 px, s7/s8 proches au premier regard. <b>Note ship :</b> la tradition inter-espèces « maillot + bouée sur chaque espèce » est volontairement rompue pour le dragon (décision utilisateur) — adapter <code>catalog.test.ts</code> en conséquence. <b>Doutes restants :</b> « Cornes d'or » et « Ailes dorées » portées ensemble font beaucoup de jaune ; la flamme de queue au stade 9 arrive près de l'anneau de braises — à re-goûter sur fond réel.</p>
   </section>`;
 
   out("items.html", html);

@@ -240,7 +240,7 @@ export function CandidateA({ config, layout, stage, mood = "idle", uid, preview 
       {has(A.treasure) &&
         (() => {
           const backFootL = layout.legs[0].footX - 4.6;
-          const tRight = (stage >= 6 ? 8.6 : stage >= 3 ? 5.7 : 2.8) + (stage >= 7 ? 1.4 : 0);
+          const tRight = stage >= 7 ? 17.0 : stage >= 6 ? 8.6 : stage >= 3 ? 5.7 : 2.8;
           const tX = Math.min(bodyCX - bodyRX - 5 - 4 * tf, backFootL - tRight - 1);
           return <Treasure stage={stage} x={tX} groundY={layout.feetY + 1} />;
         })()}

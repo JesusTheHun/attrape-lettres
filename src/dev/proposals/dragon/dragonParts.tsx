@@ -715,7 +715,10 @@ export function Shield({ x, groundY, s }: { x: number; groundY: number; s: numbe
  * offset), the upright coin wears an engraved star; the heap is a tight 3:2
  * shingled mound (never a ribbon); one shared ground shadow anchors the hoard
  * in the dragon's world; gems are two-tone with tone-on-tone dark rims (white
- * halos die on the cream background); sparkles are GOLD, white only on gold. */
+ * halos die on the cream background); sparkles are GOLD, white only on gold.
+ * At 7-9 the hoard gets its wooden chest: same three-tone modelling in wood,
+ * mound brimming over the rim, and everything that overflows (upright coin,
+ * spilled coins, ring) tumbles out on the DRAGON's side — he guards it. */
 
 const OR_LIGHT = "#FFE08A";
 const OR = "#FFC94D";
@@ -815,6 +818,104 @@ function TCrown({ x, y }: { x: number; y: number }) {
   );
 }
 
+/* Wooden chest — three wood tones, mirroring the three golds (plus the named
+ * base-shade token so no blended fourth tone hides in an opacity). */
+const WOOD_LT = "#C9985F";
+const WOOD = "#AF7A45";
+const WOOD_DK = "#8A5C33";
+const WOOD_SHADE = "#9A6A3E";
+
+/** Open lid, tipped back a touch (crooked like the crown — cuter). We see its
+ * wooden edge and the darker inside face. Drawn BEHIND the coin mound. */
+function TChestLid({ x, rimY }: { x: number; rimY: number }) {
+  // Tall enough that the lid + dark inside stay readable ABOVE the full s9
+  // mound (rows top out at rimY-4.95) — the open-lid read must survive the
+  // climax stade. The low corner sinks behind the front wall, no overhang.
+  return (
+    <g transform={`rotate(-9 ${x} ${rimY})`}>
+      <path
+        d={`M${x - 7.2} ${rimY - 0.2} L${x - 7.2} ${rimY - 6.2} Q${x - 7.2} ${rimY - 8.4} ${x - 4.6} ${rimY - 8.4} L${x + 4.6} ${rimY - 8.4} Q${x + 7.2} ${rimY - 8.4} ${x + 7.2} ${rimY - 6.2} L${x + 7.2} ${rimY - 0.2} Z`}
+        fill={WOOD}
+      />
+      <path
+        d={`M${x - 6.3} ${rimY - 0.2} L${x - 6.3} ${rimY - 5.9} Q${x - 6.3} ${rimY - 7.3} ${x - 4.6} ${rimY - 7.3} L${x + 4.6} ${rimY - 7.3} Q${x + 6.3} ${rimY - 7.3} ${x + 6.3} ${rimY - 5.9} L${x + 6.3} ${rimY - 0.2} Z`}
+        fill={WOOD_DK}
+      />
+    </g>
+  );
+}
+
+/** Chest front wall + gold straps + lock. Drawn AFTER the mound so the bottom
+ * coin row sinks behind the rim — the chest reads as FULL, not decorated. */
+function TChestBody({ x, rimY, groundY }: { x: number; rimY: number; groundY: number }) {
+  const h = groundY - rimY;
+  return (
+    <g>
+      <rect x={x - 7.5} y={rimY} width={15} height={h} rx={1.1} fill={WOOD} />
+      <rect x={x - 7.3} y={groundY - 1.4} width={14.6} height={1.4} rx={0.7} fill={WOOD_SHADE} />
+      <rect x={x - 7.5} y={rimY} width={15} height={1.1} rx={0.55} fill={WOOD_LT} />
+      <rect x={x - 5.0} y={rimY} width={1.7} height={h} fill={OR} />
+      <rect x={x + 3.3} y={rimY} width={1.7} height={h} fill={OR} />
+      <rect x={x - 5.0} y={rimY} width={1.7} height={1.1} fill={OR_DEEP} opacity={0.5} />
+      <rect x={x + 3.3} y={rimY} width={1.7} height={1.1} fill={OR_DEEP} opacity={0.5} />
+      <rect x={x - 1.5} y={rimY + 1.9} width={3} height={3.4} rx={1} fill={OR} />
+      <circle cx={x} cy={rimY + 3.1} r={0.55} fill={OR_EDGE} />
+      <path d={`M${x} ${rimY + 3.3} L${x - 0.45} ${rimY + 4.5} L${x + 0.45} ${rimY + 4.5} Z`} fill={OR_EDGE} />
+    </g>
+  );
+}
+
+/** Strand of little gold pearls draped over the chest's LEFT front corner —
+ * the "it overflows" storytelling beat, joins at stade 8. */
+function TBeads({ x, rimY }: { x: number; rimY: number }) {
+  // A strand, not rivets: the thread ties the pearls together, the first two
+  // sit on the rim (it climbs OUT of the chest) and the last one touches the
+  // ground — that contact is the "it overflows" read.
+  const pts: Array<[number, number]> = [
+    [-4.6, -0.9], [-5.2, -0.5], [-5.7, -0.2], [-6.3, 0.9], [-6.7, 2.1], [-6.9, 3.3], [-6.8, 4.5], [-6.6, 5.9],
+  ];
+  return (
+    <g>
+      <path
+        d={`M${x + pts[0][0]} ${rimY + pts[0][1]} ${pts.slice(1).map(([dx, dy]) => `L${x + dx} ${rimY + dy}`).join(" ")}`}
+        fill="none"
+        stroke={OR_EDGE}
+        strokeWidth={0.35}
+        strokeLinejoin="round"
+      />
+      {pts.map(([dx, dy], i) => (
+        <circle key={i} cx={x + dx} cy={rimY + dy} r={0.85} fill={OR_PALE} stroke={OR_EDGE} strokeWidth={0.25} />
+      ))}
+    </g>
+  );
+}
+
+/** Mound slots INSIDE the chest, dy relative to the rim. Base row fills first —
+ * a treasure chest always reads full; growth adds the rows that overflow. */
+const CHEST_SLOTS: Array<[number, number]> = [
+  [0, -0.4], [-2.9, -0.3], [2.9, -0.3], [-5.4, -0.1], [5.4, -0.1],
+  [-1.45, -2.1], [1.45, -2.1], [-4.2, -1.9], [4.2, -1.9],
+  [0, -3.8], [-2.8, -3.6], [2.8, -3.6],
+];
+
+/** Coins tumbled out on the ground, dragon's side, dy relative to ground.
+ * Each stays ≥40% visible beside the hero coin — a spill nobody can see is
+ * a spill that does not exist: s7 against the wall, s8 behind the ring,
+ * s9 perched on the wall corner. */
+const SPILL_SLOTS: Array<[number, number]> = [
+  [7.4, -1.1], [12.8, -1.8], [6.8, -2.9],
+];
+
+/** Gems for the chest stages — on the mound, then one on the spill pile.
+ * dy relative to groundY (rim sits at -6.6). */
+const CHEST_GEM_SLOTS: Array<[number, number, string]> = [
+  [1.5, -9.9, RUBY],
+  [-3.0, -9.7, SAPPHIRE],
+  [4.6, -9.2, EMERALD],
+  [-1.4, -11.5, AMETHYST],
+  [6.2, -7.2, SAPPHIRE],
+];
+
 /** Heap slots — tight 2.9/1.8 shingle so any N reads as a 3:2 mound, never a
  * ribbon. Fill order grows a balanced pyramid (centre out, up before wide). */
 const COIN_SLOTS: Array<[number, number]> = [
@@ -842,6 +943,9 @@ interface TSpec {
   ring?: boolean;
   crown?: boolean;
   gems: number;
+  chest?: boolean;
+  spill?: number;
+  beads?: boolean;
 }
 
 const T_STAGES: TSpec[] = [
@@ -852,9 +956,9 @@ const T_STAGES: TSpec[] = [
   { coins: 4, ring: true, gems: 0 },
   { coins: 5, ring: true, crown: true, gems: 0 }, // 5 la couronne rejoint le butin
   { coins: 6, ring: true, crown: true, gems: 0 },
-  { coins: 8, ring: true, crown: true, gems: 2 }, // 7 les bijoux se sertissent
-  { coins: 10, ring: true, crown: true, gems: 3 },
-  { coins: 13, ring: true, crown: true, gems: 5 }, // 9 le trésor complet
+  { coins: 7, ring: true, crown: true, gems: 2, chest: true, spill: 1 }, // 7 le coffre !
+  { coins: 9, ring: true, crown: true, gems: 3, chest: true, spill: 2, beads: true },
+  { coins: 12, ring: true, crown: true, gems: 5, chest: true, spill: 3, beads: true }, // 9 il déborde
 ];
 
 /** y of the highest filled coin slot, for seating the crown on the heap. */
@@ -869,6 +973,50 @@ function heapTopY(coins: number): number {
 export function Treasure({ stage, x, groundY }: { stage: number; x: number; groundY: number }) {
   const spec = T_STAGES[Math.max(0, Math.min(9, stage))];
   const set = stage >= 7; // jewels get their precious stones
+  if (spec.chest) {
+    const rimY = groundY - 6.6;
+    const top = spec.coins >= 10 ? -3.8 : -2.1; // highest filled mound row
+    // Everything that overflows goes on the DRAGON's side: standing coin
+    // leaning on the right wall, spilled coins around it, ring past them.
+    const upX = 9.7;
+    const ringX = 13.4;
+    const left = -8.2;
+    const right = ringX + 2.6;
+    return (
+      <g>
+        <ellipse cx={x + (left + right) / 2} cy={groundY + 0.5} rx={(right - left) / 2 + 1.5} ry={1.3} fill="#000" opacity={0.1} />
+        <TChestLid x={x} rimY={rimY} />
+        {[...CHEST_SLOTS.slice(0, spec.coins)]
+          .sort((a, b) => a[1] - b[1])
+          .map(([dx, dy], i) => (
+            <TCoin key={i} cx={x + dx} cy={rimY + dy} />
+          ))}
+        {spec.crown && <TCrown x={x + 0.6} y={rimY + top - 1.2} />}
+        <TChestBody x={x} rimY={rimY} groundY={groundY} />
+        {spec.beads && <TBeads x={x} rimY={rimY} />}
+        {[...SPILL_SLOTS.slice(0, spec.spill ?? 0)]
+          .sort((a, b) => a[1] - b[1])
+          .map(([dx, dy], i) => (
+            <TCoin key={i} cx={x + dx} cy={groundY + dy} />
+          ))}
+        {/* the hero coin stays IN FRONT of the spill — its star face is the read */}
+        <TUprightCoin cx={x + upX} cy={groundY - COIN_R} lean={-10} />
+        <TRing cx={x + ringX} cy={groundY - 1.9} gem />
+        {CHEST_GEM_SLOTS.slice(0, spec.gems).map(([dx, dy, color], i) => (
+          <TGem key={i} x={x + dx} y={groundY + dy} s={1.3} color={color} />
+        ))}
+        <Sparkles
+          points={[
+            [x - 4.8, rimY + top - 4.3, 1.1],
+            [x + 4.2, rimY + top - 5.7, 0.85],
+          ]}
+          color={OR}
+        />
+        {/* white glint allowed ONLY on gold, never on the bare background */}
+        <Sparkles points={[[x + 0.9, rimY - 1.6, 0.7]]} color="#FFFFFF" />
+      </g>
+    );
+  }
   if (spec.coins === 1) {
     return (
       <g>
