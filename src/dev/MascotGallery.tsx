@@ -17,6 +17,7 @@ const SPECIES: { species: Species; label: string }[] = [
   { species: "cat", label: "🐱 Chat" },
   { species: "fox", label: "🦊 Renard" },
   { species: "rabbit", label: "🐰 Lapin" },
+  { species: "dragon", label: "🐉 Dragon" },
 ];
 
 const MOODS: Mood[] = ["idle", "happy", "cheer"];

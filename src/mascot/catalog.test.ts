@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { CATALOG, DEFAULT_LOOKS } from "./catalog";
 import type { Species } from "../types";
 
-const SPECIES: Species[] = ["unicorn", "cat", "fox", "rabbit"];
+const SPECIES: Species[] = ["unicorn", "cat", "fox", "rabbit", "dragon"];
 
 /* Growth gates derived from a per-stage visual render of every rig: an option is
  * gated only when the body part it dresses isn't visible yet at that stade
@@ -26,12 +26,30 @@ const EXPECTED_GATES: Record<string, number> = {
   "rabbit.color.innerEarColor.menthe": 3,
   "rabbit.style.earStyle.pliees": 2,
   "rabbit.accessory.swimsuit": 2,
+  // Dragon: the belly is hidden inside the stade-0 egg; horn nubs point at 2
+  // (real horns at 3 for the double crown); wings sprout at 3; the crest
+  // appears at 4; the tail pokes out of the egg but only reads from 1; the
+  // flame tail lights when he walks (2); cape/fang need him standing (2);
+  // goggles arrive with the wings (3).
+  "dragon.color.bellyColor.magma": 1,
+  "dragon.color.wingColor.nuit": 3,
+  "dragon.color.wingColor.dorees": 3,
+  "dragon.color.hornColor.or": 2,
+  "dragon.color.hornColor.noires": 2,
+  "dragon.style.hornStyle.double": 3,
+  "dragon.style.crestStyle.lava": 4,
+  "dragon.style.tailStyle.club": 1,
+  "dragon.style.tailStyle.flame": 2,
+  "dragon.accessory.cape": 2,
+  "dragon.accessory.goggles": 3,
+  "dragon.accessory.fang-necklace": 2,
   // Premium accessories gated by maturity.
   "unicorn.accessory.flower-crown": 2,
   "unicorn.accessory.star-clip": 4,
   "cat.accessory.party-hat": 4,
   "fox.accessory.boots": 4,
   "rabbit.accessory.stardust": 4,
+  "dragon.accessory.blue-flame": 4,
 };
 
 describe("catalog growth gates", () => {

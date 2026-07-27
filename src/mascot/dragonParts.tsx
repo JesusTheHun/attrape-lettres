@@ -1,29 +1,11 @@
-import type { Layout } from "../../../mascot/growth";
-import { INK } from "../../../mascot/growth";
-import { Sparkles } from "../../../mascot/parts";
-import type { Mood } from "../../../types";
+import { INK } from "./growth";
+import { Sparkles } from "./parts";
 
 /**
- * Proposal-local dragon part library — shared by the three candidates so the
- * chosen one promotes cleanly. Pure SVG, numeric props, kawaii house style.
- * NOTHING here is imported by app code.
+ * Dragon part library — everything Braise wears and breathes, kept out of
+ * Dragon.tsx so the rig file stays a readable STAGE_SPEC timeline.
+ * Pure SVG, numeric props, kawaii house style.
  */
-
-/** Proposal stand-in for MascotConfig ("dragon" is not in the Species union yet). */
-export interface PConfig {
-  colors: Record<string, string>;
-  styles: Record<string, string>;
-  accessories: string[];
-}
-
-export interface PRigProps {
-  config: PConfig;
-  layout: Layout;
-  stage: number;
-  mood?: Mood;
-  uid: string;
-  preview?: boolean;
-}
 
 export const EGG_FILL = "#FFF9EE";
 export const EGG_EDGE = "#E3D2BA";

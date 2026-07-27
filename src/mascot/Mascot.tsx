@@ -5,6 +5,7 @@ import { Unicorn } from "./Unicorn";
 import { Cat } from "./Cat";
 import { Fox } from "./Fox";
 import { Rabbit } from "./Rabbit";
+import { Dragon } from "./Dragon";
 import { ACCESSORY } from "./ids";
 import { RainbowSheen } from "./parts";
 
@@ -25,6 +26,7 @@ const LABELS: Record<Species, string> = {
   cat: "Mon chat",
   fox: "Mon renard",
   rabbit: "Mon lapin",
+  dragon: "Mon dragon",
 };
 
 const bob: Keyframe[] = [
@@ -75,6 +77,8 @@ export function Mascot({ config, mood, size = 88, preview = false, focus }: Masc
       <Fox config={config} layout={layout} stage={config.stage} mood={mood} uid={uid} preview={preview} />
     ) : config.species === "rabbit" ? (
       <Rabbit config={config} layout={layout} stage={config.stage} mood={mood} uid={uid} preview={preview} />
+    ) : config.species === "dragon" ? (
+      <Dragon config={config} layout={layout} stage={config.stage} mood={mood} uid={uid} preview={preview} />
     ) : (
       <Unicorn config={config} layout={layout} stage={config.stage} mood={mood} uid={uid} preview={preview} />
     );

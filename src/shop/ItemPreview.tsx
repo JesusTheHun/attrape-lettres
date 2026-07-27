@@ -42,6 +42,9 @@ const STYLE_COLOR_SLOT: Partial<Record<Species, Record<string, string>>> = {
   // Folded ears read via their lavender inner on the ghost body; star tail and
   // flecks draw in their own gold/lavender, so the body stays ghost.
   rabbit: { [STYLE_SLOT.rabbit.ear]: COLOR_SLOT.rabbit.inner },
+  // Double horns tinted with the factory ivory; lava crest and both tail tips
+  // draw in their own colours (orange flame, dark club), so the body stays ghost.
+  dragon: { [STYLE_SLOT.dragon.horn]: COLOR_SLOT.dragon.horn },
 };
 
 function defaultColor(species: Species, colorSlot: string): string | undefined {
@@ -71,20 +74,27 @@ function focusFor(species: Species, category: CustomizationCategory, slot: strin
   const belly = () => box(bodyCX, bodyCY + bodyRY * 0.28, bodyRX * 1.15);
   const rabbitEars = () => box(headCX, headCY - headR * 1.1, headR * 1.6);
   const rabbitTail = () => box(bodyCX - bodyRX * 0.95, bodyCY + bodyRY * 0.45, bodyRY * 1.2);
+  const dragonHorns = () => box(headCX, headCY - headR * 0.75, headR * 1.35);
 
   if (category === "accessory") {
     const AA = ACCESSORY[species];
     if (value === ACCESSORY.unicorn.starClip) return undefined; // whole-image shimmer
     if (value === ACCESSORY.rabbit.stardust) return undefined; // whole-image star dust
-    if (value === ACCESSORY.unicorn.ribbon || value === ACCESSORY.cat.bellCollar || value === ACCESSORY.fox.scarf || value === ACCESSORY.rabbit.bow)
+    if (value === ACCESSORY.unicorn.ribbon || value === ACCESSORY.cat.bellCollar || value === ACCESSORY.fox.scarf || value === ACCESSORY.rabbit.bow || value === ACCESSORY.dragon.fang)
       return box(A.neck.x, A.neck.y, headR * 1.1);
     if (value === ACCESSORY.cat.bow || value === ACCESSORY.cat.partyHat || value === ACCESSORY.fox.beanie || value === ACCESSORY.rabbit.nightcap)
       return box(A.headTop.x, headCY - headR * 0.55, headR * 1.4);
     if (value === ACCESSORY.unicorn.flowerCrown) return box(headCX, headCY - headR * 0.2, headR * 1.4);
     if (value === ACCESSORY.fox.boots) return box(bodyCX, feetY - 4, bodyRX * 1.25);
-    // Swim set — every species sells the same items, so match on the per-species map.
-    if (value === AA.swimsuit) return box(bodyCX, bodyCY + bodyRY * 0.25, bodyRX * 1.2);
-    if (value === AA.swimRing) return box(bodyCX, bodyCY + bodyRY * 0.3, bodyRX * 1.55);
+    // Dragon: goggles rest on the forehead; the blue breath curls at the mouth;
+    // the treasure heap sits on the ground to his left; the cape stays full-body.
+    if (value === ACCESSORY.dragon.goggles) return box(headCX, headCY - headR * 0.6, headR * 1.3);
+    if (value === ACCESSORY.dragon.blueFlame) return box(headCX + headR * 0.35, headCY + headR * 0.7, headR * 1.15);
+    if (value === ACCESSORY.dragon.treasure) return box(18, feetY - 3.5, 11);
+    // Swim set — sold by every species EXCEPT the dragon (tradition deliberately
+    // broken, user decision), so guard the per-species map lookup.
+    if ("swimsuit" in AA && value === AA.swimsuit) return box(bodyCX, bodyCY + bodyRY * 0.25, bodyRX * 1.2);
+    if ("swimRing" in AA && value === AA.swimRing) return box(bodyCX, bodyCY + bodyRY * 0.3, bodyRX * 1.55);
     return undefined;
   }
 
@@ -101,6 +111,10 @@ function focusFor(species: Species, category: CustomizationCategory, slot: strin
     } else if (species === "fox") {
       if (slot === COLOR_SLOT.fox.belly) return belly();
       if (slot === COLOR_SLOT.fox.tailTip) return foxTail();
+    } else if (species === "dragon") {
+      if (slot === COLOR_SLOT.dragon.belly) return belly();
+      if (slot === COLOR_SLOT.dragon.wing) return box(bodyCX, bodyCY - bodyRY * 0.5, bodyRX * 1.5);
+      if (slot === COLOR_SLOT.dragon.horn) return dragonHorns();
     } else {
       if (slot === COLOR_SLOT.rabbit.belly) return belly();
       if (slot === COLOR_SLOT.rabbit.inner) return rabbitEars();
@@ -118,6 +132,11 @@ function focusFor(species: Species, category: CustomizationCategory, slot: strin
     if (slot === STYLE_SLOT.fox.tail) return foxTail();
     // Spots/stripes sit on the torso and are tiny full-body — crop to the trunk.
     if (slot === STYLE_SLOT.fox.fur) return box(bodyCX, bodyCY, bodyRX * 1.15);
+  } else if (species === "dragon") {
+    if (slot === STYLE_SLOT.dragon.horn) return dragonHorns();
+    if (slot === STYLE_SLOT.dragon.crest) return box(headCX, headCY - headR * 0.85, headR * 1.35);
+    // Both tail styles change the TIP — crop to where the raised tail ends.
+    if (slot === STYLE_SLOT.dragon.tail) return box(bodyCX + bodyRX * 1.42, bodyCY - bodyRY * 0.2, 11);
   } else {
     if (slot === STYLE_SLOT.rabbit.ear) return rabbitEars();
     if (slot === STYLE_SLOT.rabbit.tail) return rabbitTail();

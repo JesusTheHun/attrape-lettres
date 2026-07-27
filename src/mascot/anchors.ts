@@ -34,7 +34,8 @@ export interface AccessoryAnchors {
  * drop the most. These are the only species-specific numbers here.
  */
 /* Rabbit: tiny nose high on the face like the cat — same drop. */
-const NECK_K: Record<Species, number> = { unicorn: 0.9, cat: 0.94, fox: 0.86, rabbit: 0.94 };
+/* Dragon: wide low snout like the fox — same drop (tuned in the items QA). */
+const NECK_K: Record<Species, number> = { unicorn: 0.9, cat: 0.94, fox: 0.86, rabbit: 0.94, dragon: 0.86 };
 
 export function accessoryAnchors(species: Species, layout: Layout): AccessoryAnchors {
   const { headCX, headCY, headR, bodyCX } = layout;

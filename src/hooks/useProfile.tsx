@@ -39,7 +39,7 @@ import {
 /* All mutations below act on the ACTIVE child; roster ops switch who that is.  */
 /* -------------------------------------------------------------------------- */
 
-const ALL_SPECIES: Species[] = ["unicorn", "cat", "fox", "rabbit"];
+const ALL_SPECIES: Species[] = ["unicorn", "cat", "fox", "rabbit", "dragon"];
 
 function newId(): string {
   try {
@@ -63,6 +63,7 @@ function blankSpeciesMap(): Record<Species, SpeciesProgress> {
     cat: blankProgress("cat"),
     fox: blankProgress("fox"),
     rabbit: blankProgress("rabbit"),
+    dragon: blankProgress("dragon"),
   };
 }
 

@@ -56,10 +56,12 @@ const U = COLOR_SLOT.unicorn;
 const CA = COLOR_SLOT.cat;
 const FO = COLOR_SLOT.fox;
 const RA = COLOR_SLOT.rabbit;
+const DR = COLOR_SLOT.dragon;
 const US = STYLE_SLOT.unicorn;
 const CS = STYLE_SLOT.cat;
 const FS = STYLE_SLOT.fox;
 const RS = STYLE_SLOT.rabbit;
+const DS = STYLE_SLOT.dragon;
 
 export const CATALOG: CustomizationOption[] = [
   /* ---- Unicorn ------------------------------------------------------- */
@@ -138,6 +140,27 @@ export const CATALOG: CustomizationOption[] = [
   // Worn standing only (stade 2+): the lying nappy-culotte read as a backpack.
   accessory(ACCESSORY.rabbit.swimsuit, "rabbit", "Maillot de bain", "🩱", 60, 2),
   accessory(ACCESSORY.rabbit.swimRing, "rabbit", "Bouée", "🛟", 75),
+
+  /* ---- Dragon --------------------------------------------------------- */
+  color("dragon", DR.body, "braise", "#D97B6C", "Écailles rouge braise", "🔥", 20),
+  color("dragon", DR.body, "charbon", "#8A8D96", "Écailles charbon", "🪨", 20),
+  color("dragon", DR.body, "nuit", "#7E8FB5", "Écailles bleu nuit", "🌙", 20),
+  color("dragon", DR.body, "terre", "#B08968", "Écailles brun terre", "🤎", 18),
+  // The belly is hidden inside the stade-0 egg; wings sprout at 3; horn nubs at 2.
+  color("dragon", DR.belly, "magma", "#FFB27A", "Ventre magma", "🌋", 22, 1),
+  color("dragon", DR.wing, "nuit", "#5F6470", "Ailes nuit", "🦇", 24, 3),
+  color("dragon", DR.wing, "dorees", "#F2C14E", "Ailes dorées", "⭐", 24, 3),
+  color("dragon", DR.horn, "or", "#F2C14E", "Cornes d'or", "✨", 22, 2),
+  color("dragon", DR.horn, "noires", "#4E5560", "Cornes noires", "🖤", 22, 2),
+  style("dragon", DS.horn, "double", "Cornes doubles", "🐉", 45, 3),
+  style("dragon", DS.crest, "lava", "Crête de lave", "🌋", 50, 4),
+  style("dragon", DS.tail, "club", "Queue massue", "🔨", 40, 1),
+  style("dragon", DS.tail, "flame", "Queue de feu", "☄️", 55, 2),
+  accessory(ACCESSORY.dragon.cape, "dragon", "Cape de chevalier", "🦸", 55, 2),
+  accessory(ACCESSORY.dragon.goggles, "dragon", "Lunettes d'aviateur", "🥽", 65, 3),
+  accessory(ACCESSORY.dragon.fang, "dragon", "Collier de croc", "🦷", 45, 2),
+  accessory(ACCESSORY.dragon.treasure, "dragon", "Petit trésor", "🪙", 70),
+  accessory(ACCESSORY.dragon.blueFlame, "dragon", "Flamme bleue", "💙", 200, 4),
 ];
 
 /**
@@ -188,5 +211,14 @@ export const DEFAULT_LOOKS: Record<Species, DefaultLook[]> = {
     { category: "style", slot: RS.ear, value: "hautes", name: "Oreilles hautes", emoji: "🐇", minStage: 2 },
     { category: "style", slot: RS.tail, value: "pompon", name: "Queue pompon", emoji: "⚪" },
     { category: "style", slot: RS.fur, value: "uni", name: "Pelage uni", emoji: "🤍" },
+  ],
+  dragon: [
+    { category: "color", slot: DR.body, value: "#7DB874", name: "Écailles vertes" },
+    { category: "color", slot: DR.belly, value: "#E9DFB2", name: "Ventre sable", minStage: 1 },
+    { category: "color", slot: DR.wing, value: "#E2694F", name: "Ailes braise", minStage: 3 },
+    { category: "color", slot: DR.horn, value: "#EDE3CE", name: "Cornes ivoire", minStage: 2 },
+    { category: "style", slot: DS.horn, value: "straight", name: "Cornes droites", emoji: "🔺", minStage: 2 },
+    { category: "style", slot: DS.crest, value: "charbon", name: "Crête charbon", emoji: "🪨", minStage: 4 },
+    { category: "style", slot: DS.tail, value: "spade", name: "Queue flèche", emoji: "🏹", minStage: 1 },
   ],
 };

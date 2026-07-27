@@ -1,7 +1,8 @@
-import { INK, mix, pick, ramp } from "../../../mascot/growth";
-import { accessoryAnchors } from "../../../mascot/anchors";
-import { Aura, Cheeks, Eyes, FoldedLegs, GroundGlow, Leg, Mouth } from "../../../mascot/parts";
-import { P_ACCESSORY, P_COLOR_SLOT, P_STYLE_SLOT } from "./ids";
+import type { RigProps } from "./growth";
+import { INK, mix, pick, ramp } from "./growth";
+import { accessoryAnchors } from "./anchors";
+import { COLOR_SLOT, STYLE_SLOT, ACCESSORY } from "./ids";
+import { Aura, Cheeks, Eyes, FoldedLegs, GroundGlow, Leg, Mouth } from "./parts";
 import {
   BatWings,
   BellyPlates,
@@ -22,23 +23,22 @@ import {
   Snout,
   SpadeTail,
   Treasure,
-  type PRigProps,
 } from "./dragonParts";
 
 /**
- * Candidate A — « Braise », le dragon de feu (PICKED design + its wardrobe v2).
- * Growth arc: see the v2 proposal. Wardrobe (after user feedback — no swim
- * pair, no shield/helmet, no tail-size item):
- *  - colours: body ×4 (braise/charbon/nuit/terre), ventre magma, ailes ×2,
- *    cornes ×2 (or/noires)
- *  - styles: cornes doubles · crête de lave · queue massue · queue de feu
- *  - accessories: cape de chevalier (stade 2+), lunettes d'aviateur (3+),
- *    collier de croc (2+), petit trésor (dès l'œuf), premium « Flamme bleue »
- *    (legendary blue breath, own beats at 7+/9).
- * NECK_K note: fox profile (0.86) — same low snout.
+ * Dragon — « Braise » timeline. A deep-green fire dragon whose volcano wakes as
+ * he grows: horn nubs (2) → ember wings (3) → charcoal mohawk crest (4) →
+ * belly plates (5) → first flame (6) → fangs + claws + gold horn tips (7) →
+ * lava cracks + nostril smoke (8) → fire storm with ground glow (9).
+ * Stades 0-1 hatch from a cracked egg, shell kept as souvenirs.
+ * Wardrobe: colours body ×4 / ventre magma / ailes ×2 / cornes ×2 · styles
+ * cornes doubles, crête de lave, queue massue, queue de feu · accessories cape
+ * de chevalier (2+), lunettes d'aviateur (3+), collier de croc (2+), petit
+ * trésor (dès l'œuf), premium « Flamme bleue » (own beats at 4/7/9).
+ * No swim pair — the cross-species tradition is deliberately broken here.
  */
 
-interface ASpec {
+interface DSpec {
   egg?: "full" | "bits";
   horn: number;
   wing: number;
@@ -54,7 +54,7 @@ interface ASpec {
   ground?: boolean;
 }
 
-const STAGES: ASpec[] = [
+const STAGES: DSpec[] = [
   { egg: "full", horn: 0, wing: 0, crest: 0, plates: false, flame: 0, aura: 0, ember: 0 }, // 0 in the egg
   { egg: "bits", horn: 0, wing: 0, crest: 0, plates: false, flame: 0, aura: 0, ember: 0 }, // 1 shell souvenirs
   { horn: 3.5, wing: 0, crest: 0, plates: false, flame: 0, aura: 0, ember: 0 }, // 2 horn nubs
@@ -80,10 +80,10 @@ const BLUE_OUTER = "#5BC8FF";
 const BLUE_INNER = "#E8F7FF";
 const BLUE_EMBER = "#7FD1FF";
 
-export function CandidateA({ config, layout, stage, mood = "idle", uid, preview }: PRigProps) {
-  const C = P_COLOR_SLOT.dragon;
-  const S = P_STYLE_SLOT.dragon;
-  const A = P_ACCESSORY.dragon;
+export function Dragon({ config, layout, stage, mood, uid, preview }: RigProps) {
+  const C = COLOR_SLOT.dragon;
+  const S = STYLE_SLOT.dragon;
+  const A = ACCESSORY.dragon;
   const body = pick(config.colors, C.body, "#7DB874");
   const belly = pick(config.colors, C.belly, "#E9DFB2");
   const wingCol = pick(config.colors, C.wing, "#E2694F");
@@ -101,7 +101,7 @@ export function CandidateA({ config, layout, stage, mood = "idle", uid, preview 
   if (preview) spec = { ...spec, egg: undefined, flame: 0, aura: 0, ember: 0, fierce: false, cracks: false, smoke: false, goldTips: false, ground: false };
 
   const { bodyCX, bodyCY, bodyRX, bodyRY, headCX, headCY, headR, eyeR } = layout;
-  const anchor = accessoryAnchors("fox", layout);
+  const anchor = accessoryAnchors("dragon", layout);
   const legW = 7;
   const tailEdge = mix(body, INK, 0.35);
   const crestCol = lavaCrest ? LAVA_CREST : CREST;

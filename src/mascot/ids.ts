@@ -12,6 +12,7 @@ export const COLOR_SLOT = {
   cat: { body: "bodyColor", belly: "bellyColor", tail: "tailColor" },
   fox: { body: "bodyColor", belly: "bellyColor", tailTip: "tailTipColor" },
   rabbit: { body: "bodyColor", belly: "bellyColor", inner: "innerEarColor" },
+  dragon: { body: "bodyColor", belly: "bellyColor", wing: "wingColor", horn: "hornColor" },
 } as const;
 
 /** Style config slots per species — written to config.styles[slot]. */
@@ -20,6 +21,7 @@ export const STYLE_SLOT = {
   cat: { hair: "hair", tail: "tailSize" },
   fox: { fur: "furPattern", tail: "tailSize" },
   rabbit: { ear: "earStyle", tail: "tailStyle", fur: "furPattern" },
+  dragon: { horn: "hornStyle", crest: "crestStyle", tail: "tailStyle" },
 } as const;
 
 /** Accessory option ids — matched verbatim against config.accessories. */
@@ -51,5 +53,14 @@ export const ACCESSORY = {
     stardust: "rabbit.accessory.stardust",
     swimsuit: "rabbit.accessory.swimsuit",
     swimRing: "rabbit.accessory.swim-ring",
+  },
+  // No swim pair on the dragon — the cross-species tradition is deliberately
+  // broken here (user decision, wardrobe v2): a fire dragon doesn't bathe.
+  dragon: {
+    cape: "dragon.accessory.cape",
+    goggles: "dragon.accessory.goggles",
+    fang: "dragon.accessory.fang-necklace",
+    treasure: "dragon.accessory.treasure",
+    blueFlame: "dragon.accessory.blue-flame",
   },
 } as const;

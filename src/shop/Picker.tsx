@@ -22,6 +22,7 @@ const CHOICES: { species: Species; name: string }[] = [
   { species: "cat", name: "Chat" },
   { species: "fox", name: "Renard" },
   { species: "rabbit", name: "Lapin" },
+  { species: "dragon", name: "Dragon" },
 ];
 
 function Choice({

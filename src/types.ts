@@ -228,7 +228,7 @@ export type View =
 /* (design), B (earn+dashboard) and C (spend+customize) all build against this. */
 /* Do not fork these shapes; add agent-local types in agent-owned files.       */
 
-export type Species = "unicorn" | "cat" | "fox" | "rabbit";
+export type Species = "unicorn" | "cat" | "fox" | "rabbit" | "dragon";
 
 /** 0 = baby … 9 = majestic. 10 growth stages. */
 export const GROWTH_STAGES = 10;
