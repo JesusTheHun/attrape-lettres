@@ -36,6 +36,11 @@ libraries.
   `EXERCISES` (the hub catalog). This is where difficulty/content wiring lives.
 - `exercises/AssembleExercise.tsx` — ONE engine for all three syllable modes. Mode
   only reaches `buildSyllableRound`; the assembly loop is mode-agnostic.
+- `exercises/SyllableGridExercise.tsx` — ONE engine for both combinatoire drills
+  (`SyllableGridMode`: `hear` / `vowel`) over the « tableau des syllabes »
+  (`SYLLABLE_GRID_ROWS` × `GRID_VOWELS`, content). The consonant×vowel rung that
+  comes BEFORE any word exercise. Mode only changes the distractor rule and what
+  a tile shows.
 - `App.tsx` — hub + a 3-line view router (`meta.mode ? Assemble : FirstLetter`).
 - `components/ExerciseIcon.tsx` — the hub's original per-exercise icons (tinted
   badge + in-house white pictogram, NO emoji). Keyed by `ExerciseId`, so a new
@@ -75,6 +80,53 @@ These are why the game feels alive to a child. Changing them silently will regre
 **Add a word:** append to `LETTER_WORDS` or `SYLLABLE_WORDS` in `content.ts`. For
 syllable words, author the split. That's it — pools derive automatically.
 
+Two rules on the split, both learned the hard way:
+- **A shared syllable must sound the same in every word that uses it.** One tile
+  string = one baked clip, so MAI-SON (/zɔ̃/) and POIS-SON (/sɔ̃/) cannot coexist
+  — no TTS can voice both. Check `SYLLABLE_BANK` for the tile before adding.
+- **A fragment may take its in-word sound only when that's a real French rule.**
+  Intervocalic S → /z/ (dino-SAURE) and silent finals (choco-LAT) teach something
+  true. PAPI-LLON needed « ll » to say /j/, which is false — it's « ill » that
+  does, and it straddles the split. That word had to go.
+
+**Fix a pronunciation:** add a row to `IPA` in `scripts/generate-vo.mjs` — the
+phonetic target, keyed by lowercase token, matched in the same four utterance
+shapes as `SOUND_SAY`. It rides the *instruction*, so the model still receives
+real French and the prosody survives; a row here suppresses the older homophone
+substitution for that token. `IPA_EXACT` keys whole utterances (the ANNIVERSAIRE
+`AN` tile is /an/, not the /ɑ̃/ of the sound). `IPA_BOTH` keeps both levers for a
+straggler that ignores the instruction alone. Anchor words for « … comme dans … »
+must contain the target sound exactly ONCE (« au, comme dans auto » was wrong:
+/oto/ has two, and the second is spelled O). The backend is non-deterministic —
+delete the clip, re-bake, and LISTEN. A row is a hypothesis until you do.
+
+**A long clip is not a pronunciation bug.** The model sometimes reads its own
+instruction aloud instead of the text — « u » came back as a 20-second story, and
+a 1-syllable « Nid » once ran 30. This looks like a phonetic defect and is not:
+it's a random roll. A five-arm probe (concat / two parts / systemInstruction /
+hammered delimiter / terse) proved it — the SAME payload gave a clean « u » and
+the 30-second « Nid ». Do not rewrite the instruction to fix it. `generate-vo.mjs`
+has a **length gate**: a take running ≥ `VO_GATE_RATIO` (2.2) × the expected
+duration for its shape is thrown out and re-rolled, `VO_GATE_RETRIES` (2) times.
+Calibrated at 0 false positives over 831 clips, worst legitimate ratio 1.77×.
+`--no-gate` disables it. Rejected takes are KEPT in `src/vo/clips/.rejects/`
+(gitignored) — listen to them, because duration alone cannot tell "recited the
+instruction" from "read the text four times", and those need opposite fixes.
+
+Corollary: chase a pronunciation only when French says you must. The three that
+survived scrutiny were reasoned, not heard — the `SON` collision (MAI-SON /zɔ̃/ vs
+POIS-SON /sɔ̃/), « ll » never saying /j/ (it's « ill »), and the once-only anchor
+rule. Everything else was clip roulette and stale files.
+
+**Keep the instruction short.** Styles are HEADS (`STYLE`, `STYLE_SYLLABLE`,
+`STYLE_LETTER`); `styleFor()` appends the IPA clause and the closing « Lis : ».
+An earlier, far wordier wording steered no better by ear and cost ~3× the
+characters. Two parts are load-bearing and must stay: the trailing colon (batch
+has no prompt field, so it PREPENDS — drop the colon and the model reads the
+instruction aloud) and the « enfant de six ans, en français » framing (safety
+classifier context; without it short syllables like « nu », « tu » get rejected as
+English).
+
 **Add a syllable-style exercise:** add a `SyllableMode`, branch it in
 `buildSyllableRound`, add an `EXERCISES` row with that `mode` and a `difficulty`
 (required — 0 = training/no points, 1–4 = accuracy-bonus weight rising with the
@@ -86,6 +138,12 @@ entry in `components/ExerciseIcon.tsx` — a distinct `tint` + an in-house white
 SVG pictogram that says what the game does (letter games get real letterforms;
 the "mêlées" twins wear the `ShuffleChip`). No emoji. The keyed `Record` won't
 compile without it, so this happens in the same change, automatically.
+
+**Add a consonant row to the syllable grid:** append it to `SYLLABLE_GRID_ROWS`
+in `content.ts` (and a matching `SYLLABLE_GRID_LEVELS` row in `levels.ts` if it's
+a new level). Both drills, their pools and their VO derive from it. Keep out any
+consonant whose sound flips with the vowel (C, G, K, QU) — that's Trouve le son /
+Les syllabes jumelles' job, and `levels.test.ts` guards it.
 
 **Tune progression:** edit `SYLLABLE_TIERS` (syllable count + `pick`/`repeats`),
 `FIRST_LETTER_LEVELS` (letter catalog + `pick`/`repeats`), or `SOUND_LEVELS`

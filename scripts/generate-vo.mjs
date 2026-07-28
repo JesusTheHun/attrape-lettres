@@ -42,22 +42,35 @@ import { createServer } from "vite";
 const API_KEY = process.env.GEMINI_API_KEY ?? process.env.GOOGLE_API_KEY;
 const MODEL = process.env.GEMINI_TTS_MODEL ?? "gemini-3.1-flash-tts-preview";
 const VOICE = process.env.GEMINI_TTS_VOICE ?? "Leda"; // warm, youthful; try Aoede/Callirrhoe
-// The French "apprendre à lire" framing isn't spoken (it's a style instruction);
-// it gives the safety classifier language context so short French syllables that
-// collide with flagged English words (e.g. "nu", "tu") aren't rejected.
+// These are HEADS, not complete instructions: styleFor() appends the IPA clause
+// (if any) and the closing « Lis : ». Overriding one via env therefore means
+// supplying a head without trailing punctuation.
+//
+// They are deliberately terse. A five-arm probe pitted this wording against the
+// long, elaborate one it replaced (« d'une voix douce, chaleureuse et enjouée »,
+// « jamais lettre par lettre », « sans prononcer les barres obliques »…) on the
+// same utterances, and a listening pass found the two indistinguishable — while
+// the short form was the only arm that baked « o, comme dans jaune » and « au,
+// comme dans faucon » cleanly, 4 takes out of 4. The long clauses had been added
+// to stop the model reciting its instruction instead of reading; the probe showed
+// that blowout is a random roll no wording controls (the SAME payload gave a
+// clean « u » and a 30-second « Nid »). The length gate owns that failure now, so
+// the prose was pure cost — it had grown to 355 instruction characters against 1
+// of content for « u ».
 const STYLE =
   process.env.GEMINI_TTS_STYLE ??
-  "Tu aides un enfant de six ans à apprendre à lire en français. Lis ce texte français à voix haute, d'une voix douce, chaleureuse et enjouée :";
-// Per-kind styles for the preview vocabulary (src/vo/preview.ts). A syllable must
-// blend into ONE sound, never be spelled out; a lone letter is NAMED. Both keep
-// the "apprendre à lire" framing so the safety classifier reads short syllables
-// (nu, tu, …) as French phonics, not flagged English words.
+  "Lecture pour un enfant de six ans, en français. Voix douce.";
+// Per-kind heads for the preview vocabulary (src/vo/preview.ts). A syllable must
+// blend into ONE sound, never be spelled out; a lone letter is NAMED. All three
+// keep the "enfant de six ans, en français" framing — it isn't spoken, it gives
+// the safety classifier language context so short French syllables that collide
+// with flagged English words (e.g. "nu", "tu") aren't rejected.
 const STYLE_SYLLABLE =
   process.env.GEMINI_TTS_STYLE_SYLLABLE ??
-  "Tu aides un enfant de six ans à apprendre à lire en français. Lis à voix haute cette syllabe française comme un seul son fluide, jamais lettre par lettre, lentement et distinctement, d'une voix douce, chaleureuse et enjouée :";
+  "Lecture pour un enfant de six ans, en français. Voix douce. Une syllabe, un seul son.";
 const STYLE_LETTER =
   process.env.GEMINI_TTS_STYLE_LETTER ??
-  "Tu aides un enfant de six ans à apprendre à lire en français. Prononce à voix haute le nom de cette seule lettre de l'alphabet français, clairement et lentement, d'une voix douce, chaleureuse et enjouée :";
+  "Lecture pour un enfant de six ans, en français. Voix douce. Nomme la lettre.";
 const STYLE_BY_KIND = { phrase: STYLE, syllable: STYLE_SYLLABLE, letter: STYLE_LETTER };
 const DELAY_MS = Number(process.env.GEMINI_TTS_DELAY_MS ?? 1500); // between API calls
 const MAX_RETRIES = Number(process.env.GEMINI_TTS_RETRIES ?? 6);
@@ -222,8 +235,98 @@ function responseToWav(json) {
   return pcmToWav(Buffer.from(data, "base64"), sampleRateFromMime(part.inlineData.mimeType));
 }
 
+/* ------------------------------ length gate -------------------------------- */
+/* The backend is a prose reader, and when it drifts it READS THE INSTRUCTION —
+ * « u » came back a 20-second monologue, « Nid » a 30-second one. That failure is
+ * a random roll, not a property of any utterance or prompt shape: a probe of five
+ * payload shapes × eight utterances × two draws produced a clean « u » and a
+ * catastrophic « Nid » from the SAME shipped payload. So it can't be prompted
+ * away — but it is trivially measurable, because narration runs 2.5–20× long.
+ *
+ * Hence a gate rather than a better instruction. Duration comes from the WAV
+ * header, so there's no ffprobe dependency and the check runs before anything
+ * touches the disk. Rejected clips are simply not written: the sync path re-rolls
+ * on the spot, and the batch path leaves the file absent so the next run
+ * resubmits exactly those (the existing missing-clip reconciliation already
+ * handles it).
+ *
+ * Expected duration is a per-shape line fitted to the 845-clip catalog, measured
+ * cohort by cohort (same shape, same letter count). A flat cap can't work here:
+ * HIPPOPOTAME at 2.6s is five syllables read normally, while « Nid » at 3.84s is
+ * one syllable and therefore narration. */
+const GATE_RATIO = Number(process.env.VO_GATE_RATIO ?? 2.2);
+const GATE_RETRIES = Number(process.env.VO_GATE_RETRIES ?? 2);
+const GATE_OFF = process.argv.includes("--no-gate");
+
+/* onset = what every clip pays regardless of length (breath, attack, trailing
+ * silence); rate = seconds per letter beyond that. Fitted to the cohort medians,
+ * rounded generous so a long legitimate word never trips the gate. */
+const GATE_MODEL = {
+  token: { onset: 1.15, rate: 0.125 }, // 1 letter → 1.28s, 11 → 2.53s
+  "comme dans": { onset: 2.0, rate: 0.085 }, // 16 letters → 3.36s
+  réussite: { onset: 1.9, rate: 0.13 }, // 10 letters → 3.2s
+  phrase: { onset: 2.6, rate: 0.06 }, // 30 letters → 4.4s
+};
+
+/** Which cohort an utterance belongs to — by SHAPE, not by catalog kind. `kind`
+ *  records where a row came from (preview tile vs enumerateUtterances), which is
+ *  why "u" and "ar" are both kind:"phrase" and must not be judged as sentences. */
+const gateShape = (text) =>
+  /^[^\s]+$/.test(text)
+    ? "token"
+    : /, comme dans /.test(text)
+      ? "comme dans"
+      : /^Oui ! /.test(text)
+        ? "réussite"
+        : "phrase";
+
+/** Seconds of audio in a canonical 44-byte-header PCM WAV, or null if unreadable. */
+function wavSeconds(buf) {
+  if (!Buffer.isBuffer(buf) || buf.length < 44) return null;
+  const byteRate = buf.readUInt32LE(28);
+  const dataSize = buf.readUInt32LE(40);
+  return byteRate > 0 ? dataSize / byteRate : null;
+}
+
+/** null when the clip passes, else an Error tagged `.gate` explaining the reject. */
+function gateReject(text, wavBuffer) {
+  if (GATE_OFF) return null;
+  const seconds = wavSeconds(wavBuffer);
+  if (seconds == null) return null; // can't measure ⇒ don't block the bake
+  const shape = gateShape(text);
+  const { onset, rate } = GATE_MODEL[shape];
+  const expected = onset + rate * (text.match(/\p{L}/gu)?.length ?? 1);
+  const ratio = seconds / expected;
+  if (ratio < GATE_RATIO) return null;
+  const err = new Error(
+    `${seconds.toFixed(1)}s pour ${expected.toFixed(1)}s attendues (${ratio.toFixed(1)}× — ${shape}) : le modèle récite probablement l'instruction`,
+  );
+  err.gate = true;
+  return err;
+}
+
+/* Rejected takes are kept here, never in OUT_DIR itself — clips.ts globs
+ * `./clips/*.{m4a,mp3,wav}`, which doesn't descend into subdirectories, so these
+ * are invisible to the build. Keeping them is the difference between a
+ * diagnosable failure and a blind one: a clip can bust the gate by RECITING the
+ * instruction or by REPEATING the text, and those want opposite fixes. Duration
+ * alone can't tell them apart — only listening can. */
+const REJECT_DIR = join(OUT_DIR, ".rejects");
+
 /** Write WAV → encode to final clip (or keep WAV if no encoder). */
 async function bakeClip(item, wavBuffer, encoder) {
+  // Gate BEFORE any write, so a rejected roll leaves nothing behind to be reused.
+  const rejected = gateReject(item.text, wavBuffer);
+  if (rejected) {
+    await mkdir(REJECT_DIR, { recursive: true });
+    // Stamp the attempt so successive re-rolls accumulate instead of overwriting:
+    // three bad takes of one utterance is itself the finding.
+    let n = 0;
+    while (await fileExists(join(REJECT_DIR, `${item.key}__${n}.wav`))) n++;
+    await writeFile(join(REJECT_DIR, `${item.key}__${n}.wav`), wavBuffer);
+    rejected.message += ` [prise gardée : .rejects/${item.key}__${n}.wav]`;
+    throw rejected;
+  }
   const wav = join(OUT_DIR, `${item.key}.wav`);
   await writeFile(wav, wavBuffer);
   if (encoder) {
@@ -384,6 +487,7 @@ async function bakeResults(jsonl, todo, encoder, ext) {
   const byKey = new Map(todo.map((t) => [t.key, t]));
   const lines = jsonl.split("\n").filter((l) => l.trim());
   let made = 0;
+  let gated = 0; // rolls the length gate threw out — retryable, not broken
   const reasons = new Map(); // key → why it didn't bake
   for (let i = 0; i < lines.length; i++) {
     let obj;
@@ -410,11 +514,14 @@ async function bakeResults(jsonl, todo, encoder, ext) {
       made++;
       console.log(`  ✓ [${made}/${todo.length}] ${item.key}.${ext}  "${item.text}"`);
     } catch (e) {
-      reasons.set(item.key, e.message);
-      console.error(`  ✗ ${item.key} — ${e.message}`);
+      // A gate reject is not a failure to fix — it's a bad roll to redo. Nothing
+      // was written, so the missing-clip reconciliation resubmits it on re-run.
+      if (e.gate) gated++;
+      reasons.set(item.key, `${e.gate ? "durée rejetée — " : ""}${e.message}`);
+      console.error(`  ${e.gate ? "↻" : "✗"} ${item.key} — ${e.message}`);
     }
   }
-  return { made, reasons };
+  return { made, reasons, gated };
 }
 
 async function runBatch(todo, encoder, ext) {
@@ -452,9 +559,9 @@ async function runBatch(todo, encoder, ext) {
   }
 
   console.log("\nBaking clips…\n");
-  let made, reasons;
+  let made, reasons, gated;
   try {
-    ({ made, reasons } = await bakeResults(await fetchResults(finished, todo), todo, encoder, ext));
+    ({ made, reasons, gated } = await bakeResults(await fetchResults(finished, todo), todo, encoder, ext));
   } catch (e) {
     // Batch is done server-side; keep the job file so a re-run re-downloads
     // instead of resubmitting. Only a completed download + conversion clears it.
@@ -469,11 +576,19 @@ async function runBatch(todo, encoder, ext) {
   const missing = [];
   for (const t of todo) if (!(await fileExists(t.out))) missing.push(t);
 
-  console.log(`\nDone. ${made} baked${missing.length ? `, ${missing.length} still missing` : ""}.`);
+  console.log(
+    `\nDone. ${made} baked${gated ? `, ${gated} rejetés par le contrôle de durée` : ""}${missing.length ? `, ${missing.length} still missing` : ""}.`,
+  );
   if (missing.length) {
     console.error(`\n${missing.length} item(s) produced no clip (they'll use the robot-voice fallback):`);
     for (const t of missing) console.error(`  ✗ "${t.text}"${reasons.has(t.key) ? ` — ${reasons.get(t.key)}` : ""}`);
     console.error(`\nRe-run to retry only these (missing clips are resubmitted; the rest are skipped).`);
+    if (gated) {
+      console.error(
+        `${gated} d'entre eux sont de mauvais tirages, pas des erreurs : le batch ne peut pas relancer\n` +
+          `en cours de route, donc relancer la commande suffit à les retirer au sort.`,
+      );
+    }
   }
 }
 
@@ -489,11 +604,26 @@ async function runSync(todo, encoder, ext) {
     const wav = join(OUT_DIR, `${item.key}.wav`);
     let calledApi = false;
     try {
-      if (!(await fileExists(wav))) {
-        await writeFile(wav, await synthesize(item.prompt ?? item.text, item.style)); // API → WAV (reused on re-runs)
-        calledApi = true;
+      // Re-roll on the spot when the gate rejects: sync is one call per clip, so
+      // a fresh take costs one request and usually lands (the blowout is random).
+      for (let attempt = 0; ; attempt++) {
+        if (!(await fileExists(wav))) {
+          await writeFile(wav, await synthesize(item.prompt ?? item.text, item.style)); // API → WAV (reused on re-runs)
+          calledApi = true;
+        }
+        try {
+          await bakeClip(item, await readFile(wav), encoder);
+          break;
+        } catch (e) {
+          if (!e.gate) throw e;
+          // A rejected take must never be reused — otherwise the fileExists check
+          // above would replay it forever instead of calling the API again.
+          await unlink(wav).catch(() => {});
+          if (attempt >= GATE_RETRIES) throw e;
+          console.log(`    … ${e.message}; nouveau tirage (${attempt + 1}/${GATE_RETRIES})`);
+          if (DELAY_MS > 0) await sleep(DELAY_MS);
+        }
       }
-      await bakeClip(item, await readFile(wav), encoder);
       made++;
       console.log(`  ✓ ${n} ${item.key}.${ext}  "${item.text}"`);
     } catch (e) {
@@ -637,6 +767,139 @@ const SOUND_SAY = {
   ar: "are", ir: "ire", ur: "hure", our: "oure", oir: "oire",
 };
 
+/* ---------------------------------------------------------------------------
+ * PHONETIC TARGETS — the specification that supersedes the two tables above.
+ *
+ * The tables above argue with the model in French orthography ("zô", "fû",
+ * "hein"): every row is a guess about how a prose reader will misread, and
+ * unreviewable by anyone who wasn't in the listening session. These rows are a
+ * SPEC. « saure → /zɔʁ/ » is either right or wrong about French, and you can
+ * tell which without hearing it.
+ *
+ * The lever is the INSTRUCTION channel, not the text: the model still receives
+ * ordinary French, so prosody, warmth and the anchor word survive intact — only
+ * the disambiguation moves out of band. That's what the homophone hacks could
+ * never do without rewriting what the child hears (« manteau » → « un manteau »).
+ *
+ * Keys are lowercase tokens, matched in the SAME four utterance shapes as
+ * SOUND_SAY, so one row covers the bare prompt, the tile, « … comme dans … »
+ * and « Oui ! … ». A row here SUPPRESSES the homophone substitution for that
+ * token — text stays real. Add to IPA_BOTH to keep both levers.
+ *
+ * Values follow the loi de position: an isolated open syllable takes the closed
+ * vowel (« ro » is /ʁo/, not the /ʁɔ/ of robot), because the tile is heard alone.
+ * Still a hypothesis until you bake and LISTEN — but a falsifiable one. */
+const IPA = {
+  // Bare vowels, teams and nasals (BASIC_SOUNDS / SOUND_TARGETS).
+  a: "a", i: "i", o: "o", u: "y", é: "e", è: "ɛ",
+  ou: "u", oi: "wa", au: "o", eu: "ø", an: "ɑ̃", in: "ɛ̃", on: "ɔ̃",
+  // Closed R rimes — nothing after the /ʁ/, so no parasitic schwa.
+  or: "ɔʁ", ar: "aʁ", ir: "iʁ", ur: "yʁ", our: "uʁ", oir: "waʁ",
+  // Syllable grid, E column: all schwa. The column exists to contrast with É,
+  // so /ə/ drifting to /e/ or /ø/ collapses the exercise, not just the clip.
+  le: "lə", me: "mə", re: "ʁə", ve: "və", pe: "pə", te: "tə", be: "bə",
+  de: "də", fe: "fə", se: "sə", ne: "nə", je: "ʒə", ze: "zə", che: "ʃə",
+  // …É column: the contrast partner.
+  lé: "le", mé: "me", ré: "ʁe", vé: "ve", pé: "pe", té: "te", bé: "be",
+  dé: "de", fé: "fe", sé: "se", né: "ne", jé: "ʒe", zé: "ze", ché: "ʃe",
+  // …A/I/O/U columns.
+  ba: "ba", pa: "pa", ra: "ʁa", ta: "ta", da: "da", ma: "ma", na: "na",
+  ja: "ʒa", la: "la", sa: "sa", fa: "fa", va: "va", za: "za", cha: "ʃa",
+  bi: "bi", pi: "pi", ri: "ʁi", ti: "ti", di: "di", mi: "mi", ni: "ni",
+  ji: "ʒi", li: "li", si: "si", fi: "fi", vi: "vi", zi: "zi", chi: "ʃi",
+  bo: "bo", po: "po", ro: "ʁo", to: "to", do: "do", mo: "mo", no: "no",
+  jo: "ʒo", lo: "lo", so: "so", fo: "fo", vo: "vo", zo: "zo", cho: "ʃo",
+  bu: "by", pu: "py", ru: "ʁy", tu: "ty", du: "dy", mu: "my", nu: "ny",
+  ju: "ʒy", lu: "ly", su: "sy", fu: "fy", vu: "vy", zu: "zy", chu: "ʃy",
+  // Assemble tiles — word fragments with no meaning of their own, which is
+  // exactly why a prose reader mangles them. Each is a slice of ONE authored
+  // word, so the target is how it sounds IN that word.
+  teau: "to", tor: "tɔʁ", ton: "tɔ̃", son: "sɔ̃", ron: "ʁɔ̃", lon: "lɔ̃",
+  chon: "ʃɔ̃", tron: "tʁɔ̃", pan: "pɑ̃", kan: "kɑ̃", pin: "pɛ̃", phin: "fɛ̃",
+  phant: "fɑ̃", co: "ko", ko: "ko", ca: "ka", ci: "si", cop: "kɔp", cro: "kʁo",
+  bot: "bo", lat: "la", mar: "maʁ", nard: "naʁ", per: "pɛʁ", pois: "pwa",
+  ris: "ʁi", rotte: "ʁɔt", rou: "ʁu", sou: "su", mou: "mu", saire: "sɛʁ",
+  tame: "tam", teur: "tœʁ", tive: "tiv", ture: "tyʁ", tère: "tɛʁ", ver: "vɛʁ",
+  voi: "vwa", dile: "dil", leil: "lɛj", um: "ɔm", hip: "ip", gâ: "ɡɑ",
+  gou: "ɡu", hô: "o", hé: "e", phone: "fɔn", pluie: "plɥi", nas: "nɑs",
+  tal: "tal", mate: "mat", dau: "do", py: "pi", tue: "ty", quet: "kɛ",
+  // Intervocalic S says /z/ — a real French rule, and the tile is only ever met
+  // inside its word (dino-SAURE, télévi-SION, fu-SÉE). QUA is the /kwa/ of
+  // AQUARIUM, not the /ka/ of the twin-family graphy (graphies are never spoken).
+  saure: "zɔʁ", sion: "zjɔ̃", sée: "ze", qua: "kwa",
+  // Sound-twins family tokens: the consigne, the bare prompt and every tile
+  // audition speak these. The GRAPHIES are shown, never uttered.
+  ka: "ka", ki: "ki", ké: "ke",
+  // Consonant blends. Spoken ONLY inside « <blend>, comme dans <mot> », never
+  // bare — so they have no tile to check them against, and a reader that slips
+  // a schwa in (/kəʁa/ for « cra ») breaks the very thing the drill teaches:
+  // that two consonants can share one attack. « plu » is /ply/, NOT the /plɥ/ it
+  // becomes inside PLUIE: the token is uttered on its own and needs a vowel.
+  cra: "kʁa", tra: "tʁa", dra: "dʁa", fra: "fʁa", fro: "fʁo",
+  bra: "bʁa", bri: "bʁi", pri: "pʁi", pla: "pla", plu: "ply", gla: "ɡla",
+  // /u/ column of the same drill (loup, poule, bouche).
+  lou: "lu", pou: "pu", bou: "bu",
+};
+
+/* Utterance-level targets, for the cases a token row can't express. */
+const IPA_EXACT = {
+  // The ANNIVERSAIRE tile is /an/ — the double N denasalizes — NOT the /ɑ̃/ that
+  // the lowercase "an" row encodes for the level-4 sound. Exact match keeps the
+  // tile and the sound distinct, same as the SAY_AS row it replaces.
+  AN: "an",
+};
+
+/* Tokens that keep BOTH levers: an authored spoken form AND the phonetic target.
+ * The escalation for a straggler that ignores the instruction on its own — TEAU
+ * read « TE » with /to/ alone, so it also gets fed « tôt ». Belt and braces for a
+ * stubborn handful, never as the default: doubling up re-introduces exactly the
+ * guesswork the spec exists to remove. */
+const IPA_BOTH = new Set(["teau"]);
+
+/** The phonetic target for an item, or null. Mirrors promptText's shape matching
+ *  so one token row covers every utterance that speaks it. `whole` says whether
+ *  the target covers the entire text or just one token inside prose — « an,
+ *  comme dans manteau. » must phonemise "an" and leave the anchor word alone. */
+const ipaTarget = (it) => {
+  if (it.kind === "letter") return null; // a letter is NAMED, never sounded out
+  const exact = IPA_EXACT[it.text];
+  if (exact) return { token: it.text.toLowerCase(), ipa: exact, whole: true };
+  const text = it.kind === "syllable" ? it.text.toLowerCase() : it.text;
+  const hit = (tok, whole) => {
+    const ipa = IPA[tok.toLowerCase()];
+    return ipa ? { token: tok.toLowerCase(), ipa, whole } : null;
+  };
+  const prompt = /^(.+?), comme dans (.+)\.$/.exec(text);
+  const success = /^Oui ! (.+)\.$/.exec(text);
+  const twins = /^Trouve tous les (.+) !$/.exec(text);
+  return (
+    hit(text, true) ??
+    (prompt && hit(prompt[1], false)) ??
+    (success && hit(success[1], false)) ??
+    (twins && hit(twins[1], false)) ??
+    null
+  );
+};
+
+/** Per-item instruction: head, then the phonetic target, then « Lis : ».
+ *
+ *  The trailing colon is load-bearing — a "read what follows" cue, because the
+ *  batch endpoint has no separate prompt field and PREPENDS this to the text.
+ *  Drop it and the model reads the instruction aloud (observed: a clip that said
+ *  « sa prononciation exacte en alphabet phonétique international est O »). So
+ *  the instruction ALWAYS ends here, and only here.
+ *
+ *  The clause is a bare equation rather than a sentence. Spelling out « se
+ *  prononce exactement … en Alphabet Phonétique International — respecte-le
+ *  strictement » steered no better by ear and cost ~120 characters a call. */
+const styleFor = (it) => {
+  const base = STYLE_BY_KIND[it.kind] ?? STYLE;
+  const t = ipaTarget(it);
+  if (!t) return `${base} Lis :`;
+  const clause = t.whole ? `Prononce /${t.ipa}/.` : `« ${t.token} » = /${t.ipa}/.`;
+  return `${base} ${clause} Lis :`;
+};
+
 /** What we actually FEED the TTS for an item — which can differ from the clip's
  *  identity text. An explicit SAY_AS override wins; then the SOUND_SAY token map
  *  is applied inside the three sound-utterance shapes; otherwise a syllable is
@@ -645,6 +908,13 @@ const SOUND_SAY = {
  *  clips.ts is unchanged; only the audio content improves. Letters stay uppercase
  *  AND unmapped (STYLE_LETTER wants the letter NAMED — « O », never « eau »). */
 const promptText = (it) => {
+  // A phonetic target supersedes the homophone tables: the whole point is that
+  // the model receives REAL French and gets the pronunciation out of band, so
+  // the anchor word and the prosody survive. IPA_BOTH opts a straggler back in.
+  const target = ipaTarget(it);
+  if (target && !IPA_BOTH.has(target.token)) {
+    return it.kind === "syllable" ? it.text.toLowerCase() : it.text;
+  }
   const exact = SAY_AS[it.text];
   if (exact) return exact;
   const text = it.kind === "syllable" ? it.text.toLowerCase() : it.text;
@@ -670,7 +940,7 @@ function buildCatalog(enumerateUtterances, enumeratePreviewUtterances) {
   for (const it of [...phrases, ...preview]) {
     if (seen.has(it.text)) continue;
     seen.add(it.text);
-    out.push({ ...it, style: STYLE_BY_KIND[it.kind] ?? STYLE, prompt: promptText(it) });
+    out.push({ ...it, style: styleFor(it), prompt: promptText(it) });
   }
   return out;
 }
@@ -712,6 +982,18 @@ async function main() {
   }
   for (const k of Object.keys(SOUND_SAY)) {
     if (!spokenTokens.has(k)) console.warn(`  ! SOUND_SAY override "${k}" matches no sound token — typo or stale? (no effect)`);
+  }
+  // Same guard for the phonetic spec. This one earns its keep: an earlier probe
+  // hand-authored 60 tokens and 44 turned out never to be uttered (twin graphies
+  // are SHOWN, not spoken) — a full listening pass spent on audio no child hears.
+  for (const k of Object.keys(IPA)) {
+    if (!spokenTokens.has(k)) console.warn(`  ! IPA target "${k}" matches no sound token — typo or stale? (no effect)`);
+  }
+  for (const k of Object.keys(IPA_EXACT)) {
+    if (!known.has(k)) console.warn(`  ! IPA_EXACT target "${k}" matches no utterance — typo or stale? (no effect)`);
+  }
+  for (const k of IPA_BOTH) {
+    if (!IPA[k]) console.warn(`  ! IPA_BOTH "${k}" has no IPA row — it only re-enables the homophone hack`);
   }
 
   // --list: print the rollback map (key → filename, presence) for a group, no API.
