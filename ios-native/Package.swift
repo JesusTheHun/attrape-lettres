@@ -46,6 +46,7 @@ let package = Package(
         .testTarget(
             name: "ALArtTests",
             dependencies: ["ALArt"],
+            resources: [.process("Resources")],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
         .testTarget(

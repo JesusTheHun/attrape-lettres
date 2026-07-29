@@ -1,4 +1,1 @@
-import Testing
-@testable import ALArt
-
-@Test func ALArtTargetBuilds() { #expect(true) }
+// Placeholder removed — ALArt is covered by SVGPathTests / SVGPathCorpusTests.
