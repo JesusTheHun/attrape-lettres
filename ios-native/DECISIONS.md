@@ -451,3 +451,46 @@ and `VO/Utterances.swift` depends on its costs. Per D8 that data belongs in
 `ALCore/Mascot/`, not in ALArt, because the shop and the profile read it too.
 The integration agent declined to invent a shape the mascot port would then have
 to contradict, which was the right call.
+
+## D23 — Rasterisation is testable on the host too, so the pixel loop is not simulator-only
+
+D3 assumed the only way to see pixels was `simctl io screenshot`. It is not:
+`ImageRenderer` runs on macOS, so a `Canvas` replaying a draw list can be
+rasterised and read back inside `swift test`, in milliseconds, with the rest of
+the suite.
+
+This matters because the draw-list assertions have a blind spot they cannot see
+past. `SVGCanvas` composes its own CTM and hands the matrix to
+`GraphicsContext.concatenate`; if those two composed in opposite directions,
+every mascot in the app would be wrong and every draw-list test would still
+pass, because the draw list would be identical. Eight rasterisation tests close
+that gap: translation direction, composition order against an SVG transform
+list, an anchored rotation landing on its anchor, a bounding-box gradient
+staying elliptical, group opacity compositing once rather than double-darkening
+an overlap, clipping, alpha masking, and stroke width scaling with the CTM.
+
+Each was mutation-tested. Dropping the transform in `fill` fails three of them;
+collapsing the bounding-box gradient to a circle fails the gradient one with
+`alpha 0 at x=16` — which is precisely the silent bug D15 was written to
+prevent, reproduced on demand.
+
+The simulator screenshot loop still earns its place for whole screens, fonts and
+the real device pipeline. But geometry no longer has to wait for it.
+
+## D24 — Gradients: every one in the app is `objectBoundingBox`, because none says otherwise
+
+Measured while writing the paint layer: the app declares **no `gradientUnits`
+attribute anywhere**. SVG's default is `objectBoundingBox`, so all 16 gradients
+resolve their coordinates as fractions of the filled element's bounding box and
+are stretched by that box's aspect ratio.
+
+That turns the case D15 flagged as a risk into the only case there is. A radial
+gradient on the ground glow's 4:1 ellipse is an ellipse in SVG and a circle in a
+naïve `RadialGradient` port. So bounding-box units are the **default** in
+`SVGPaint`, and `.userSpaceOnUse` is the opt-out rather than the other way
+round.
+
+Also measured, and simplifying: the two radial gradients declare no `cx`/`cy`/
+`r` (so SVG's 50%/50%/50% applies) and there are **no `fx`/`fy` focal offsets
+anywhere**. `GraphicsContext` cannot express a focal offset, so rather than
+accept one and silently ignore it, the focus is absent from the type.
