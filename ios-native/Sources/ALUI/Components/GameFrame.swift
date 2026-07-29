@@ -14,10 +14,26 @@ import ALCore
 // bonus slip at the moment of the miss, not at the recap. Do not debounce,
 // animate, or batch it.
 //
-// Z-order, from the TSX: the confetti canvas is `zIndex 40` full-bleed and
-// `pointer-events: none`; the header row is `z-[41]`; the children carry no
-// z-index. So confetti draws OVER the game content but UNDER the Menu button
-// and the stars — the ZStack below reproduces exactly that sandwich.
+// Z-order, measured in the TSX rather than assumed — an earlier version of this
+// comment claimed "the children carry no z-index", and two engine agents caught
+// it. They do. Bottom to top on the web:
+//
+//   1. the stage gradient
+//   2. the confetti canvas — `absolute inset-0 pointer-events-none`, `zIndex: 40`
+//   3. the header row — `relative z-[41]` (GameFrame.tsx:35)
+//   4. the children — every one of the nine exercise roots is
+//      `relative z-[41] … px-4 pb-8 pt-2`, and `Finished` is `relative z-[41]` too
+//
+// So the burst passes BEHIND the tiles, the mascot and the word picture, not in
+// front of them. It reads as confetti falling behind the game rather than
+// splattering across it, and at the reward moment the child's eye stays on the
+// word. Drawing it on top is a different, worse feeling — which is why this is a
+// behaviour bug and not a cosmetic one.
+//
+// 3 and 4 are TIED at z-index 41 and the tie breaks on DOM order, in the
+// children's favour. SwiftUI has no tie, so the numbers below are 40 / 41 / 42:
+// the 42 encodes that DOM tie-break, it is not a web value. It matters where a
+// centred `Finished` on a short screen reaches up into the header's band.
 
 // MARK: - The star strip rule (pure, host-tested)
 
@@ -110,7 +126,8 @@ public struct GameFrame<Overlay: View, Content: View>: View {
     ///   - done: rounds completed — engines pass `done ? total : idx`.
     ///   - stars: per-round first-try flags (index = round).
     ///   - overlay: the confetti canvas slot — full-bleed, hit-testing off,
-    ///     painted between the content and the header (z 40 vs z 41).
+    ///     painted BENEATH both the header and the content (z 40, vs 41 and 42):
+    ///     on the web the burst passes behind the tiles. See the file header.
     public init(
         onBack: @escaping () -> Void,
         done: Int,
@@ -142,6 +159,9 @@ public struct GameFrame<Overlay: View, Content: View>: View {
                     Color.clear.preference(key: FlowHeightKey.self, value: proxy.size.height)
                 }
             )
+            // The children's own `relative z-[41]`, plus the DOM tie-break that
+            // puts them above the equally-ranked header (see the header note).
+            .zIndex(42)
 
             // `absolute inset-0 … pointer-events-none`, `zIndex: 40`. Sized to
             // the measured flow (never less than the 620 pt minimum) so the

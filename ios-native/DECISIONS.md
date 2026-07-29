@@ -727,3 +727,113 @@ NOT proved, and honestly outstanding:
   unreferenced. Sync and telemetry are therefore inert in a build made today —
   fail-silent by design, which is precisely why it needs writing down rather than
   trusting a later test to notice.
+
+## D34 — The confetti drew on top of the game. It should draw behind it.
+
+Two engine agents, working on different files, independently reported the same
+defect in `GameFrame.swift`. Its header comment said:
+
+> the children carry no z-index. So confetti draws OVER the game content
+
+The children do carry a z-index. Every one of the nine exercise roots is
+`relative z-[41] flex w-full flex-1 flex-col items-center px-4 pb-8 pt-2`, and
+`Finished` is `relative z-[41]` too, against the canvas's `zIndex: 40`. So on the
+web the burst passes **behind** the tiles, the mascot and the word picture.
+
+That is not cosmetic. Confetti falling behind the game keeps a six-year-old's eye
+on the word they just read; confetti splattering over it takes the eye off the
+one thing the reward is meant to reinforce. Wrong feeling, at the exact moment
+the app is trying to land something.
+
+**Why it survived a whole phase, and what to do about it.** Z-order is invisible
+to every assertion that does not actually draw. The draw list, the view type, the
+modifier chain and all 1115 other tests were equally happy either way. So the fix
+ships with `GameFrameZOrderTests`: two `ImageRenderer` rasterisations that put an
+opaque red overlay and an opaque green content block in the same rectangle and
+read back which colour won — one asserting content beats confetti, one asserting
+confetti still beats the background, because burying the overlay too deep would
+hide the burst entirely and the first test alone would not notice. Mutation-checked:
+restoring the old ordering fails with `px.g → 56 > px.r → 255`.
+
+This is the same lesson as D23, now paid for twice: **`ImageRenderer` on the host
+is the cheapest tier that can see paint order, and any decision about what covers
+what needs a test in that tier.**
+
+A footnote on the fix: the header and the children are both `z-[41]` on the web,
+tied, with the tie broken by DOM order in the children's favour. SwiftUI has no
+tie, so the numbers are 40 / 41 / 42 and the 42 encodes the tie-break rather than
+any web value. It only shows where a centred `Finished` on a short screen reaches
+up into the header's band.
+
+## D35 — `EngineHost`: the nine views take one parameter set, and it holds nothing a caller cannot supply
+
+Four agents wrote the nine views in parallel and produced two shapes: three took
+`audio` / `time` / `award` loose, six took a whole `EngineDeps` and then did this:
+
+```swift
+var wired = deps
+wired.fireConfetti = { system.fire() }   // whatever the caller passed is dropped
+```
+
+Both work. Neither is acceptable at the hub, which has to dispatch over all nine —
+and the second is the worse of the two, because a parameter that is accepted and
+silently ignored reads at the call site as if passing it did something.
+
+The asymmetry is real, not an accident: `fireConfetti` must be *this run's*
+`ConfettiSystem.fire` (the TSX calls `useConfetti()` once per exercise) and the
+view owns that system because the view also has to place the canvas. So the fix
+splits the type by who can actually supply what. `EngineHost` carries the four
+things a caller has — audio, clock, `award`, the announce sleep — and
+`host.deps(fireConfetti:)` completes the set inside `.task`, where the system
+finally exists. All nine views now take `host: EngineHost`.
+
+The test that checked "the caller's fireConfetti must not win" was deleted as a
+question, because `EngineHost` has no such member for a caller to pass — the
+guarantee moved from an assertion into the type. What replaced it is the
+direction that still can go wrong: that wiring the confetti in does not quietly
+drop or substitute one of the four things the caller *did* pass.
+
+## D36 — Two web quirks ported faithfully rather than fixed
+
+Both were found by reading the TSX closely, both are flagged rather than
+corrected, because behaviour is frozen and neither is mine to decide.
+
+**The 350 ms announce timer is not cancelled by a pick.** Every engine speaks a
+prompt 350 ms after a round becomes current. A *correct* tap inside that window
+lets the prompt supersede the success line; the success line settles `false`, the
+ok-gate fails, and the round does not advance. A fast child can stall the game and
+has no idea why. Reproduced in the model, documented in `RoundRunner.swift`'s
+header, and identical to the PWA. Fixing it is a two-line change — cancel the
+announce task in `pick` — but it is a behaviour change.
+
+**The syllable-grid vowel gap tests truthiness, not equality.** The TSX writes
+`flash ? round.target.vowel : ""`. So *any* flash — including a wrong pick's —
+fills the gap with the **target's** vowel, not the picked one. Ported as written
+and pinned by a test so nobody "fixes" it by accident. Whether a child reads that
+as encouragement or as a lie is a design question.
+
+## D37 — Phase 5 inventory
+
+```
+ALUI         31 files   8526 lines   + interaction, tokens, components, 3 models, 9 views
+ALPlatform   17 files   2622 lines   unchanged this phase
+tests        89 files  19158 lines   1117 tests, 183 suites, 0.8 s on the host
+```
+
+Nine exercises, three state machines, one view each, no forks: `AssembleView` is
+one view for three `SyllableMode`s, `SyllableGridView` one for both combinatoire
+drills, `SpellSyllableView` one for five hub rows. Per-engine differences are
+descriptor data — judge key, prompt and success lines, headline, listen text,
+preview-lock asymmetry, seeded and locked slots — so the one-engine-per-family
+rule cannot be broken by a later edit without deleting a factory.
+
+Not proved, and unchanged from D33's list: no SwiftUI `body` is exercised, because
+`swift test` has no renderer. Every rule was extracted into a plain type and
+tested there — `TilePress`, `MissCooldown`, `StarStrip`, `FitLineFit`,
+`ConfettiSystem`, the three models, and per-engine `…Metrics`/`…Stage` values — but
+layout, vertical rhythm, dashed-border rhythm, the CSS-blur-to-shadow-radius
+approximation and the wrap points of every tile row remain for the D3 pixel diff.
+Two of the four agents also flagged a one-frame `runner == nil` placeholder: D9
+forbids seeding in a `@State` default, so the session is built in `.task` and the
+first frame renders an empty stage. Nothing is interactive or audible in it, but
+whether it is perceptible on device is a simulator question, not a host one.

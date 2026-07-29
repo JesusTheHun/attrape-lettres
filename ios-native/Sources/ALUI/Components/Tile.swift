@@ -90,9 +90,21 @@ extension View {
 // MARK: - Authored metrics (Tile.tsx inline styles, verbatim)
 
 public enum TileMetrics {
-    /// `clamp(92px, 27vw, 150px)` — `dim`, the default tile side. The 92 pt
-    /// floor IS the accessibility floor (invariant 6); never parameterise a
-    /// tile below it.
+    /// `clamp(92px, 27vw, 150px)` — `dim`, the DEFAULT tile side.
+    ///
+    /// An earlier version of this comment called 92 pt "the accessibility floor"
+    /// and said never to go below it. That is not what the app does, and three
+    /// engines proved it: the syllable-grid drill authors
+    /// `clamp(62px, 17vw, 96px)`, twins `clamp(60px, 17vw, 92px)`, and the
+    /// assembly tray `clamp(64px, 18vw, 100px)`. Those are authored values for
+    /// grids that must fit a consonant × vowel table on a phone, not oversights,
+    /// and behaviour is frozen — so they are ported as written.
+    ///
+    /// The real floor is Apple's 44 pt, which every one of them clears at every
+    /// viewport from 320 to 1024 (asserted in the engine suites). 92 pt is the
+    /// generous default for a small tile row; treat it as the default, and where
+    /// an engine overrides it, check the override against 44 pt rather than
+    /// against this number.
     public static let defaultSize = FluidSpec(min: 92, vw: 27, max: 150)
 
     /// `clamp(30px, 9vw, 64px)` — the default glyph size.
