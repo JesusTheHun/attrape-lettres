@@ -21,6 +21,7 @@ let package = Package(
         .library(name: "ALCore", targets: ["ALCore"]),
         .library(name: "ALArt", targets: ["ALArt"]),
         .library(name: "ALUI", targets: ["ALUI"]),
+        .library(name: "ALPlatform", targets: ["ALPlatform"]),
     ],
     targets: [
         .target(
@@ -38,6 +39,14 @@ let package = Package(
             resources: [.process("Resources")],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
+        // The iOS adapters — StoreKit, URLSession, UserDefaults, AVFoundation,
+        // CoreHaptics. Imported only by App/. Living in the package rather than
+        // the Xcode target is the whole point: otherwise CI never compiles it.
+        .target(
+            name: "ALPlatform",
+            dependencies: ["ALCore"],
+            swiftSettings: [.swiftLanguageMode(.v5)]
+        ),
         .testTarget(
             name: "ALCoreTests",
             dependencies: ["ALCore"],
@@ -52,6 +61,11 @@ let package = Package(
         .testTarget(
             name: "ALUITests",
             dependencies: ["ALUI"],
+            swiftSettings: [.swiftLanguageMode(.v5)]
+        ),
+        .testTarget(
+            name: "ALPlatformTests",
+            dependencies: ["ALPlatform"],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
     ]
