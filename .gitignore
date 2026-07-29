@@ -51,3 +51,8 @@ pnpm-debug.log*
 
 # vo:build takes thrown out by the length gate (kept for listening, never shipped)
 src/vo/clips/.rejects/
+
+# AI
+.claude/*
+!.claude/skills/
+.claude/skills/*-workspace/
