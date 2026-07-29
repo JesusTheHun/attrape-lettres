@@ -265,7 +265,9 @@ export type View =
   | { kind: "play"; exercise: ExerciseId; level: number }
   | { kind: "dashboard" }
   | { kind: "shop" }
-  | { kind: "pick" };
+  | { kind: "pick" }
+  /** Trial over. Reached only by tapping an exercise — never a startup wall. */
+  | { kind: "paywall" };
 
 /** Mascot + rewards --------------------------------------------------------*/
 /* Shared contract for the mascot / points / customization feature. Agents A   */
@@ -315,44 +317,99 @@ export interface MascotConfig {
 /** Times each (exerciseId, level) has been cleared. Key via ledgerKey(). */
 export type CompletionLedger = Record<string, number>;
 
+/* Sync-safe counters (v4) ----------------------------------------------------*/
+/* One child plays on Dad's phone, Mum's phone and the iPad. Two devices can    */
+/* earn stars for the SAME child while both are offline, so a plain `number`    */
+/* cannot merge: last-write-wins silently eats one device's stars. Every value  */
+/* that can change on two devices at once is therefore stored per device and    */
+/* folded back into the flat number the UI reads (see Profile below).          */
+
+/**
+ * `deviceId` → a count that only ever grows on that device. Because a device
+ * only ever increments its OWN key, merging two replicas is per-key `max` and
+ * is lossless, commutative and idempotent — sync in any order, any number of
+ * times, same result.
+ */
+export type Counter = Record<string, number>;
+
+/**
+ * Stars as a PN-counter: two grow-only halves, balance = Σearned − Σspent.
+ * Never store a running total — a total cannot be merged.
+ */
+export interface StarCounters {
+  /** deviceId → stars ever earned on it. */
+  earned: Counter;
+  /** deviceId → stars ever spent on it. */
+  spent: Counter;
+}
+
+/** ledgerKey() → per-device clear counts. Merged per device, then summed. */
+export type ClearCounters = Record<string, Counter>;
+
+/**
+ * Stamp for a genuinely last-write-wins field (cosmetics only — losing one is
+ * harmless). `at` is Date.now(); `by` breaks ties deterministically so two
+ * devices merging in opposite orders still agree.
+ */
+export interface Rev {
+  at: number;
+  by: string;
+}
+
 /** One mascot's own progress. Kept forever — switching never discards it. */
 export interface SpeciesProgress {
   /** This mascot's current look (stage, colours, styles, accessories). */
   config: MascotConfig;
   /** Option ids bought FOR THIS SPECIES (unlocked, may or may not be equipped). */
   owned: string[];
+  /** LWW stamp for `config`. `owned` needs none — it's a grow-only set. */
+  rev: Rev;
 }
 
 /**
  * The persisted child profile — what storage.ts reads/writes.
  *
  * Progress is split by ownership: growth/look/items live PER SPECIES (each
- * mascot remembers itself), while stars (`balance`) and cleared-levels
- * (`ledger`) belong to the CHILD and survive every mascot switch.
+ * mascot remembers itself), while stars and cleared-levels belong to the CHILD
+ * and survive every mascot switch.
+ *
+ * Every field here is mergeable across devices, by construction:
+ *   chosen  grow-only boolean (OR)     stars   PN-counter
+ *   current LWW via currentRev         clears  per-key counters
+ *   species per-species merge (config LWW, owned grow-only set)
+ * Nothing is a bare running total. See sync/merge.ts.
  */
 export interface PersistedProfile {
-  /** Has a species been picked yet (first-run gate). */
+  /** Has a species been picked yet (first-run gate). Never goes back to false. */
   chosen: boolean;
   /** The active mascot. */
   current: Species;
+  /** LWW stamp for `current` — which mascot you last picked is cosmetic. */
+  currentRev: Rev;
   /** Per-species progress; the child can switch back anytime, nothing is lost. */
   species: Record<Species, SpeciesProgress>;
-  /** Spendable points — GLOBAL to the child, survives switches. */
-  balance: number;
-  /** Cleared (exercise, level) counts — GLOBAL to the child. */
-  ledger: CompletionLedger;
+  /** Stars — GLOBAL to the child, survives switches. Fold with balanceOf(). */
+  stars: StarCounters;
+  /** Cleared (exercise, level) counts — GLOBAL to the child. Fold with ledgerOf(). */
+  clears: ClearCounters;
 }
 
 /**
  * Runtime profile exposed by useProfile: the persisted shape plus flat mirrors
- * of the CURRENT species' `config`/`owned`, so callers keep reading
- * `profile.config` / `profile.owned` unchanged.
+ * the UI reads directly — the CURRENT species' `config`/`owned`, and the two
+ * counter folds. Callers keep reading `profile.balance` / `profile.ledger` /
+ * `profile.config` / `profile.owned` as plain values; only this hook, storage
+ * and sync/merge ever see the counters underneath.
  */
 export interface Profile extends PersistedProfile {
   /** = species[current].config */
   config: MascotConfig;
   /** = species[current].owned */
   owned: string[];
+  /** = balanceOf(stars) — spendable stars, floored at 0. */
+  balance: number;
+  /** = ledgerOf(clears) — clears per (exercise, level), summed over devices. */
+  ledger: CompletionLedger;
 }
 
 /**
@@ -362,15 +419,37 @@ export interface Profile extends PersistedProfile {
  */
 export interface ChildProfile {
   id: string;
+  /**
+   * The child's first name. DEVICE-LOCAL: the sync transport strips it, so the
+   * server only ever holds opaque ids and integers. A device that joins the
+   * household asks the parent « Qui est-ce ? » instead of receiving a name.
+   */
   name: string;
+  /** LWW stamp for `name`, so a rename still merges between local replicas. */
+  nameRev: Rev;
+  /**
+   * Date.now() of the last write to this child, anywhere. Only the delete rule
+   * reads it: a tombstone wins only if nothing happened to the child after it,
+   * so tidying the roster on one phone can't erase a week of play on another.
+   */
+  touchedAt: number;
   profile: PersistedProfile;
 }
 
 /** Everyone who plays on this device + who's currently at the wheel. */
 export interface Roster {
   children: ChildProfile[];
-  /** The child now playing; null shows the "Qui joue ?" welcome screen. */
+  /**
+   * The child now playing; null shows the "Qui joue ?" welcome screen.
+   * DEVICE-LOCAL and never merged — who holds this tablet says nothing about
+   * who holds the other one.
+   */
   activeId: string | null;
+  /**
+   * childId → when it was deleted. Without tombstones a delete cannot win: the
+   * other device still has the child and would resurrect them on next merge.
+   */
+  removed: Record<string, number>;
 }
 
 /** Drop-in replacement for <Ollie mood>. Agent A implements the SVG rig. */

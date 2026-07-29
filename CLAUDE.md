@@ -10,8 +10,13 @@ A French early-reading game for ~6yo children. Vite + React 18 + TypeScript (str
 
 ```bash
 pnpm dev            # local dev server
-pnpm build          # tsc -b && vite build
+pnpm build          # tsc -b && vite build && gen-sw
 pnpm typecheck      # types only
+pnpm test           # vitest
+
+pnpm cap:sync       # build + push dist/ into both native shells
+pnpm ios            # build + sync + open Xcode
+pnpm android        # build + sync + open Android Studio
 ```
 
 Do **not** add `pnpm add <pkg>` commands to answers unless explicitly asked.
@@ -45,6 +50,32 @@ libraries.
 - `components/ExerciseIcon.tsx` — the hub's original per-exercise icons (tinted
   badge + in-house white pictogram, NO emoji). Keyed by `ExerciseId`, so a new
   exercise fails to compile until it has an icon.
+- `kv.ts` — the key/value primitive. localStorage on web; on native, an in-memory
+  cache hydrated once at boot from `@capacitor/preferences` so every read stays
+  synchronous (invariant 1 has nowhere to await). `main.tsx` awaits `hydrateKv()`
+  before mounting.
+- `storage.ts` — the ONLY module that reads or writes profiles. Schema history +
+  the forward-migration rule live in its header. Currently `roster:v4`.
+- `hooks/useProfile.tsx` — the roster, the economy writes, and the v1/v2/v3 → v4
+  migrations. The single choke point for every profile mutation.
+- `device.ts` — this device's id, the key every counter is indexed by. Not an
+  identifier for a person; never send it anywhere.
+- `sync/merge.ts` — pure cross-device merge (counters, LWW stamps, tombstones).
+  No storage, no network, no clock. This is what lets one child's progress live
+  on Dad's phone, Mum's phone and the iPad at once.
+- `sync/client.ts` — the transport around it. Household = a uuid + a join code,
+  no accounts. `toWire` strips names and their stamps, so the server holds only
+  opaque ids and integers. Pull → merge → push on mount and on resume, never on
+  a write (gameplay stays offline-first).
+- `licensing/` — `entitlement.ts` (pure: trial clock, offline grace, fail-open),
+  `store.ts` (the vendor-free IAP seam — StoreKit 2 / Play Billing and nobody
+  else; native adapter still a stub), `useEntitlement.tsx` (provider),
+  `persist.ts`.
+- `telemetry.ts` — first-party analytics + JS error reporting. Closed event list,
+  closed property allowlist, no identifier of any kind.
+- `updates.ts` — self-hosted live updates + the native-version guard.
+- `components/Onboarding.tsx`, `Paywall.tsx`, `ParentalGate.tsx` — the only
+  screens written for the adult in the room. Deliberately not kid-styled.
 
 ## Invariants — do not break these
 
@@ -74,6 +105,63 @@ These are why the game feels alive to a child. Changing them silently will regre
    bonus weighted by the exercise's authored `difficulty` (0 = training, pays
    nothing ever). Never award points outside `sessionReward`, and never make a
    spam-completable path pay.
+9. **Never persist a bare running total.** Anything a child accumulates —
+   stars, clears — is stored per device (`Counter`) and folded back into the
+   plain number the UI reads. A `number` cannot be merged: two phones offline,
+   last-write-wins, and a week of stars is gone. Counters are the reason
+   `profile.balance` still *looks* like a number everywhere outside
+   `useProfile` / `storage.ts` / `sync/merge.ts`. Keep it that way; if a new
+   field can change on two devices at once, it is a counter, not a total.
+   Cosmetics (which mascot, its colours, a name) are the only legitimate
+   last-write-wins fields — losing one costs nothing, losing a star costs trust.
+10. **Nothing identifying leaves the device.** `ChildProfile.name` holds a
+    six-year-old's first name. `sync/client.ts` strips names before upload;
+    `telemetry.ts` has a closed property allowlist with no string escape hatch
+    and never sends `deviceId()`. Both have tests that assert a name cannot
+    appear in a payload. Adding a field to either path means extending those
+    tests, not the allowlist by reflex.
+11. **Money never fails closed.** An unreachable store, a timed-out receipt
+    check, a flat network — none of them may lock a child out. `entitlementOf`
+    keeps a paid family paid through a 14-day offline grace, and `canPlay`
+    returns true for `unknown`. We would rather give play away than show one
+    paying six-year-old a paywall because StoreKit blinked.
+
+## Native, store and money
+
+- **What may ship over the air, and what may not.** A Capacitor app runs its web
+  layer in WKWebView, and the DPLA §3.3.1(B) carve-out permits downloaded
+  *interpreted* code run by WebKit — so JS, CSS, content, levels and VO are
+  fair game, same-day, no review. Never OTA the paywall logic, the price,
+  anything under `licensing/`, a feature hidden at submission, or a bundle
+  needing a native capability the installed binary lacks. That last one is what
+  `minNative` in the update manifest guards; when it trips, the fix is a store
+  release. Guidelines 2.3.1 (hidden features) and 2.5.2 are what get accounts
+  pulled — not shipping a bug fix.
+- **Kids Category (guideline 1.3) shapes the UI, not just the paperwork.** No
+  purchase may sit in front of a child: the expired-trial screen shows a
+  kid-legible "ask a grown-up", and the price only exists behind
+  `ParentalGate`. No third-party analytics, no PII or device information to
+  third parties — which is the whole reason `telemetry.ts` posts to our own
+  endpoint and `store.ts` has no vendor in it. Once in the category we are bound
+  to it, even if it is later deselected.
+- **The trial is Apple's own mechanism.** Guideline 3.1.1 allows a
+  time-based trial before a full unlock via a price-0 non-consumable named
+  `"14-day Trial"`; its StoreKit `purchaseDate` is the clock, because it is
+  signed and survives a reinstall. Play has no price-0 IAP, so Android keeps a
+  local stamp through Auto Backup. Terms must be disclosed BEFORE the trial
+  starts — that is `Onboarding.tsx`, which is why it also carries the consent
+  checkbox (unticked; pre-ticked consent has been invalid since CJEU Planet49).
+- **The two platforms are NOT symmetric on family.** iOS: switch Family Sharing
+  on for the €9.99 non-consumable in App Store Connect — six people, free, no
+  code. Google Play Family Library explicitly does not share in-app purchases,
+  ever; Android restores per Google account only. Any copy promising "toute la
+  famille" must be platform-conditional (`Onboarding.tsx` does this). The fix,
+  when it is wanted, is entitlement on the sync backend keyed by `familyId` —
+  cheap now that the household record exists.
+- **`ios/` and `android/` are not scaffolded yet.** `npx cap add ios` needs
+  CocoaPods; `cap add android` needs the Android SDK. Both directories get
+  committed once created (they hold signing config, icons, Info.plist); the
+  generated contents inside them are gitignored.
 
 ## Recipes
 
@@ -153,6 +241,14 @@ Les syllabes jumelles' job, and `levels.test.ts` guards it.
 in `rewards.ts` (`REWARD_CURVE`, `sessionReward`, `MISS_COOLDOWN_MS`). A careful
 full-perfect run earns curve + `difficulty`; spam earns the bare curve. Keep the
 gradient monotone with the hub order so climbing always out-pays grinding.
+
+**Add a field to the saved profile:** decide its merge class FIRST (invariant
+9) — accumulates on two devices ⇒ `Counter`; cosmetic ⇒ a value plus a `Rev`
+stamp; a set ⇒ grow-only array. Then bump `KEY` to `:vN` in `storage.ts`, add a
+`loadV(N-1)` reader, migrate forward in `useProfile`, and KEEP the old key and
+reader (a rolled-back launch must still read something it understands). Add the
+field to `mergeProfile`/`mergeChild` in the same change, with a test that two
+offline devices both writing it lose nothing.
 
 **Run shape:** every exercise seeds a run through `repeatSession(pool, pick,
 repeats)` — pick N distinct items, replay `repeats` of them, never two rounds in
