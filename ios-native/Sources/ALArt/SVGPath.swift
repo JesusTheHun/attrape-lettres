@@ -389,13 +389,10 @@ public struct SVGShape: Shape {
     }
 
     public func path(in rect: CGRect) -> Path {
-        let path = Path(svg: d)
-        guard viewBox.width > 0, viewBox.height > 0 else { return path }
-        let scale = min(rect.width / viewBox.width, rect.height / viewBox.height)
-        let dx = rect.midX - (viewBox.midX * scale)
-        let dy = rect.midY - (viewBox.midY * scale)
-        return path.applying(CGAffineTransform(scaleX: scale, y: scale).concatenating(
-            CGAffineTransform(translationX: dx, y: dy)
-        ))
+        // The mapping is `SVGCanvas`'s, not a second copy of it. D15 asks for
+        // one drawing model; two implementations of `xMidYMid meet` is how one
+        // of them quietly stops agreeing with the other. A degenerate viewBox
+        // yields `.identity` there, which is the unmapped path here.
+        Path(svg: d).applying(SVGCanvas.viewBoxTransform(viewBox, fitting: rect))
     }
 }

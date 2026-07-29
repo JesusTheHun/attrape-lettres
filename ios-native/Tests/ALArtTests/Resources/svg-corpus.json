@@ -1,951 +1,1877 @@
 {
- "generated": "scripts/extract-svg-corpus.mjs",
- "count": 189,
- "paths": [
-  {
-   "file": "src/components/ExerciseIcon.tsx",
-   "d": "M20.5 26 L26 21",
-   "kind": "static"
-  },
-  {
-   "file": "src/components/ExerciseIcon.tsx",
-   "d": "M20.5 21 L26 26",
-   "kind": "static"
-  },
-  {
-   "file": "src/components/ExerciseIcon.tsx",
-   "d": "M23.8 21 L26 21 L26 23.2",
-   "kind": "static"
-  },
-  {
-   "file": "src/components/ExerciseIcon.tsx",
-   "d": "M23.8 26 L26 26 L26 23.8",
-   "kind": "static"
-  },
-  {
-   "file": "src/components/ExerciseIcon.tsx",
-   "d": "M24 5.5 L24.98 7.02 L27.5 9 L24.98 10.98 L24 12.5 L23.02 10.98 L20.5 9 L23.02 7.02 Z",
-   "kind": "static"
-  },
-  {
-   "file": "src/components/ExerciseIcon.tsx",
-   "d": "M18 18.5 L23.5 24",
-   "kind": "static"
-  },
-  {
-   "file": "src/components/ExerciseIcon.tsx",
-   "d": "M13.4 11.9 a3 3 0 0 1 0 4.2",
-   "kind": "static"
-  },
-  {
-   "file": "src/components/ExerciseIcon.tsx",
-   "d": "M15.6 10.4 a5.2 5.2 0 0 1 0 7.2",
-   "kind": "static"
-  },
-  {
-   "file": "src/components/ExerciseIcon.tsx",
-   "d": "M8.5 12.8 a4.2 4.2 0 0 0 0 6.4",
-   "kind": "static"
-  },
-  {
-   "file": "src/components/ExerciseIcon.tsx",
-   "d": "M6 10.2 a8 8 0 0 0 0 11.6",
-   "kind": "static"
-  },
-  {
-   "file": "src/components/ExerciseIcon.tsx",
-   "d": "M13.5 22.8 C 16.5 25.6, 22 25.6, 25 22.8",
-   "kind": "static"
-  },
-  {
-   "file": "src/components/ExerciseIcon.tsx",
-   "d": "M8 10.5 V21.5",
-   "kind": "static"
-  },
-  {
-   "file": "src/components/ExerciseIcon.tsx",
-   "d": "M5.8 12.4 L8 10 L10.2 12.4",
-   "kind": "static"
-  },
-  {
-   "file": "src/components/ExerciseIcon.tsx",
-   "d": "M5.8 19.6 L8 22 L10.2 19.6",
-   "kind": "static"
-  },
-  {
-   "file": "src/components/ExerciseIcon.tsx",
-   "d": "M18.4 18.4 L23.5 23.5",
-   "kind": "static"
-  },
-  {
-   "file": "src/components/ExerciseIcon.tsx",
-   "d": "M12 12 L16 16 M16 12 L12 16",
-   "kind": "static"
-  },
-  {
-   "file": "src/components/ExerciseIcon.tsx",
-   "d": "M8 13 H11 L15 9 V23 L11 19 H8 Z",
-   "kind": "static"
-  },
-  {
-   "file": "src/components/ExerciseIcon.tsx",
-   "d": "M18 12 a6 6 0 0 1 0 8",
-   "kind": "static"
-  },
-  {
-   "file": "src/components/ExerciseIcon.tsx",
-   "d": "M20.6 9 a10 10 0 0 1 0 14",
-   "kind": "static"
-  },
-  {
-   "file": "src/components/ExerciseIcon.tsx",
-   "d": "M21 9 l2 2 -9 9 -3 1 1 -3 z",
-   "kind": "static"
-  },
-  {
-   "file": "src/components/ExerciseIcon.tsx",
-   "d": "M9 24 H23",
-   "kind": "static"
-  },
-  {
-   "file": "src/components/ExerciseIcon.tsx",
-   "d": "M7 15 H17",
-   "kind": "static"
-  },
-  {
-   "file": "src/components/ExerciseIcon.tsx",
-   "d": "M7 21 H16",
-   "kind": "static"
-  },
-  {
-   "file": "src/components/ExerciseIcon.tsx",
-   "d": "M21 8 l3 3 -8 8 -4 1 1 -4 z",
-   "kind": "static"
-  },
-  {
-   "file": "src/components/ExerciseIcon.tsx",
-   "d": "M7 22 L12 16 L15 19 L18 15 L25 22",
-   "kind": "static"
-  },
-  {
-   "file": "src/components/ExerciseIcon.tsx",
-   "d": "M8 20 C 8 12, 13 11, 12.5 16 C 12 20, 15 21, 19 18 C 21 16.5, 22 15, 22.5 13",
-   "kind": "static"
-  },
-  {
-   "file": "src/components/ExerciseIcon.tsx",
-   "d": "M10.5 12.5 C 12 8.5, 20 8.5, 21.5 12.5",
-   "kind": "static"
-  },
-  {
-   "file": "src/components/ExerciseIcon.tsx",
-   "d": "M6 13 H15",
-   "kind": "static"
-  },
-  {
-   "file": "src/components/ExerciseIcon.tsx",
-   "d": "M6 19 H14",
-   "kind": "static"
-  },
-  {
-   "file": "src/components/ExerciseIcon.tsx",
-   "d": "M18 8 l3 3 -7 7 -4 1 1 -4 z",
-   "kind": "static"
-  },
-  {
-   "file": "src/img/igloo.svg",
-   "d": "M20 92 A44 40 0 0 1 108 92 Z",
-   "kind": "static"
-  },
-  {
-   "file": "src/img/igloo.svg",
-   "d": "M24 80 Q64 72 104 80",
-   "kind": "static"
-  },
-  {
-   "file": "src/img/igloo.svg",
-   "d": "M28 66 Q64 59 100 66",
-   "kind": "static"
-  },
-  {
-   "file": "src/img/igloo.svg",
-   "d": "M40 56 Q64 51 88 56",
-   "kind": "static"
-  },
-  {
-   "file": "src/img/igloo.svg",
-   "d": "M44 90 L45 81",
-   "kind": "static"
-  },
-  {
-   "file": "src/img/igloo.svg",
-   "d": "M64 91 L64 80",
-   "kind": "static"
-  },
-  {
-   "file": "src/img/igloo.svg",
-   "d": "M84 90 L83 81",
-   "kind": "static"
-  },
-  {
-   "file": "src/img/igloo.svg",
-   "d": "M53 78 L54 67",
-   "kind": "static"
-  },
-  {
-   "file": "src/img/igloo.svg",
-   "d": "M75 78 L74 67",
-   "kind": "static"
-  },
-  {
-   "file": "src/img/igloo.svg",
-   "d": "M54 64 L55 57",
-   "kind": "static"
-  },
-  {
-   "file": "src/img/igloo.svg",
-   "d": "M74 64 L73 57",
-   "kind": "static"
-  },
-  {
-   "file": "src/img/igloo.svg",
-   "d": "M47 92 L47 78 A17 17 0 0 1 81 78 L81 92 Z",
-   "kind": "static"
-  },
-  {
-   "file": "src/img/igloo.svg",
-   "d": "M53 92 L53 79 A11 11 0 0 1 75 79 L75 92 Z",
-   "kind": "static"
-  },
-  {
-   "file": "src/img/igloo.svg",
-   "d": "M47 78 A17 17 0 0 1 81 78",
-   "kind": "static"
-  },
-  {
-   "file": "src/img/jupe.svg",
-   "d": "M56 70 L55 106 Q55 109 59 109 L61 109 Q63 109 63 106 L63 70 Z",
-   "kind": "static"
-  },
-  {
-   "file": "src/img/jupe.svg",
-   "d": "M65 70 L65 106 Q65 109 67 109 L69 109 Q73 109 73 106 L72 70 Z",
-   "kind": "static"
-  },
-  {
-   "file": "src/img/jupe.svg",
-   "d": "M52 106 Q52 104 55 104 L63 104 L63 109 Q63 111 60 111 L54 111 Q52 111 52 109 Z",
-   "kind": "static"
-  },
-  {
-   "file": "src/img/jupe.svg",
-   "d": "M65 104 L73 104 Q76 104 76 106 L76 109 Q76 111 74 111 L68 111 Q65 111 65 109 Z",
-   "kind": "static"
-  },
-  {
-   "file": "src/img/jupe.svg",
-   "d": "M50 44 Q50 42 53 42 L75 42 Q78 42 78 44 L79 62 Q79 63 77 63 L51 63 Q49 63 49 62 Z",
-   "kind": "static"
-  },
-  {
-   "file": "src/img/jupe.svg",
-   "d": "M50 45 Q45 47 44 53 L43 65 Q43 68 46 68 Q49 68 49 65 L50 54 Q50 48 52 46 Z",
-   "kind": "static"
-  },
-  {
-   "file": "src/img/jupe.svg",
-   "d": "M78 45 Q83 47 84 53 L85 65 Q85 68 82 68 Q79 68 79 65 L78 54 Q78 48 76 46 Z",
-   "kind": "static"
-  },
-  {
-   "file": "src/img/jupe.svg",
-   "d": "M52 64 L42 88 Q46 92 50 88 Q54 92 58 88 Q62 92 66 88 Q70 92 74 88 Q78 92 82 88 Q84 91 86 88 L76 64 Z",
-   "kind": "static"
-  },
-  {
-   "file": "src/img/jupe.svg",
-   "d": "M53 66 L44 88",
-   "kind": "static"
-  },
-  {
-   "file": "src/img/jupe.svg",
-   "d": "M57 66 L50 88",
-   "kind": "static"
-  },
-  {
-   "file": "src/img/jupe.svg",
-   "d": "M61 66 L58 88",
-   "kind": "static"
-  },
-  {
-   "file": "src/img/jupe.svg",
-   "d": "M65 66 L66 88",
-   "kind": "static"
-  },
-  {
-   "file": "src/img/jupe.svg",
-   "d": "M69 66 L74 88",
-   "kind": "static"
-  },
-  {
-   "file": "src/img/jupe.svg",
-   "d": "M73 66 L84 88",
-   "kind": "static"
-  },
-  {
-   "file": "src/img/jupe.svg",
-   "d": "M52 60 Q52 58 55 58 L73 58 Q76 58 76 60 L76 64 L52 64 Z",
-   "kind": "static"
-  },
-  {
-   "file": "src/img/jupe.svg",
-   "d": "M64 13 C53 13 51 20 51 29 C51 34 52 37 54 39 L56 31 C56 23 59 19 64 19 C69 19 72 23 72 31 L74 39 C76 37 77 34 77 29 C77 20 75 13 64 13 Z",
-   "kind": "static"
-  },
-  {
-   "file": "src/img/jupe.svg",
-   "d": "M53 24 Q56 15 64 15 Q72 15 75 24 Q64 19 53 24 Z",
-   "kind": "static"
-  },
-  {
-   "file": "src/img/jupe.svg",
-   "d": "M60 32 Q64 35 68 32",
-   "kind": "static"
-  },
-  {
-   "file": "src/img/macaron.svg",
-   "d": "M28 55 A36 7 0 0 0 100 55 L98 70 L30 70 Z",
-   "kind": "static"
-  },
-  {
-   "file": "src/img/macaron.svg",
-   "d": "M30 70 Q34.25 74.8 38.5 74.6 Q42.75 77.85 47 76.1 Q51.25 78.95 55.5 76.8 Q59.75 79.4 64 77 Q68.25 79.4 72.5 76.8 Q76.75 78.95 81 76.1 Q85.25 77.85 89.5 74.6 Q93.75 74.8 98 70 C101 82 86 89 64 89 C42 89 28 82 30 70 Z",
-   "kind": "static"
-  },
-  {
-   "file": "src/img/macaron.svg",
-   "d": "M29 42 A35 10 0 0 0 99 42 L100 55 Q95.5 59.8 91 59.6 Q86.5 62.85 82 61.1 Q77.5 63.95 73 61.8 Q68.5 64.4 64 62 Q59.5 64.4 55 61.8 Q50.5 63.95 46 61.1 Q41.5 62.85 37 59.6 Q32.5 59.8 28 55 Z",
-   "kind": "static"
-  },
-  {
-   "file": "src/img/pyjama.svg",
-   "d": "M50 33 L28 43 Q25 45 25 49 L26 55 Q26 58 30 57 L40 53 L50 47 Z",
-   "kind": "static"
-  },
-  {
-   "file": "src/img/pyjama.svg",
-   "d": "M78 33 L100 43 Q103 45 103 49 L102 55 Q102 58 98 57 L88 53 L78 47 Z",
-   "kind": "static"
-  },
-  {
-   "file": "src/img/pyjama.svg",
-   "d": "M47 35 Q47 32 50 32 L78 32 Q81 32 81 35 L82 60 Q82 63 79 63 L49 63 Q46 63 46 60 Z",
-   "kind": "static"
-  },
-  {
-   "file": "src/img/pyjama.svg",
-   "d": "M58 31 L70 31 L68 38 L60 38 Z",
-   "kind": "static"
-  },
-  {
-   "file": "src/img/pyjama.svg",
-   "d": "M24 50 L32 47 L35 55 L27 58 Q24 58 24 55 Z",
-   "kind": "static"
-  },
-  {
-   "file": "src/img/pyjama.svg",
-   "d": "M104 50 L96 47 L93 55 L101 58 Q104 58 104 55 Z",
-   "kind": "static"
-  },
-  {
-   "file": "src/img/pyjama.svg",
-   "d": "M46 58 L82 58 L82 60 Q82 63 79 63 L49 63 Q46 63 46 60 Z",
-   "kind": "static"
-  },
-  {
-   "file": "src/img/pyjama.svg",
-   "d": "M48 68 Q48 66 51 66 L77 66 Q80 66 80 68 L80 73 L48 73 Z",
-   "kind": "static"
-  },
-  {
-   "file": "src/img/pyjama.svg",
-   "d": "M48 73 L45 99 Q45 102 49 102 L59 102 Q62 102 62 99 L64 84 L66 99 Q66 102 69 102 L79 102 Q83 102 82 99 L80 73 Z",
-   "kind": "static"
-  },
-  {
-   "file": "src/img/pyjama.svg",
-   "d": "M45 97 L59 97 L59 99 Q59 102 56 102 L49 102 Q45 102 45 99 Z",
-   "kind": "static"
-  },
-  {
-   "file": "src/img/pyjama.svg",
-   "d": "M66 97 L80 97 L80 99 Q80 102 77 102 L69 102 Q66 102 66 99 Z",
-   "kind": "static"
-  },
-  {
-   "file": "src/mascot/Fox.tsx",
-   "d": "M0 0 C-6 -6 -5 -15 0 -22 C5 -15 6 -6 0 0 Z",
-   "kind": "static"
-  },
-  {
-   "file": "src/mascot/Fox.tsx",
-   "d": "M0 -3 C-3 -7 -3 -13 0 -17 C3 -13 3 -7 0 -3 Z",
-   "kind": "static"
-  },
-  {
-   "file": "src/mascot/Unicorn.tsx",
-   "d": "M0 0 Q18 -24 34 -13 Q25 -6 30 4 Q19 -2 23 11 Q13 3 15 15 Q7 6 6 17 Q1 8 0 0 Z",
-   "kind": "static"
-  },
-  {
-   "file": "src/mascot/Unicorn.tsx",
-   "d": "M4 2 Q15 -14 28 -9",
-   "kind": "static"
-  },
-  {
-   "file": "src/mascot/Unicorn.tsx",
-   "d": "M3 7 Q13 -1 24 2",
-   "kind": "static"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M39 92 L42.5 84.5 L40 78.5",
-   "kind": "static"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M78 92.5 L75 86.5",
-   "kind": "static"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M-12 1 C-11 -8 -5 -12.5 0 -12.5 C5 -12.5 11 -8 12 1 L8 5.5 L4 1.5 L0 5.8 L-4 1.5 L-8 5.5 Z",
-   "kind": "static"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M0 0 L3 -6 L6.5 -1 L10 -5 L12 1 C8 4 3 4 0 0 Z",
-   "kind": "static"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M7 0 L-2.5 -5 Q-0.5 0 -2.5 5 Z",
-   "kind": "static"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M1 -7 L4.5 -1.5 L2 -1.5 L4.5 4 L-2.5 -1 L0 -1 L-2.5 -7 Z",
-   "kind": "static"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M0 0 C-6 -6 -5 -15 0 -22 C5 -15 6 -6 0 0 Z",
-   "kind": "static"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M0 -3 C-3 -7 -3 -13 0 -17 C3 -13 3 -7 0 -3 Z",
-   "kind": "static"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M1 -8 L5 -2 L2.2 -2 L5 4 L-3 -1 L-0.2 -1 L-3 -8 Z",
-   "kind": "static"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M0 -4.4 C3 -4.4 4.4 -3.2 4.4 -1 C4.4 2 2.2 4.4 0 5.6 C-2.2 4.4 -4.4 2 -4.4 -1 C-4.4 -3.2 -3 -4.4 0 -4.4 Z",
-   "kind": "static"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M0 -2.4 L0.75 -0.9 L2.4 -0.7 L1.2 0.45 L1.5 2.1 L0 1.3 L-1.5 2.1 L-1.2 0.45 L-2.4 -0.7 L-0.75 -0.9 Z",
-   "kind": "static"
-  },
-  {
-   "file": "public/icon.svg",
-   "d": "M150 424 L256 104 L362 424",
-   "kind": "static"
-  },
-  {
-   "file": "public/icon.svg",
-   "d": "M194 314 L318 314",
-   "kind": "static"
-  },
-  {
-   "file": "src/mascot/Cat.tsx",
-   "d": "M12 -7.5 Q3.25 -0.5 48 16.75",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/Cat.tsx",
-   "d": "M-21 9 L12 -7.5",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/Cat.tsx",
-   "d": "M3.25 -0.5 Q48 16.75 -21 9 Q12 -7.5 3.25 -0.5 Z",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/Cat.tsx",
-   "d": "M48 16.75 L-21 9 L12 -7.5 Z",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/Cat.tsx",
-   "d": "M3.25 -0.5 L48 16.75 L-21 9 Z",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/Cat.tsx",
-   "d": "M12 -7.5 Q3.25 -0.5 48 16.75",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/Cat.tsx",
-   "d": "M-21 9 Q12 -7.5 3.25 -0.5",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/Cat.tsx",
-   "d": "M48 16.75 L-21 9 L12 -7.5 Z",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/Cat.tsx",
-   "d": "M3.25 -0.5 L48 16.75 L-21 9 L12 -7.5 Z",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/Dragon.tsx",
-   "d": "M3.25 -0.5 L48 16.75",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/Dragon.tsx",
-   "d": "M-21 9 L12 -7.5",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/Dragon.tsx",
-   "d": "M3.25 -0.5 L48 16.75",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/Fox.tsx",
-   "d": "M-21 9 Q12 -7.5 3.25 -0.5",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/Fox.tsx",
-   "d": "M48 16.75 L-21 9",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/Fox.tsx",
-   "d": "M12 -7.5 Q3.25 -0.5 48 16.75 Z",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/Fox.tsx",
-   "d": "M-21 9 Q12 -7.5 3.25 -0.5 Q48 16.75 -21 9 Z",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/Fox.tsx",
-   "d": "M12 -7.5 Q3.25 -0.5 48 16.75 Q-21 9 12 -7.5 Z",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/Fox.tsx",
-   "d": "M3.25 -0.5 Q48 16.75 -21 9",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/Fox.tsx",
-   "d": "M12 -7.5 l3 10 l-6 1 Z",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/Fox.tsx",
-   "d": "M3.25 -0.5 Q48 16.75 -21 9 Z",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/Rabbit.tsx",
-   "d": "M12 -7.5 A3.25 -0.5 0 1 1 48 16.75 A-21 9 0 0 0 12 -7.5 Z",
-   "kind": "variable"
-  },
-  {
-   "file": "src/mascot/Rabbit.tsx",
-   "d": "M3.25 -0.5 Q48 16.75 -21 9 Q12 -7.5 3.25 -0.5 Z",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/Rabbit.tsx",
-   "d": "M48 16.75 Q-21 9 12 -7.5 Q3.25 -0.5 48 16.75 Q-21 9 12 -7.5 Q3.25 -0.5 48 16.75 Z",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/Rabbit.tsx",
-   "d": "M-21 9 Q12 -7.5 3.25 -0.5",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/Rabbit.tsx",
-   "d": "M48 16.75 Q-21 9 12 -7.5",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/Rabbit.tsx",
-   "d": "M3.25 -0.5 L48 16.75",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/Rabbit.tsx",
-   "d": "M-21 9 Q12 -7.5 3.25 -0.5",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/Unicorn.tsx",
-   "d": "M48 16.75 L-21 9 Q12 -7.5 3.25 -0.5 Z",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/Unicorn.tsx",
-   "d": "M48 16.75 Q-21 9 12 -7.5 L3.25 -0.5 Z",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/Unicorn.tsx",
-   "d": "M48 16.75 q -8 3 -6 10 q 2 6 -4 8 q -6 2 -2 8",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/Unicorn.tsx",
-   "d": "M-21 9 q -5 12 -8 -7.5",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/Unicorn.tsx",
-   "d": "M3.25 -0.5 L48 16.75",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/Unicorn.tsx",
-   "d": "M-21 9 L12 -7.5 L3.25 -0.5 Z",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M48 16.75 C-21 9 12 -7.5 3.25 -0.5 Q48 16.75 -21 9 Q12 -7.5 3.25 -0.5 Q48 16.75 -21 9 Z",
-   "kind": "variable"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M12 -7.5 Q3.25 -0.5 48 16.75",
-   "kind": "variable"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M-21 9 C12 -7.5 3.25 -0.5 48 16.75 C-21 9 12 -7.5 3.25 -0.5",
-   "kind": "variable"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M48 82 q 2.6 6 0 14",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M16.75 -21 L9 12",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M-7.5 3.25 L-0.5 48",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M16.75 -21 Q9 12 -7.5 3.25 Q-0.5 48 16.75 -21 Z",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M9 12 L-7.5 3.25 L-0.5 48 Z",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M16.75 -21 C9 12 -7.5 3.25 -0.5 48 C16.75 -21 9 12 -7.5 3.25 Z",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M-0.5 48 Q16.75 -21 9 12",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M0 -7.5 L3.25 0 L0 -0.5 L48 0 Z",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M16.75 -21 L9 12",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M-7.5 3.25 L-0.5 48",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M16.75 -21 L9 12 L-7.5 3.25 Z",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M-0.5 48 l1.1 2.6 l1.1 -2.6 Z",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M16.75 -21 l0.9 3 l1.5 -2.4 Z",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M9 12 l-0.9 3 l-1.5 -2.4 Z",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M-7.5 3.25 Q-0.5 48 16.75 -21 C9 12 -7.5 3.25 -0.5 48 L16.75 -21 L9 12 L-7.5 3.25 L-0.5 48 C16.75 -21 9 12 -7.5 3.25 Z",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M-0.5 48 Q16.75 -21 9 12",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M-7.5 3.25 C-0.5 48 16.75 -21 9 12 C-7.5 3.25 -0.5 48 16.75 -21 Z",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M9 12 C-7.5 3.25 -0.5 48 16.75 -21 L9 12 Q-7.5 3.25 -0.5 48 Z",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M16.75 -21 Q9 12 -7.5 3.25",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M-0.5 48 Q16.75 -21 9 12 C-7.5 3.25 -0.5 48 16.75 -21 C9 12 -7.5 3.25 -0.5 48 Z",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M16.75 -21 C9 12 -7.5 3.25 -0.5 48 C16.75 -21 9 12 -7.5 3.25 Z",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M-0.5 48 A2.8 2.8 0 0 1 16.75 -21 L9 12 A2.18 2.18 0 0 0 -7.5 3.25 Z",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M-0.5 48 L16.75 -21 L9 12 L-7.5 3.25 L-0.5 48 L16.75 -21 L9 12 L-7.5 3.25 Z",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M-0.5 48 L16.75 -21 L9 12 L-7.5 3.25 Z",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M-0.5 48 L16.75 -21 L9 12 Z",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M-7.5 3.25 A1.9 1.9 0 0 0 -0.5 48",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M16.75 -21 A1.9 1.9 0 0 1 9 12",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M-7.5 3.25 L-0.5 48 L16.75 -21 L9 12 L-7.5 3.25 L-0.5 48 L16.75 -21 Z",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M9 12 L-7.5 3.25",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M-0.5 48 L16.75 -21 Q9 12 -7.5 3.25 L-0.5 48 Q16.75 -21 9 12 L-7.5 3.25 Z",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M-0.5 48 L16.75 -21 Q9 12 -7.5 3.25 L-0.5 48 Q16.75 -21 9 12 L-7.5 3.25 Z",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M-0.5 48 L16.75 -21 L9 12 Z",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M-7.5 3.25 L-0.5 48 L16.75 -21",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M9 12 Q-7.5 3.25 -0.5 48",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M16.75 -21 Q9 12 -7.5 3.25 Q-0.5 48 16.75 -21",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M9 12 q2.2 1.7 4.2 0",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M-7.5 3.25 Q-0.5 48 16.75 -21",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M9 12 Q-7.5 3.25 -0.5 48",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M16.75 -21 Q9 12 -7.5 3.25 L-0.5 48 Q16.75 -21 9 12 Z",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/dragonParts.tsx",
-   "d": "M-7.5 3.25 Q-0.5 48 16.75 -21",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/parts.tsx",
-   "d": "M9 12 Q-7.5 3.25 -0.5 48",
-   "kind": "variable"
-  },
-  {
-   "file": "src/mascot/parts.tsx",
-   "d": "M16.75 -21 Q9 12 -7.5 3.25",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/parts.tsx",
-   "d": "M-0.5 48 Q16.75 -21 9 12",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/parts.tsx",
-   "d": "M-7.5 3.25 Q-0.5 48 16.75 -21",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/parts.tsx",
-   "d": "M9 12 Q-7.5 3.25 -0.5 48",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/parts.tsx",
-   "d": "M16.75 -21 Q9 12 -7.5 3.25",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/parts.tsx",
-   "d": "M-0.5 48 Q16.75 -21 9 12 Z",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/parts.tsx",
-   "d": "M-7.5 3.25 Q-0.5 48 16.75 -21 Z",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/parts.tsx",
-   "d": "M9 12 Q-7.5 3.25 -0.5 48",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/parts.tsx",
-   "d": "M16.75 -21 Q9 12 -7.5 3.25",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/parts.tsx",
-   "d": "M-0.5 48 Q16.75 -21 9 12",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/parts.tsx",
-   "d": "M-7.5 3.25 L-0.5 48 Q16.75 -21 9 12 Z",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/parts.tsx",
-   "d": "M-7.5 3.25 L-0.5 48 Q16.75 -21 9 12 Z",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/parts.tsx",
-   "d": "M-7.5 3.25 q 2.6 -0.5 0 48 q -2.6 16.75 0 -21",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/parts.tsx",
-   "d": "M9 12 Q-7.5 3.25 -0.5 48",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/parts.tsx",
-   "d": "M16.75 -21 q 9 -3 12 0 q -7.5 3 3.25 0",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/parts.tsx",
-   "d": "M-0.5 48 Q16.75 -21 9 12",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/parts.tsx",
-   "d": "M-7.5 3.25 L-0.5 48 L16.75 -21 Z",
-   "kind": "template"
-  },
-  {
-   "file": "src/mascot/parts.tsx",
-   "d": "M9 12 L-7.5 3.25 L-0.5 48 Z",
-   "kind": "template"
+  "generated": "scripts/extract-svg-corpus.mjs",
+  "count": 189,
+  "paths": [
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M20.5 26 L26 21",
+      "kind": "static"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M20.5 21 L26 26",
+      "kind": "static"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M23.8 21 L26 21 L26 23.2",
+      "kind": "static"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M23.8 26 L26 26 L26 23.8",
+      "kind": "static"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M24 5.5 L24.98 7.02 L27.5 9 L24.98 10.98 L24 12.5 L23.02 10.98 L20.5 9 L23.02 7.02 Z",
+      "kind": "static"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M18 18.5 L23.5 24",
+      "kind": "static"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M13.4 11.9 a3 3 0 0 1 0 4.2",
+      "kind": "static"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M15.6 10.4 a5.2 5.2 0 0 1 0 7.2",
+      "kind": "static"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M8.5 12.8 a4.2 4.2 0 0 0 0 6.4",
+      "kind": "static"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M6 10.2 a8 8 0 0 0 0 11.6",
+      "kind": "static"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M13.5 22.8 C 16.5 25.6, 22 25.6, 25 22.8",
+      "kind": "static"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M8 10.5 V21.5",
+      "kind": "static"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M5.8 12.4 L8 10 L10.2 12.4",
+      "kind": "static"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M5.8 19.6 L8 22 L10.2 19.6",
+      "kind": "static"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M18.4 18.4 L23.5 23.5",
+      "kind": "static"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M12 12 L16 16 M16 12 L12 16",
+      "kind": "static"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M8 13 H11 L15 9 V23 L11 19 H8 Z",
+      "kind": "static"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M18 12 a6 6 0 0 1 0 8",
+      "kind": "static"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M20.6 9 a10 10 0 0 1 0 14",
+      "kind": "static"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M21 9 l2 2 -9 9 -3 1 1 -3 z",
+      "kind": "static"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M9 24 H23",
+      "kind": "static"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M7 15 H17",
+      "kind": "static"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M7 21 H16",
+      "kind": "static"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M21 8 l3 3 -8 8 -4 1 1 -4 z",
+      "kind": "static"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M7 22 L12 16 L15 19 L18 15 L25 22",
+      "kind": "static"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M8 20 C 8 12, 13 11, 12.5 16 C 12 20, 15 21, 19 18 C 21 16.5, 22 15, 22.5 13",
+      "kind": "static"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M10.5 12.5 C 12 8.5, 20 8.5, 21.5 12.5",
+      "kind": "static"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M6 13 H15",
+      "kind": "static"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M6 19 H14",
+      "kind": "static"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M18 8 l3 3 -7 7 -4 1 1 -4 z",
+      "kind": "static"
+    },
+    {
+      "file": "src/img/igloo.svg",
+      "d": "M20 92 A44 40 0 0 1 108 92 Z",
+      "kind": "static"
+    },
+    {
+      "file": "src/img/igloo.svg",
+      "d": "M24 80 Q64 72 104 80",
+      "kind": "static"
+    },
+    {
+      "file": "src/img/igloo.svg",
+      "d": "M28 66 Q64 59 100 66",
+      "kind": "static"
+    },
+    {
+      "file": "src/img/igloo.svg",
+      "d": "M40 56 Q64 51 88 56",
+      "kind": "static"
+    },
+    {
+      "file": "src/img/igloo.svg",
+      "d": "M44 90 L45 81",
+      "kind": "static"
+    },
+    {
+      "file": "src/img/igloo.svg",
+      "d": "M64 91 L64 80",
+      "kind": "static"
+    },
+    {
+      "file": "src/img/igloo.svg",
+      "d": "M84 90 L83 81",
+      "kind": "static"
+    },
+    {
+      "file": "src/img/igloo.svg",
+      "d": "M53 78 L54 67",
+      "kind": "static"
+    },
+    {
+      "file": "src/img/igloo.svg",
+      "d": "M75 78 L74 67",
+      "kind": "static"
+    },
+    {
+      "file": "src/img/igloo.svg",
+      "d": "M54 64 L55 57",
+      "kind": "static"
+    },
+    {
+      "file": "src/img/igloo.svg",
+      "d": "M74 64 L73 57",
+      "kind": "static"
+    },
+    {
+      "file": "src/img/igloo.svg",
+      "d": "M47 92 L47 78 A17 17 0 0 1 81 78 L81 92 Z",
+      "kind": "static"
+    },
+    {
+      "file": "src/img/igloo.svg",
+      "d": "M53 92 L53 79 A11 11 0 0 1 75 79 L75 92 Z",
+      "kind": "static"
+    },
+    {
+      "file": "src/img/igloo.svg",
+      "d": "M47 78 A17 17 0 0 1 81 78",
+      "kind": "static"
+    },
+    {
+      "file": "src/img/jupe.svg",
+      "d": "M56 70 L55 106 Q55 109 59 109 L61 109 Q63 109 63 106 L63 70 Z",
+      "kind": "static"
+    },
+    {
+      "file": "src/img/jupe.svg",
+      "d": "M65 70 L65 106 Q65 109 67 109 L69 109 Q73 109 73 106 L72 70 Z",
+      "kind": "static"
+    },
+    {
+      "file": "src/img/jupe.svg",
+      "d": "M52 106 Q52 104 55 104 L63 104 L63 109 Q63 111 60 111 L54 111 Q52 111 52 109 Z",
+      "kind": "static"
+    },
+    {
+      "file": "src/img/jupe.svg",
+      "d": "M65 104 L73 104 Q76 104 76 106 L76 109 Q76 111 74 111 L68 111 Q65 111 65 109 Z",
+      "kind": "static"
+    },
+    {
+      "file": "src/img/jupe.svg",
+      "d": "M50 44 Q50 42 53 42 L75 42 Q78 42 78 44 L79 62 Q79 63 77 63 L51 63 Q49 63 49 62 Z",
+      "kind": "static"
+    },
+    {
+      "file": "src/img/jupe.svg",
+      "d": "M50 45 Q45 47 44 53 L43 65 Q43 68 46 68 Q49 68 49 65 L50 54 Q50 48 52 46 Z",
+      "kind": "static"
+    },
+    {
+      "file": "src/img/jupe.svg",
+      "d": "M78 45 Q83 47 84 53 L85 65 Q85 68 82 68 Q79 68 79 65 L78 54 Q78 48 76 46 Z",
+      "kind": "static"
+    },
+    {
+      "file": "src/img/jupe.svg",
+      "d": "M52 64 L42 88 Q46 92 50 88 Q54 92 58 88 Q62 92 66 88 Q70 92 74 88 Q78 92 82 88 Q84 91 86 88 L76 64 Z",
+      "kind": "static"
+    },
+    {
+      "file": "src/img/jupe.svg",
+      "d": "M53 66 L44 88",
+      "kind": "static"
+    },
+    {
+      "file": "src/img/jupe.svg",
+      "d": "M57 66 L50 88",
+      "kind": "static"
+    },
+    {
+      "file": "src/img/jupe.svg",
+      "d": "M61 66 L58 88",
+      "kind": "static"
+    },
+    {
+      "file": "src/img/jupe.svg",
+      "d": "M65 66 L66 88",
+      "kind": "static"
+    },
+    {
+      "file": "src/img/jupe.svg",
+      "d": "M69 66 L74 88",
+      "kind": "static"
+    },
+    {
+      "file": "src/img/jupe.svg",
+      "d": "M73 66 L84 88",
+      "kind": "static"
+    },
+    {
+      "file": "src/img/jupe.svg",
+      "d": "M52 60 Q52 58 55 58 L73 58 Q76 58 76 60 L76 64 L52 64 Z",
+      "kind": "static"
+    },
+    {
+      "file": "src/img/jupe.svg",
+      "d": "M64 13 C53 13 51 20 51 29 C51 34 52 37 54 39 L56 31 C56 23 59 19 64 19 C69 19 72 23 72 31 L74 39 C76 37 77 34 77 29 C77 20 75 13 64 13 Z",
+      "kind": "static"
+    },
+    {
+      "file": "src/img/jupe.svg",
+      "d": "M53 24 Q56 15 64 15 Q72 15 75 24 Q64 19 53 24 Z",
+      "kind": "static"
+    },
+    {
+      "file": "src/img/jupe.svg",
+      "d": "M60 32 Q64 35 68 32",
+      "kind": "static"
+    },
+    {
+      "file": "src/img/macaron.svg",
+      "d": "M28 55 A36 7 0 0 0 100 55 L98 70 L30 70 Z",
+      "kind": "static"
+    },
+    {
+      "file": "src/img/macaron.svg",
+      "d": "M30 70 Q34.25 74.8 38.5 74.6 Q42.75 77.85 47 76.1 Q51.25 78.95 55.5 76.8 Q59.75 79.4 64 77 Q68.25 79.4 72.5 76.8 Q76.75 78.95 81 76.1 Q85.25 77.85 89.5 74.6 Q93.75 74.8 98 70 C101 82 86 89 64 89 C42 89 28 82 30 70 Z",
+      "kind": "static"
+    },
+    {
+      "file": "src/img/macaron.svg",
+      "d": "M29 42 A35 10 0 0 0 99 42 L100 55 Q95.5 59.8 91 59.6 Q86.5 62.85 82 61.1 Q77.5 63.95 73 61.8 Q68.5 64.4 64 62 Q59.5 64.4 55 61.8 Q50.5 63.95 46 61.1 Q41.5 62.85 37 59.6 Q32.5 59.8 28 55 Z",
+      "kind": "static"
+    },
+    {
+      "file": "src/img/pyjama.svg",
+      "d": "M50 33 L28 43 Q25 45 25 49 L26 55 Q26 58 30 57 L40 53 L50 47 Z",
+      "kind": "static"
+    },
+    {
+      "file": "src/img/pyjama.svg",
+      "d": "M78 33 L100 43 Q103 45 103 49 L102 55 Q102 58 98 57 L88 53 L78 47 Z",
+      "kind": "static"
+    },
+    {
+      "file": "src/img/pyjama.svg",
+      "d": "M47 35 Q47 32 50 32 L78 32 Q81 32 81 35 L82 60 Q82 63 79 63 L49 63 Q46 63 46 60 Z",
+      "kind": "static"
+    },
+    {
+      "file": "src/img/pyjama.svg",
+      "d": "M58 31 L70 31 L68 38 L60 38 Z",
+      "kind": "static"
+    },
+    {
+      "file": "src/img/pyjama.svg",
+      "d": "M24 50 L32 47 L35 55 L27 58 Q24 58 24 55 Z",
+      "kind": "static"
+    },
+    {
+      "file": "src/img/pyjama.svg",
+      "d": "M104 50 L96 47 L93 55 L101 58 Q104 58 104 55 Z",
+      "kind": "static"
+    },
+    {
+      "file": "src/img/pyjama.svg",
+      "d": "M46 58 L82 58 L82 60 Q82 63 79 63 L49 63 Q46 63 46 60 Z",
+      "kind": "static"
+    },
+    {
+      "file": "src/img/pyjama.svg",
+      "d": "M48 68 Q48 66 51 66 L77 66 Q80 66 80 68 L80 73 L48 73 Z",
+      "kind": "static"
+    },
+    {
+      "file": "src/img/pyjama.svg",
+      "d": "M48 73 L45 99 Q45 102 49 102 L59 102 Q62 102 62 99 L64 84 L66 99 Q66 102 69 102 L79 102 Q83 102 82 99 L80 73 Z",
+      "kind": "static"
+    },
+    {
+      "file": "src/img/pyjama.svg",
+      "d": "M45 97 L59 97 L59 99 Q59 102 56 102 L49 102 Q45 102 45 99 Z",
+      "kind": "static"
+    },
+    {
+      "file": "src/img/pyjama.svg",
+      "d": "M66 97 L80 97 L80 99 Q80 102 77 102 L69 102 Q66 102 66 99 Z",
+      "kind": "static"
+    },
+    {
+      "file": "src/mascot/Fox.tsx",
+      "d": "M0 0 C-6 -6 -5 -15 0 -22 C5 -15 6 -6 0 0 Z",
+      "kind": "static"
+    },
+    {
+      "file": "src/mascot/Fox.tsx",
+      "d": "M0 -3 C-3 -7 -3 -13 0 -17 C3 -13 3 -7 0 -3 Z",
+      "kind": "static"
+    },
+    {
+      "file": "src/mascot/Unicorn.tsx",
+      "d": "M0 0 Q18 -24 34 -13 Q25 -6 30 4 Q19 -2 23 11 Q13 3 15 15 Q7 6 6 17 Q1 8 0 0 Z",
+      "kind": "static"
+    },
+    {
+      "file": "src/mascot/Unicorn.tsx",
+      "d": "M4 2 Q15 -14 28 -9",
+      "kind": "static"
+    },
+    {
+      "file": "src/mascot/Unicorn.tsx",
+      "d": "M3 7 Q13 -1 24 2",
+      "kind": "static"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M39 92 L42.5 84.5 L40 78.5",
+      "kind": "static"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M78 92.5 L75 86.5",
+      "kind": "static"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M-12 1 C-11 -8 -5 -12.5 0 -12.5 C5 -12.5 11 -8 12 1 L8 5.5 L4 1.5 L0 5.8 L-4 1.5 L-8 5.5 Z",
+      "kind": "static"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M0 0 L3 -6 L6.5 -1 L10 -5 L12 1 C8 4 3 4 0 0 Z",
+      "kind": "static"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M7 0 L-2.5 -5 Q-0.5 0 -2.5 5 Z",
+      "kind": "static"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M1 -7 L4.5 -1.5 L2 -1.5 L4.5 4 L-2.5 -1 L0 -1 L-2.5 -7 Z",
+      "kind": "static"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M0 0 C-6 -6 -5 -15 0 -22 C5 -15 6 -6 0 0 Z",
+      "kind": "static"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M0 -3 C-3 -7 -3 -13 0 -17 C3 -13 3 -7 0 -3 Z",
+      "kind": "static"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M1 -8 L5 -2 L2.2 -2 L5 4 L-3 -1 L-0.2 -1 L-3 -8 Z",
+      "kind": "static"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M0 -4.4 C3 -4.4 4.4 -3.2 4.4 -1 C4.4 2 2.2 4.4 0 5.6 C-2.2 4.4 -4.4 2 -4.4 -1 C-4.4 -3.2 -3 -4.4 0 -4.4 Z",
+      "kind": "static"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M0 -2.4 L0.75 -0.9 L2.4 -0.7 L1.2 0.45 L1.5 2.1 L0 1.3 L-1.5 2.1 L-1.2 0.45 L-2.4 -0.7 L-0.75 -0.9 Z",
+      "kind": "static"
+    },
+    {
+      "file": "public/icon.svg",
+      "d": "M150 424 L256 104 L362 424",
+      "kind": "static"
+    },
+    {
+      "file": "public/icon.svg",
+      "d": "M194 314 L318 314",
+      "kind": "static"
+    },
+    {
+      "file": "src/mascot/Cat.tsx",
+      "d": "M12 -7.5 Q3.25 -0.5 48 16.75",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/Cat.tsx",
+      "d": "M-21 9 L12 -7.5",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/Cat.tsx",
+      "d": "M3.25 -0.5 Q48 16.75 -21 9 Q12 -7.5 3.25 -0.5 Z",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/Cat.tsx",
+      "d": "M48 16.75 L-21 9 L12 -7.5 Z",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/Cat.tsx",
+      "d": "M3.25 -0.5 L48 16.75 L-21 9 Z",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/Cat.tsx",
+      "d": "M12 -7.5 Q3.25 -0.5 48 16.75",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/Cat.tsx",
+      "d": "M-21 9 Q12 -7.5 3.25 -0.5",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/Cat.tsx",
+      "d": "M48 16.75 L-21 9 L12 -7.5 Z",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/Cat.tsx",
+      "d": "M3.25 -0.5 L48 16.75 L-21 9 L12 -7.5 Z",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/Dragon.tsx",
+      "d": "M3.25 -0.5 L48 16.75",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/Dragon.tsx",
+      "d": "M-21 9 L12 -7.5",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/Dragon.tsx",
+      "d": "M3.25 -0.5 L48 16.75",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/Fox.tsx",
+      "d": "M-21 9 Q12 -7.5 3.25 -0.5",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/Fox.tsx",
+      "d": "M48 16.75 L-21 9",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/Fox.tsx",
+      "d": "M12 -7.5 Q3.25 -0.5 48 16.75 Z",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/Fox.tsx",
+      "d": "M-21 9 Q12 -7.5 3.25 -0.5 Q48 16.75 -21 9 Z",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/Fox.tsx",
+      "d": "M12 -7.5 Q3.25 -0.5 48 16.75 Q-21 9 12 -7.5 Z",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/Fox.tsx",
+      "d": "M3.25 -0.5 Q48 16.75 -21 9",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/Fox.tsx",
+      "d": "M12 -7.5 l3 10 l-6 1 Z",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/Fox.tsx",
+      "d": "M3.25 -0.5 Q48 16.75 -21 9 Z",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/Rabbit.tsx",
+      "d": "M12 -7.5 A3.25 -0.5 0 1 1 48 16.75 A-21 9 0 0 0 12 -7.5 Z",
+      "kind": "variable"
+    },
+    {
+      "file": "src/mascot/Rabbit.tsx",
+      "d": "M3.25 -0.5 Q48 16.75 -21 9 Q12 -7.5 3.25 -0.5 Z",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/Rabbit.tsx",
+      "d": "M48 16.75 Q-21 9 12 -7.5 Q3.25 -0.5 48 16.75 Q-21 9 12 -7.5 Q3.25 -0.5 48 16.75 Z",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/Rabbit.tsx",
+      "d": "M-21 9 Q12 -7.5 3.25 -0.5",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/Rabbit.tsx",
+      "d": "M48 16.75 Q-21 9 12 -7.5",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/Rabbit.tsx",
+      "d": "M3.25 -0.5 L48 16.75",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/Rabbit.tsx",
+      "d": "M-21 9 Q12 -7.5 3.25 -0.5",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/Unicorn.tsx",
+      "d": "M48 16.75 L-21 9 Q12 -7.5 3.25 -0.5 Z",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/Unicorn.tsx",
+      "d": "M48 16.75 Q-21 9 12 -7.5 L3.25 -0.5 Z",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/Unicorn.tsx",
+      "d": "M48 16.75 q -8 3 -6 10 q 2 6 -4 8 q -6 2 -2 8",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/Unicorn.tsx",
+      "d": "M-21 9 q -5 12 -8 -7.5",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/Unicorn.tsx",
+      "d": "M3.25 -0.5 L48 16.75",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/Unicorn.tsx",
+      "d": "M-21 9 L12 -7.5 L3.25 -0.5 Z",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M48 16.75 C-21 9 12 -7.5 3.25 -0.5 Q48 16.75 -21 9 Q12 -7.5 3.25 -0.5 Q48 16.75 -21 9 Z",
+      "kind": "variable"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M12 -7.5 Q3.25 -0.5 48 16.75",
+      "kind": "variable"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M-21 9 C12 -7.5 3.25 -0.5 48 16.75 C-21 9 12 -7.5 3.25 -0.5",
+      "kind": "variable"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M48 82 q 2.6 6 0 14",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M16.75 -21 L9 12",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M-7.5 3.25 L-0.5 48",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M16.75 -21 Q9 12 -7.5 3.25 Q-0.5 48 16.75 -21 Z",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M9 12 L-7.5 3.25 L-0.5 48 Z",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M16.75 -21 C9 12 -7.5 3.25 -0.5 48 C16.75 -21 9 12 -7.5 3.25 Z",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M-0.5 48 Q16.75 -21 9 12",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M0 -7.5 L3.25 0 L0 -0.5 L48 0 Z",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M16.75 -21 L9 12",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M-7.5 3.25 L-0.5 48",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M16.75 -21 L9 12 L-7.5 3.25 Z",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M-0.5 48 l1.1 2.6 l1.1 -2.6 Z",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M16.75 -21 l0.9 3 l1.5 -2.4 Z",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M9 12 l-0.9 3 l-1.5 -2.4 Z",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M-7.5 3.25 Q-0.5 48 16.75 -21 C9 12 -7.5 3.25 -0.5 48 L16.75 -21 L9 12 L-7.5 3.25 L-0.5 48 C16.75 -21 9 12 -7.5 3.25 Z",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M-0.5 48 Q16.75 -21 9 12",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M-7.5 3.25 C-0.5 48 16.75 -21 9 12 C-7.5 3.25 -0.5 48 16.75 -21 Z",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M9 12 C-7.5 3.25 -0.5 48 16.75 -21 L9 12 Q-7.5 3.25 -0.5 48 Z",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M16.75 -21 Q9 12 -7.5 3.25",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M-0.5 48 Q16.75 -21 9 12 C-7.5 3.25 -0.5 48 16.75 -21 C9 12 -7.5 3.25 -0.5 48 Z",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M16.75 -21 C9 12 -7.5 3.25 -0.5 48 C16.75 -21 9 12 -7.5 3.25 Z",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M-0.5 48 A2.8 2.8 0 0 1 16.75 -21 L9 12 A2.18 2.18 0 0 0 -7.5 3.25 Z",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M-0.5 48 L16.75 -21 L9 12 L-7.5 3.25 L-0.5 48 L16.75 -21 L9 12 L-7.5 3.25 Z",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M-0.5 48 L16.75 -21 L9 12 L-7.5 3.25 Z",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M-0.5 48 L16.75 -21 L9 12 Z",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M-7.5 3.25 A1.9 1.9 0 0 0 -0.5 48",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M16.75 -21 A1.9 1.9 0 0 1 9 12",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M-7.5 3.25 L-0.5 48 L16.75 -21 L9 12 L-7.5 3.25 L-0.5 48 L16.75 -21 Z",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M9 12 L-7.5 3.25",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M-0.5 48 L16.75 -21 Q9 12 -7.5 3.25 L-0.5 48 Q16.75 -21 9 12 L-7.5 3.25 Z",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M-0.5 48 L16.75 -21 Q9 12 -7.5 3.25 L-0.5 48 Q16.75 -21 9 12 L-7.5 3.25 Z",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M-0.5 48 L16.75 -21 L9 12 Z",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M-7.5 3.25 L-0.5 48 L16.75 -21",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M9 12 Q-7.5 3.25 -0.5 48",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M16.75 -21 Q9 12 -7.5 3.25 Q-0.5 48 16.75 -21",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M9 12 q2.2 1.7 4.2 0",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M-7.5 3.25 Q-0.5 48 16.75 -21",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M9 12 Q-7.5 3.25 -0.5 48",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M16.75 -21 Q9 12 -7.5 3.25 L-0.5 48 Q16.75 -21 9 12 Z",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M-7.5 3.25 Q-0.5 48 16.75 -21",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/parts.tsx",
+      "d": "M9 12 Q-7.5 3.25 -0.5 48",
+      "kind": "variable"
+    },
+    {
+      "file": "src/mascot/parts.tsx",
+      "d": "M16.75 -21 Q9 12 -7.5 3.25",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/parts.tsx",
+      "d": "M-0.5 48 Q16.75 -21 9 12",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/parts.tsx",
+      "d": "M-7.5 3.25 Q-0.5 48 16.75 -21",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/parts.tsx",
+      "d": "M9 12 Q-7.5 3.25 -0.5 48",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/parts.tsx",
+      "d": "M16.75 -21 Q9 12 -7.5 3.25",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/parts.tsx",
+      "d": "M-0.5 48 Q16.75 -21 9 12 Z",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/parts.tsx",
+      "d": "M-7.5 3.25 Q-0.5 48 16.75 -21 Z",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/parts.tsx",
+      "d": "M9 12 Q-7.5 3.25 -0.5 48",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/parts.tsx",
+      "d": "M16.75 -21 Q9 12 -7.5 3.25",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/parts.tsx",
+      "d": "M-0.5 48 Q16.75 -21 9 12",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/parts.tsx",
+      "d": "M-7.5 3.25 L-0.5 48 Q16.75 -21 9 12 Z",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/parts.tsx",
+      "d": "M-7.5 3.25 L-0.5 48 Q16.75 -21 9 12 Z",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/parts.tsx",
+      "d": "M-7.5 3.25 q 2.6 -0.5 0 48 q -2.6 16.75 0 -21",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/parts.tsx",
+      "d": "M9 12 Q-7.5 3.25 -0.5 48",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/parts.tsx",
+      "d": "M16.75 -21 q 9 -3 12 0 q -7.5 3 3.25 0",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/parts.tsx",
+      "d": "M-0.5 48 Q16.75 -21 9 12",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/parts.tsx",
+      "d": "M-7.5 3.25 L-0.5 48 L16.75 -21 Z",
+      "kind": "template"
+    },
+    {
+      "file": "src/mascot/parts.tsx",
+      "d": "M9 12 L-7.5 3.25 L-0.5 48 Z",
+      "kind": "template"
+    }
+  ],
+  "statics": [
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M20.5 26 L26 21"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M20.5 21 L26 26"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M23.8 21 L26 21 L26 23.2"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M23.8 26 L26 26 L26 23.8"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M24 5.5 L24.98 7.02 L27.5 9 L24.98 10.98 L24 12.5 L23.02 10.98 L20.5 9 L23.02 7.02 Z"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M18 18.5 L23.5 24"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M13.4 11.9 a3 3 0 0 1 0 4.2"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M15.6 10.4 a5.2 5.2 0 0 1 0 7.2"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M8.5 12.8 a4.2 4.2 0 0 0 0 6.4"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M6 10.2 a8 8 0 0 0 0 11.6"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M13.5 22.8 C 16.5 25.6, 22 25.6, 25 22.8"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M8 10.5 V21.5"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M5.8 12.4 L8 10 L10.2 12.4"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M5.8 19.6 L8 22 L10.2 19.6"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M18.4 18.4 L23.5 23.5"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M12 12 L16 16 M16 12 L12 16"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M8 13 H11 L15 9 V23 L11 19 H8 Z"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M18 12 a6 6 0 0 1 0 8"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M20.6 9 a10 10 0 0 1 0 14"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M21 9 l2 2 -9 9 -3 1 1 -3 z"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M9 24 H23"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M7 15 H17"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M7 21 H16"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M21 8 l3 3 -8 8 -4 1 1 -4 z"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M7 22 L12 16 L15 19 L18 15 L25 22"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M8 20 C 8 12, 13 11, 12.5 16 C 12 20, 15 21, 19 18 C 21 16.5, 22 15, 22.5 13"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M10.5 12.5 C 12 8.5, 20 8.5, 21.5 12.5"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M6 13 H15"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M6 19 H14"
+    },
+    {
+      "file": "src/components/ExerciseIcon.tsx",
+      "d": "M18 8 l3 3 -7 7 -4 1 1 -4 z"
+    },
+    {
+      "file": "src/img/igloo.svg",
+      "d": "M20 92 A44 40 0 0 1 108 92 Z"
+    },
+    {
+      "file": "src/img/igloo.svg",
+      "d": "M24 80 Q64 72 104 80"
+    },
+    {
+      "file": "src/img/igloo.svg",
+      "d": "M28 66 Q64 59 100 66"
+    },
+    {
+      "file": "src/img/igloo.svg",
+      "d": "M40 56 Q64 51 88 56"
+    },
+    {
+      "file": "src/img/igloo.svg",
+      "d": "M44 90 L45 81"
+    },
+    {
+      "file": "src/img/igloo.svg",
+      "d": "M64 91 L64 80"
+    },
+    {
+      "file": "src/img/igloo.svg",
+      "d": "M84 90 L83 81"
+    },
+    {
+      "file": "src/img/igloo.svg",
+      "d": "M53 78 L54 67"
+    },
+    {
+      "file": "src/img/igloo.svg",
+      "d": "M75 78 L74 67"
+    },
+    {
+      "file": "src/img/igloo.svg",
+      "d": "M54 64 L55 57"
+    },
+    {
+      "file": "src/img/igloo.svg",
+      "d": "M74 64 L73 57"
+    },
+    {
+      "file": "src/img/igloo.svg",
+      "d": "M47 92 L47 78 A17 17 0 0 1 81 78 L81 92 Z"
+    },
+    {
+      "file": "src/img/igloo.svg",
+      "d": "M53 92 L53 79 A11 11 0 0 1 75 79 L75 92 Z"
+    },
+    {
+      "file": "src/img/igloo.svg",
+      "d": "M47 78 A17 17 0 0 1 81 78"
+    },
+    {
+      "file": "src/img/jupe.svg",
+      "d": "M56 70 L55 106 Q55 109 59 109 L61 109 Q63 109 63 106 L63 70 Z"
+    },
+    {
+      "file": "src/img/jupe.svg",
+      "d": "M65 70 L65 106 Q65 109 67 109 L69 109 Q73 109 73 106 L72 70 Z"
+    },
+    {
+      "file": "src/img/jupe.svg",
+      "d": "M52 106 Q52 104 55 104 L63 104 L63 109 Q63 111 60 111 L54 111 Q52 111 52 109 Z"
+    },
+    {
+      "file": "src/img/jupe.svg",
+      "d": "M65 104 L73 104 Q76 104 76 106 L76 109 Q76 111 74 111 L68 111 Q65 111 65 109 Z"
+    },
+    {
+      "file": "src/img/jupe.svg",
+      "d": "M50 44 Q50 42 53 42 L75 42 Q78 42 78 44 L79 62 Q79 63 77 63 L51 63 Q49 63 49 62 Z"
+    },
+    {
+      "file": "src/img/jupe.svg",
+      "d": "M50 45 Q45 47 44 53 L43 65 Q43 68 46 68 Q49 68 49 65 L50 54 Q50 48 52 46 Z"
+    },
+    {
+      "file": "src/img/jupe.svg",
+      "d": "M78 45 Q83 47 84 53 L85 65 Q85 68 82 68 Q79 68 79 65 L78 54 Q78 48 76 46 Z"
+    },
+    {
+      "file": "src/img/jupe.svg",
+      "d": "M52 64 L42 88 Q46 92 50 88 Q54 92 58 88 Q62 92 66 88 Q70 92 74 88 Q78 92 82 88 Q84 91 86 88 L76 64 Z"
+    },
+    {
+      "file": "src/img/jupe.svg",
+      "d": "M53 66 L44 88"
+    },
+    {
+      "file": "src/img/jupe.svg",
+      "d": "M57 66 L50 88"
+    },
+    {
+      "file": "src/img/jupe.svg",
+      "d": "M61 66 L58 88"
+    },
+    {
+      "file": "src/img/jupe.svg",
+      "d": "M65 66 L66 88"
+    },
+    {
+      "file": "src/img/jupe.svg",
+      "d": "M69 66 L74 88"
+    },
+    {
+      "file": "src/img/jupe.svg",
+      "d": "M73 66 L84 88"
+    },
+    {
+      "file": "src/img/jupe.svg",
+      "d": "M52 60 Q52 58 55 58 L73 58 Q76 58 76 60 L76 64 L52 64 Z"
+    },
+    {
+      "file": "src/img/jupe.svg",
+      "d": "M64 13 C53 13 51 20 51 29 C51 34 52 37 54 39 L56 31 C56 23 59 19 64 19 C69 19 72 23 72 31 L74 39 C76 37 77 34 77 29 C77 20 75 13 64 13 Z"
+    },
+    {
+      "file": "src/img/jupe.svg",
+      "d": "M53 24 Q56 15 64 15 Q72 15 75 24 Q64 19 53 24 Z"
+    },
+    {
+      "file": "src/img/jupe.svg",
+      "d": "M60 32 Q64 35 68 32"
+    },
+    {
+      "file": "src/img/macaron.svg",
+      "d": "M28 55 A36 7 0 0 0 100 55 L98 70 L30 70 Z"
+    },
+    {
+      "file": "src/img/macaron.svg",
+      "d": "M30 70 Q34.25 74.8 38.5 74.6 Q42.75 77.85 47 76.1 Q51.25 78.95 55.5 76.8 Q59.75 79.4 64 77 Q68.25 79.4 72.5 76.8 Q76.75 78.95 81 76.1 Q85.25 77.85 89.5 74.6 Q93.75 74.8 98 70 C101 82 86 89 64 89 C42 89 28 82 30 70 Z"
+    },
+    {
+      "file": "src/img/macaron.svg",
+      "d": "M29 42 A35 10 0 0 0 99 42 L100 55 Q95.5 59.8 91 59.6 Q86.5 62.85 82 61.1 Q77.5 63.95 73 61.8 Q68.5 64.4 64 62 Q59.5 64.4 55 61.8 Q50.5 63.95 46 61.1 Q41.5 62.85 37 59.6 Q32.5 59.8 28 55 Z"
+    },
+    {
+      "file": "src/img/pyjama.svg",
+      "d": "M50 33 L28 43 Q25 45 25 49 L26 55 Q26 58 30 57 L40 53 L50 47 Z"
+    },
+    {
+      "file": "src/img/pyjama.svg",
+      "d": "M78 33 L100 43 Q103 45 103 49 L102 55 Q102 58 98 57 L88 53 L78 47 Z"
+    },
+    {
+      "file": "src/img/pyjama.svg",
+      "d": "M47 35 Q47 32 50 32 L78 32 Q81 32 81 35 L82 60 Q82 63 79 63 L49 63 Q46 63 46 60 Z"
+    },
+    {
+      "file": "src/img/pyjama.svg",
+      "d": "M58 31 L70 31 L68 38 L60 38 Z"
+    },
+    {
+      "file": "src/img/pyjama.svg",
+      "d": "M24 50 L32 47 L35 55 L27 58 Q24 58 24 55 Z"
+    },
+    {
+      "file": "src/img/pyjama.svg",
+      "d": "M104 50 L96 47 L93 55 L101 58 Q104 58 104 55 Z"
+    },
+    {
+      "file": "src/img/pyjama.svg",
+      "d": "M46 58 L82 58 L82 60 Q82 63 79 63 L49 63 Q46 63 46 60 Z"
+    },
+    {
+      "file": "src/img/pyjama.svg",
+      "d": "M48 68 Q48 66 51 66 L77 66 Q80 66 80 68 L80 73 L48 73 Z"
+    },
+    {
+      "file": "src/img/pyjama.svg",
+      "d": "M48 73 L45 99 Q45 102 49 102 L59 102 Q62 102 62 99 L64 84 L66 99 Q66 102 69 102 L79 102 Q83 102 82 99 L80 73 Z"
+    },
+    {
+      "file": "src/img/pyjama.svg",
+      "d": "M45 97 L59 97 L59 99 Q59 102 56 102 L49 102 Q45 102 45 99 Z"
+    },
+    {
+      "file": "src/img/pyjama.svg",
+      "d": "M66 97 L80 97 L80 99 Q80 102 77 102 L69 102 Q66 102 66 99 Z"
+    },
+    {
+      "file": "src/mascot/Fox.tsx",
+      "d": "M0 0 C-6 -6 -5 -15 0 -22 C5 -15 6 -6 0 0 Z"
+    },
+    {
+      "file": "src/mascot/Fox.tsx",
+      "d": "M0 -3 C-3 -7 -3 -13 0 -17 C3 -13 3 -7 0 -3 Z"
+    },
+    {
+      "file": "src/mascot/Unicorn.tsx",
+      "d": "M0 0 Q18 -24 34 -13 Q25 -6 30 4 Q19 -2 23 11 Q13 3 15 15 Q7 6 6 17 Q1 8 0 0 Z"
+    },
+    {
+      "file": "src/mascot/Unicorn.tsx",
+      "d": "M4 2 Q15 -14 28 -9"
+    },
+    {
+      "file": "src/mascot/Unicorn.tsx",
+      "d": "M3 7 Q13 -1 24 2"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M39 92 L42.5 84.5 L40 78.5"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M78 92.5 L75 86.5"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M-12 1 C-11 -8 -5 -12.5 0 -12.5 C5 -12.5 11 -8 12 1 L8 5.5 L4 1.5 L0 5.8 L-4 1.5 L-8 5.5 Z"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M0 0 L3 -6 L6.5 -1 L10 -5 L12 1 C8 4 3 4 0 0 Z"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M7 0 L-2.5 -5 Q-0.5 0 -2.5 5 Z"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M1 -7 L4.5 -1.5 L2 -1.5 L4.5 4 L-2.5 -1 L0 -1 L-2.5 -7 Z"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M0 0 C-6 -6 -5 -15 0 -22 C5 -15 6 -6 0 0 Z"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M0 -3 C-3 -7 -3 -13 0 -17 C3 -13 3 -7 0 -3 Z"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M1 -8 L5 -2 L2.2 -2 L5 4 L-3 -1 L-0.2 -1 L-3 -8 Z"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M0 -4.4 C3 -4.4 4.4 -3.2 4.4 -1 C4.4 2 2.2 4.4 0 5.6 C-2.2 4.4 -4.4 2 -4.4 -1 C-4.4 -3.2 -3 -4.4 0 -4.4 Z"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "d": "M0 -2.4 L0.75 -0.9 L2.4 -0.7 L1.2 0.45 L1.5 2.1 L0 1.3 L-1.5 2.1 L-1.2 0.45 L-2.4 -0.7 L-0.75 -0.9 Z"
+    },
+    {
+      "file": "public/icon.svg",
+      "d": "M150 424 L256 104 L362 424"
+    },
+    {
+      "file": "public/icon.svg",
+      "d": "M194 314 L318 314"
+    }
+  ],
+  "templates": [
+    {
+      "file": "src/mascot/Cat.tsx",
+      "raw": "M${tx} ${ty} Q${cx1} ${cy1} ${tipX} ${tipY}",
+      "filled": "M12 -7.5 Q3.25 -0.5 48 16.75"
+    },
+    {
+      "file": "src/mascot/Cat.tsx",
+      "raw": "M${bodyCX} ${bodyCY - bodyRY * 0.5} L${headCX} ${headCY + headR * 0.4}",
+      "filled": "M-21 9 L12 -7.5"
+    },
+    {
+      "file": "src/mascot/Cat.tsx",
+      "raw": "M${ex - d * headR * 0.02} ${ey} Q${tipXe - d * th * 0.1} ${tipYe} ${tipXe} ${tipYe + th * (1 - earPoint) * 0.2} Q${tipXe + d * th * 0.05} ${tipYe + 2} ${ex - d * headR * 0.6} ${ey - headR * 0.02} Z",
+      "filled": "M3.25 -0.5 Q48 16.75 -21 9 Q12 -7.5 3.25 -0.5 Z"
+    },
+    {
+      "file": "src/mascot/Cat.tsx",
+      "raw": "M${ex} ${ey - 1} L${tipXe - d * th * 0.05} ${tipYe + th * 0.28} L${ex - d * headR * 0.34} ${ey - headR * 0.02} Z",
+      "filled": "M48 16.75 L-21 9 L12 -7.5 Z"
+    },
+    {
+      "file": "src/mascot/Cat.tsx",
+      "raw": "M${headCX - 2.4} ${headCY + headR * 0.3} L${headCX + 2.4} ${headCY + headR * 0.3} L${headCX} ${headCY + headR * 0.44} Z",
+      "filled": "M3.25 -0.5 L48 16.75 L-21 9 Z"
+    },
+    {
+      "file": "src/mascot/Cat.tsx",
+      "raw": "M${anchor.neck.x - anchor.neck.w} ${anchor.neck.y} Q${anchor.neck.x} ${anchor.neck.y + 6} ${anchor.neck.x + anchor.neck.w} ${anchor.neck.y}",
+      "filled": "M12 -7.5 Q3.25 -0.5 48 16.75"
+    },
+    {
+      "file": "src/mascot/Cat.tsx",
+      "raw": "M${anchor.neck.x - anchor.neck.w} ${anchor.neck.y} Q${anchor.neck.x} ${anchor.neck.y + 6} ${anchor.neck.x + anchor.neck.w} ${anchor.neck.y}",
+      "filled": "M-21 9 Q12 -7.5 3.25 -0.5"
+    },
+    {
+      "file": "src/mascot/Cat.tsx",
+      "raw": "M${headCX} ${headCY - headR * 1.7} L${headCX - headR * 0.5} ${headCY - headR * 0.8} L${headCX + headR * 0.5} ${headCY - headR * 0.8} Z",
+      "filled": "M48 16.75 L-21 9 L12 -7.5 Z"
+    },
+    {
+      "file": "src/mascot/Cat.tsx",
+      "raw": "M${headCX - headR * 0.18} ${headCY - headR * 1.2} L${headCX + headR * 0.26} ${headCY - headR * 1.1} L${headCX + headR * 0.2} ${headCY - headR * 0.87} L${headCX - headR * 0.24} ${headCY - headR * 0.95} Z",
+      "filled": "M3.25 -0.5 L48 16.75 L-21 9 L12 -7.5 Z"
+    },
+    {
+      "file": "src/mascot/Dragon.tsx",
+      "raw": "M${bodyCX} ${bodyCY - bodyRY * 0.5} L${headCX} ${headCY + headR * 0.4}",
+      "filled": "M3.25 -0.5 L48 16.75"
+    },
+    {
+      "file": "src/mascot/Dragon.tsx",
+      "raw": "M${bodyCX} ${bodyCY - bodyRY * 0.5} L${headCX} ${headCY + headR * 0.4}",
+      "filled": "M-21 9 L12 -7.5"
+    },
+    {
+      "file": "src/mascot/Dragon.tsx",
+      "raw": "M${bodyCX} ${bodyCY - bodyRY * 0.5} L${headCX} ${headCY + headR * 0.4}",
+      "filled": "M3.25 -0.5 L48 16.75"
+    },
+    {
+      "file": "src/mascot/Fox.tsx",
+      "raw": "M${bodyCX - bodyRX * 0.72} ${bodyCY + dy * bodyRY} Q${bodyCX} ${bodyCY + dy * bodyRY - 5} ${bodyCX + bodyRX * 0.72} ${bodyCY + dy * bodyRY}",
+      "filled": "M-21 9 Q12 -7.5 3.25 -0.5"
+    },
+    {
+      "file": "src/mascot/Fox.tsx",
+      "raw": "M${bodyCX} ${bodyCY - bodyRY * 0.5} L${headCX} ${headCY + headR * 0.4}",
+      "filled": "M48 16.75 L-21 9"
+    },
+    {
+      "file": "src/mascot/Fox.tsx",
+      "raw": "M${headCX - headR * 0.5 * spec.ruff} ${headCY + headR * 0.7} Q${headCX} ${headCY + headR * 1.5 * spec.ruff} ${headCX + headR * 0.5 * spec.ruff} ${headCY + headR * 0.7} Z",
+      "filled": "M12 -7.5 Q3.25 -0.5 48 16.75 Z"
+    },
+    {
+      "file": "src/mascot/Fox.tsx",
+      "raw": "M${ex - d * headR * 0.5} ${ey} Q${tipX - d * th * 0.15} ${tipY - 2} ${tipX + d * 1.5} ${tipY + th * 0.14} Q${tipX + d * th * 0.12} ${tipY + th * 0.1} ${ex + d * headR * 0.05} ${ey - headR * 0.05} Z",
+      "filled": "M-21 9 Q12 -7.5 3.25 -0.5 Q48 16.75 -21 9 Z"
+    },
+    {
+      "file": "src/mascot/Fox.tsx",
+      "raw": "M${tipX} ${tipY + th * 0.05} Q${tipX + d * th * 0.14} ${tipY + th * 0.12} ${tipX + d * 1} ${tipY + th * 0.3} Q${tipX - d * th * 0.06} ${tipY + th * 0.24} ${tipX} ${tipY + th * 0.05} Z",
+      "filled": "M12 -7.5 Q3.25 -0.5 48 16.75 Q-21 9 12 -7.5 Z"
+    },
+    {
+      "file": "src/mascot/Fox.tsx",
+      "raw": "M${anchor.neck.x - anchor.neck.w} ${anchor.neck.y} Q${anchor.neck.x} ${anchor.neck.y + 7} ${anchor.neck.x + anchor.neck.w} ${anchor.neck.y}",
+      "filled": "M3.25 -0.5 Q48 16.75 -21 9"
+    },
+    {
+      "file": "src/mascot/Fox.tsx",
+      "raw": "M${anchor.neck.x + anchor.neck.w * 0.5} ${anchor.neck.y + 2} l3 10 l-6 1 Z",
+      "filled": "M12 -7.5 l3 10 l-6 1 Z"
+    },
+    {
+      "file": "src/mascot/Fox.tsx",
+      "raw": "M${headCX - headR} ${headCY - headR * 0.5} Q${headCX} ${headCY - headR * 1.7} ${headCX + headR} ${headCY - headR * 0.5} Z",
+      "filled": "M3.25 -0.5 Q48 16.75 -21 9 Z"
+    },
+    {
+      "file": "src/mascot/Rabbit.tsx",
+      "raw": "M${cx} ${cy - r} A${r} ${r} 0 1 1 ${cx} ${cy + r} A${r * 1.15} ${r * 1.15} 0 0 0 ${cx} ${cy - r} Z",
+      "filled": "M12 -7.5 A3.25 -0.5 0 1 1 48 16.75 A-21 9 0 0 0 12 -7.5 Z",
+      "viaVariable": true
+    },
+    {
+      "file": "src/mascot/Rabbit.tsx",
+      "raw": "M${cx - 1.9 * s} ${y} Q${cx} ${y - 1.7 * s} ${cx + 1.9 * s} ${y} Q${cx} ${y + 2.4 * s} ${cx - 1.9 * s} ${y} Z",
+      "filled": "M3.25 -0.5 Q48 16.75 -21 9 Q12 -7.5 3.25 -0.5 Z"
+    },
+    {
+      "file": "src/mascot/Rabbit.tsx",
+      "raw": "M${bl[0]} ${bl[1]} Q${hx - headR * 0.25} ${hy - headR * 1.8} ${hx + headR * 0.25} ${hy - headR * 1.5} Q${hx + headR * 0.78} ${hy - headR * 1.34} ${hx + headR * 0.98} ${hy - headR * 0.92} Q${hx + headR * 1.1} ${hy - headR * 0.55} ${tipX} ${tipY} Q${hx + headR * 0.92} ${hy - headR * 0.4} ${br[0]} ${br[1]} Z",
+      "filled": "M48 16.75 Q-21 9 12 -7.5 Q3.25 -0.5 48 16.75 Q-21 9 12 -7.5 Q3.25 -0.5 48 16.75 Z"
+    },
+    {
+      "file": "src/mascot/Rabbit.tsx",
+      "raw": "M${hx + headR * 0.28} ${hy - headR * 1.44} Q${hx + headR * 0.74} ${hy - headR * 1.12} ${hx + headR * 0.92} ${hy - headR * 0.74}",
+      "filled": "M-21 9 Q12 -7.5 3.25 -0.5"
+    },
+    {
+      "file": "src/mascot/Rabbit.tsx",
+      "raw": "M${bl[0]} ${bl[1]} Q${hx} ${hy - headR * 1.18} ${br[0]} ${br[1]}",
+      "filled": "M48 16.75 Q-21 9 12 -7.5"
+    },
+    {
+      "file": "src/mascot/Rabbit.tsx",
+      "raw": "M${bodyCX} ${bodyCY - bodyRY * 0.5} L${headCX} ${headCY + headR * 0.4}",
+      "filled": "M3.25 -0.5 L48 16.75"
+    },
+    {
+      "file": "src/mascot/Rabbit.tsx",
+      "raw": "M${bodyCX + d * bodyRX * 0.36} ${bodyCY + bodyRY * 0.08} Q${bodyCX + d * bodyRX * 0.44} ${bodyCY - bodyRY * 0.45} ${bodyCX + d * bodyRX * 0.4} ${bodyCY - bodyRY * 0.92}",
+      "filled": "M-21 9 Q12 -7.5 3.25 -0.5"
+    },
+    {
+      "file": "src/mascot/Unicorn.tsx",
+      "raw": "M${x} ${apexY} L${x - hw} ${baseY} Q${x} ${baseY + hw * 0.6} ${x + hw} ${baseY} Z",
+      "filled": "M48 16.75 L-21 9 Q12 -7.5 3.25 -0.5 Z"
+    },
+    {
+      "file": "src/mascot/Unicorn.tsx",
+      "raw": "M${x + 8} ${y - 7} Q${x - 3} ${y + 2} ${x - 2} ${y + 11} L${x + 9} ${y + 5} Z",
+      "filled": "M48 16.75 Q-21 9 12 -7.5 L3.25 -0.5 Z"
+    },
+    {
+      "file": "src/mascot/Unicorn.tsx",
+      "raw": "M${x - len * 0.28} ${y + len * 0.62} q -8 3 -6 10 q 2 6 -4 8 q -6 2 -2 8",
+      "filled": "M48 16.75 q -8 3 -6 10 q 2 6 -4 8 q -6 2 -2 8"
+    },
+    {
+      "file": "src/mascot/Unicorn.tsx",
+      "raw": "M${x - 2} ${y + 3} q -5 ${len * 0.4} -8 ${len * 0.7}",
+      "filled": "M-21 9 q -5 12 -8 -7.5"
+    },
+    {
+      "file": "src/mascot/Unicorn.tsx",
+      "raw": "M${bodyCX} ${bodyCY - bodyRY * 0.5} L${headCX} ${headCY + headR * 0.4}",
+      "filled": "M3.25 -0.5 L48 16.75"
+    },
+    {
+      "file": "src/mascot/Unicorn.tsx",
+      "raw": "M${headCX - 5} ${apexY} L${headCX} ${apexY - 26} L${headCX + 5} ${apexY} Z",
+      "filled": "M-21 9 L12 -7.5 L3.25 -0.5 Z"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "raw": "M${sx} ${sy} C${sx + d * 3 * s} ${sy - 12 * s} ${sx + d * 11 * s} ${sy - 18 * s} ${tx} ${ty} Q${(tx + p1x) / 2 - d * 3 * s} ${(ty + p1y) / 2} ${p1x} ${p1y} Q${(p1x + p2x) / 2 - d * 2 * s} ${(p1y + p2y) / 2 + 1.5 * s} ${p2x} ${p2y} Q${(p2x + sx) / 2} ${sy + 1.5 * s} ${sx} ${sy} Z",
+      "filled": "M48 16.75 C-21 9 12 -7.5 3.25 -0.5 Q48 16.75 -21 9 Q12 -7.5 3.25 -0.5 Q48 16.75 -21 9 Z",
+      "viaVariable": true
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "raw": "M${p0[0]} ${p0[1]} Q${p1[0]} ${p1[1]} ${p2[0]} ${p2[1]}",
+      "filled": "M12 -7.5 Q3.25 -0.5 48 16.75",
+      "viaVariable": true
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "raw": "M${bx - d * 1.5} ${by + 2} C${bx + d * r * 0.3} ${by - r * 1.9} ${bx + d * r * 2.3} ${by - r * 1.7} ${bx + d * r * 2.35} ${by - r * 0.3} C${bx + d * r * 2.35} ${by + r * 0.55} ${bx + d * r * 1.55} ${by + r * 0.75} ${bx + d * r * 1.2} ${by + r * 0.3}",
+      "filled": "M-21 9 C12 -7.5 3.25 -0.5 48 16.75 C-21 9 12 -7.5 3.25 -0.5",
+      "viaVariable": true
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "raw": "M${x} 82 q 2.6 6 0 14",
+      "filled": "M48 82 q 2.6 6 0 14"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "raw": "M${sx + d * 2 * s} ${sy - 2 * s} L${tx - d * 2 * s} ${ty + 2 * s}",
+      "filled": "M16.75 -21 L9 12"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "raw": "M${sx + d * 2 * s} ${sy - s} L${p1x - d * 1.5 * s} ${p1y - s}",
+      "filled": "M-7.5 3.25 L-0.5 48"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "raw": "M${bx - d * w} ${by + 1.5} Q${bx + d * h * 0.02} ${by - h * 0.6} ${tx} ${ty} Q${bx + d * (w + h * 0.16)} ${by - h * 0.45} ${bx + d * w} ${by + 1.5} Z",
+      "filled": "M16.75 -21 Q9 12 -7.5 3.25 Q-0.5 48 16.75 -21 Z"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "raw": "M${bx - px * wHalf} ${by - py * wHalf} L${tx} ${ty} L${bx + px * wHalf} ${by + py * wHalf} Z",
+      "filled": "M9 12 L-7.5 3.25 L-0.5 48 Z"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "raw": "M${hx - w * 0.5} ${y0 + 2} C${hx - w * 1.3} ${y0 - h * 0.45} ${hx - w * 0.5} ${y0 - h * 0.85} ${hx} ${y0 - h} C${hx + w * 0.5} ${y0 - h * 0.8} ${hx + w * 1.3} ${y0 - h * 0.35} ${hx + w * 0.5} ${y0 + 2} Z",
+      "filled": "M16.75 -21 C9 12 -7.5 3.25 -0.5 48 C16.75 -21 9 12 -7.5 3.25 Z"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "raw": "M${cx - halfW} ${cy + ry * k} Q${cx} ${cy + ry * k + 2.6} ${cx + halfW} ${cy + ry * k}",
+      "filled": "M-0.5 48 Q16.75 -21 9 12"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "raw": "M0 ${-s} L${s * 0.85} 0 L0 ${s} L${-s * 0.85} 0 Z",
+      "filled": "M0 -7.5 L3.25 0 L0 -0.5 L48 0 Z"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "raw": "M${sx + d * 2 * s} ${sy - 2 * s} L${sx + d * 20 * s} ${sy - 16.5 * s}",
+      "filled": "M16.75 -21 L9 12"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "raw": "M${sx + d * 2 * s} ${sy - s} L${sx + d * 14.5 * s} ${sy - 4.5 * s}",
+      "filled": "M-7.5 3.25 L-0.5 48"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "raw": "M${bx - px} ${by - py} L${tx} ${ty} L${bx + px} ${by + py} Z",
+      "filled": "M16.75 -21 L9 12 L-7.5 3.25 Z"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "raw": "M${x + f * w} ${y - 1} l1.1 2.6 l1.1 -2.6 Z",
+      "filled": "M-0.5 48 l1.1 2.6 l1.1 -2.6 Z"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "raw": "M${cx - w} ${y - 0.6} l0.9 3 l1.5 -2.4 Z",
+      "filled": "M16.75 -21 l0.9 3 l1.5 -2.4 Z"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "raw": "M${cx + w} ${y - 0.6} l-0.9 3 l-1.5 -2.4 Z",
+      "filled": "M9 12 l-0.9 3 l-1.5 -2.4 Z"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "raw": "M${cx - w * 0.62} ${topY} Q${cx} ${topY - 3} ${cx + w * 0.62} ${topY} C${cx + w * 0.9} ${topY + h * 0.55} ${cx + w * 0.82} ${topY + h * 0.9} ${cx + w * 0.7} ${topY + h} L${cx + w * 0.28} ${topY + h - 2} L${cx} ${topY + h} L${cx - w * 0.28} ${topY + h - 2} L${cx - w * 0.7} ${topY + h} C${cx - w * 0.82} ${topY + h * 0.9} ${cx - w * 0.9} ${topY + h * 0.55} ${cx - w * 0.62} ${topY} Z",
+      "filled": "M-7.5 3.25 Q-0.5 48 16.75 -21 C9 12 -7.5 3.25 -0.5 48 L16.75 -21 L9 12 L-7.5 3.25 L-0.5 48 C16.75 -21 9 12 -7.5 3.25 Z"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "raw": "M${x - w} ${y - 1} Q${x} ${y + 2.5} ${x + w} ${y - 1}",
+      "filled": "M-0.5 48 Q16.75 -21 9 12"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "raw": "M${hx - 1.5} ${apex + 2} C${hx - 5} ${apex - 4} ${hx - 2} ${apex - 8} ${hx + 1} ${apex - 9} C${hx + 3.5} ${apex - 6} ${hx + 3} ${apex - 1} ${hx + 1.5} ${apex + 2} Z",
+      "filled": "M-7.5 3.25 C-0.5 48 16.75 -21 9 12 C-7.5 3.25 -0.5 48 16.75 -21 Z"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "raw": "M${hx - headR * 0.98} ${y0} C${hx - headR * 0.95} ${apex} ${hx + headR * 0.95} ${apex} ${hx + headR * 0.98} ${y0} L${hx + headR * 0.8} ${y0 + headR * 0.16} Q${hx} ${y0 + headR * 0.3} ${hx - headR * 0.8} ${y0 + headR * 0.16} Z",
+      "filled": "M9 12 C-7.5 3.25 -0.5 48 16.75 -21 L9 12 Q-7.5 3.25 -0.5 48 Z"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "raw": "M${hx - headR * 0.9} ${y0 - headR * 0.06} Q${hx} ${y0 + headR * 0.1} ${hx + headR * 0.9} ${y0 - headR * 0.06}",
+      "filled": "M16.75 -21 Q9 12 -7.5 3.25"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "raw": "M${x - w} ${topY + h * 0.12} Q${x} ${topY - h * 0.1} ${x + w} ${topY + h * 0.12} C${x + w} ${topY + h * 0.55} ${x + w * 0.55} ${topY + h * 0.85} ${x} ${topY + h} C${x - w * 0.55} ${topY + h * 0.85} ${x - w} ${topY + h * 0.55} ${x - w} ${topY + h * 0.12} Z",
+      "filled": "M-0.5 48 Q16.75 -21 9 12 C-7.5 3.25 -0.5 48 16.75 -21 C9 12 -7.5 3.25 -0.5 48 Z"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "raw": "M${x} ${topY + h * 0.3} C${x - 2.4 * s} ${topY + h * 0.52} ${x - 2 * s} ${topY + h * 0.68} ${x} ${topY + h * 0.82} C${x + 2 * s} ${topY + h * 0.68} ${x + 2.4 * s} ${topY + h * 0.52} ${x} ${topY + h * 0.3} Z",
+      "filled": "M16.75 -21 C9 12 -7.5 3.25 -0.5 48 C16.75 -21 9 12 -7.5 3.25 Z"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "raw": "M${cx + 2.63} ${cy + 0.96} A2.8 2.8 0 0 1 ${cx - 0.49} ${cy + 2.76} L${cx - 0.38} ${cy + 2.15} A2.18 2.18 0 0 0 ${cx + 2.05} ${cy + 0.75} Z",
+      "filled": "M-0.5 48 A2.8 2.8 0 0 1 16.75 -21 L9 12 A2.18 2.18 0 0 0 -7.5 3.25 Z"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "raw": "M${cx} ${cy - 1.58} L${cx + 0.49} ${cy - 0.49} L${cx + 1.58} ${cy} L${cx + 0.49} ${cy + 0.49} L${cx} ${cy + 1.58} L${cx - 0.49} ${cy + 0.49} L${cx - 1.58} ${cy} L${cx - 0.49} ${cy - 0.49} Z",
+      "filled": "M-0.5 48 L16.75 -21 L9 12 L-7.5 3.25 L-0.5 48 L16.75 -21 L9 12 L-7.5 3.25 Z"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "raw": "M${x} ${y - s} L${x + s * 0.85} ${y} L${x} ${y + s} L${x - s * 0.85} ${y} Z",
+      "filled": "M-0.5 48 L16.75 -21 L9 12 L-7.5 3.25 Z"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "raw": "M${x - s * 0.85} ${y} L${x} ${y + s} L${x + s * 0.85} ${y} Z",
+      "filled": "M-0.5 48 L16.75 -21 L9 12 Z"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "raw": "M${cx - 1.9} ${cy} A1.9 1.9 0 0 0 ${cx + 1.9} ${cy}",
+      "filled": "M-7.5 3.25 A1.9 1.9 0 0 0 -0.5 48"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "raw": "M${cx - 1.9} ${cy} A1.9 1.9 0 0 1 ${cx} ${cy - 1.9}",
+      "filled": "M16.75 -21 A1.9 1.9 0 0 1 9 12"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "raw": "M${x - 2.8 * s} ${bandTop + 0.1} L${x - 1.87 * s} ${bandTop - 1.9 * s} L${x - 0.93 * s} ${bandTop - 0.4 * s} L${x} ${bandTop - 2.55 * s} L${x + 0.93 * s} ${bandTop - 0.4 * s} L${x + 1.87 * s} ${bandTop - 1.9 * s} L${x + 2.8 * s} ${bandTop + 0.1} Z",
+      "filled": "M-7.5 3.25 L-0.5 48 L16.75 -21 L9 12 L-7.5 3.25 L-0.5 48 L16.75 -21 Z"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "raw": "M${x - 2.4 * s} ${y - 0.12} L${x + 2.4 * s} ${y - 0.12}",
+      "filled": "M9 12 L-7.5 3.25"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "raw": "M${x - 7.2} ${rimY - 0.2} L${x - 7.2} ${rimY - 6.2} Q${x - 7.2} ${rimY - 8.4} ${x - 4.6} ${rimY - 8.4} L${x + 4.6} ${rimY - 8.4} Q${x + 7.2} ${rimY - 8.4} ${x + 7.2} ${rimY - 6.2} L${x + 7.2} ${rimY - 0.2} Z",
+      "filled": "M-0.5 48 L16.75 -21 Q9 12 -7.5 3.25 L-0.5 48 Q16.75 -21 9 12 L-7.5 3.25 Z"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "raw": "M${x - 6.3} ${rimY - 0.2} L${x - 6.3} ${rimY - 5.9} Q${x - 6.3} ${rimY - 7.3} ${x - 4.6} ${rimY - 7.3} L${x + 4.6} ${rimY - 7.3} Q${x + 6.3} ${rimY - 7.3} ${x + 6.3} ${rimY - 5.9} L${x + 6.3} ${rimY - 0.2} Z",
+      "filled": "M-0.5 48 L16.75 -21 Q9 12 -7.5 3.25 L-0.5 48 Q16.75 -21 9 12 L-7.5 3.25 Z"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "raw": "M${x} ${rimY + 3.3} L${x - 0.45} ${rimY + 4.5} L${x + 0.45} ${rimY + 4.5} Z",
+      "filled": "M-0.5 48 L16.75 -21 L9 12 Z"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "raw": "M${x + pts[0][0]} ${rimY + pts[0][1]} ${pts.slice(1).map(([dx, dy]) => `L${x + dx} ${rimY + dy}`).join(\" \")}",
+      "filled": "M-7.5 3.25 L-0.5 48 L16.75 -21"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "raw": "M${x - w} ${y - 1.2} Q${x} ${y + 2.2} ${x + w} ${y - 1.2}",
+      "filled": "M9 12 Q-7.5 3.25 -0.5 48"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "raw": "M${x - 1.9} ${y + 1.2} Q${x - 1.7} ${y + 6.2} ${x + 0.6} ${y + 7.6} Q${x + 2} ${y + 4} ${x + 1.5} ${y + 1}",
+      "filled": "M16.75 -21 Q9 12 -7.5 3.25 Q-0.5 48 16.75 -21"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "raw": "M${x - 2.3} ${y + 1.4} q2.2 1.7 4.2 0",
+      "filled": "M9 12 q2.2 1.7 4.2 0"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "raw": "M${x - headR * 0.72} ${ly + r * 0.3} Q${x} ${y - headR * 0.14} ${x + headR * 0.72} ${ly + r * 0.3}",
+      "filled": "M-7.5 3.25 Q-0.5 48 16.75 -21"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "raw": "M${x - dx + r} ${ly} Q${x} ${ly - r * 0.5} ${x + dx - r} ${ly}",
+      "filled": "M9 12 Q-7.5 3.25 -0.5 48"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "raw": "M${cx - w1} ${y0} Q${cx} ${y0 - 3} ${cx + w1} ${y0} L${cx + w2} ${y0 + h} Q${cx} ${y0 + h + 3.2} ${cx - w2} ${y0 + h} Z",
+      "filled": "M16.75 -21 Q9 12 -7.5 3.25 L-0.5 48 Q16.75 -21 9 12 Z"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "raw": "M${cx - w1 * 0.62} ${y0 + h * 0.32} Q${cx} ${y0 + h * 0.16} ${cx + w1 * 0.62} ${y0 + h * 0.32}",
+      "filled": "M-7.5 3.25 Q-0.5 48 16.75 -21"
+    },
+    {
+      "file": "src/mascot/parts.tsx",
+      "raw": "M${cx - r * 0.72} ${cy - r * 0.55} Q${cx} ${cy - r * 1.02} ${cx + r * 0.72} ${cy - r * 0.55}",
+      "filled": "M9 12 Q-7.5 3.25 -0.5 48",
+      "viaVariable": true
+    },
+    {
+      "file": "src/mascot/parts.tsx",
+      "raw": "M${lx - w} ${y} Q${lx} ${y + r * 0.9} ${lx + w} ${y}",
+      "filled": "M16.75 -21 Q9 12 -7.5 3.25"
+    },
+    {
+      "file": "src/mascot/parts.tsx",
+      "raw": "M${rx - w} ${y} Q${rx} ${y + r * 0.9} ${rx + w} ${y}",
+      "filled": "M-0.5 48 Q16.75 -21 9 12"
+    },
+    {
+      "file": "src/mascot/parts.tsx",
+      "raw": "M${lx - w} ${y + r * 0.5} Q${lx} ${y - r} ${lx + w} ${y + r * 0.5}",
+      "filled": "M-7.5 3.25 Q-0.5 48 16.75 -21"
+    },
+    {
+      "file": "src/mascot/parts.tsx",
+      "raw": "M${rx - w} ${y + r * 0.5} Q${rx} ${y - r} ${rx + w} ${y + r * 0.5}",
+      "filled": "M9 12 Q-7.5 3.25 -0.5 48"
+    },
+    {
+      "file": "src/mascot/parts.tsx",
+      "raw": "M${cx - w} ${y} Q${cx} ${y + w * 0.95} ${cx + w} ${y}",
+      "filled": "M16.75 -21 Q9 12 -7.5 3.25"
+    },
+    {
+      "file": "src/mascot/parts.tsx",
+      "raw": "M${cx - w} ${y - w * 0.2} Q${cx} ${y + w * 1.5} ${cx + w} ${y - w * 0.2} Z",
+      "filled": "M-0.5 48 Q16.75 -21 9 12 Z"
+    },
+    {
+      "file": "src/mascot/parts.tsx",
+      "raw": "M${cx - w * 0.5} ${y + w * 0.5} Q${cx} ${y + w * 1.1} ${cx + w * 0.5} ${y + w * 0.5} Z",
+      "filled": "M-7.5 3.25 Q-0.5 48 16.75 -21 Z"
+    },
+    {
+      "file": "src/mascot/parts.tsx",
+      "raw": "M${spec.hipX} ${spec.hipY} Q${mx} ${my} ${spec.footX} ${spec.footY}",
+      "filled": "M9 12 Q-7.5 3.25 -0.5 48"
+    },
+    {
+      "file": "src/mascot/parts.tsx",
+      "raw": "M${x - 4} ${y - 5} Q${x + 10} ${y + 2} ${x + 16} ${y}",
+      "filled": "M16.75 -21 Q9 12 -7.5 3.25"
+    },
+    {
+      "file": "src/mascot/parts.tsx",
+      "raw": "M${x - 10} ${y - 2} Q${x + 4} ${y + 6} ${x + 12} ${y + 4}",
+      "filled": "M-0.5 48 Q16.75 -21 9 12"
+    },
+    {
+      "file": "src/mascot/parts.tsx",
+      "raw": "M${x} ${y} L${x - 7 * s} ${y - 5 * s} Q${x - 9.5 * s} ${y} ${x - 7 * s} ${y + 5 * s} Z",
+      "filled": "M-7.5 3.25 L-0.5 48 Q16.75 -21 9 12 Z"
+    },
+    {
+      "file": "src/mascot/parts.tsx",
+      "raw": "M${x} ${y} L${x + 7 * s} ${y - 5 * s} Q${x + 9.5 * s} ${y} ${x + 7 * s} ${y + 5 * s} Z",
+      "filled": "M-7.5 3.25 L-0.5 48 Q16.75 -21 9 12 Z"
+    },
+    {
+      "file": "src/mascot/parts.tsx",
+      "raw": "M${cx - rx * k} ${cy - ry} q 2.6 ${ry * 0.5} 0 ${ry} q -2.6 ${ry * 0.5} 0 ${ry}",
+      "filled": "M-7.5 3.25 q 2.6 -0.5 0 48 q -2.6 16.75 0 -21"
+    },
+    {
+      "file": "src/mascot/parts.tsx",
+      "raw": "M${edge} ${cy - ry * 0.9} Q${edge + 2} ${cy} ${edge} ${cy + ry * 0.9}",
+      "filled": "M9 12 Q-7.5 3.25 -0.5 48"
+    },
+    {
+      "file": "src/mascot/parts.tsx",
+      "raw": "M${cx - rx} ${top + ry * k} q ${rx * 0.5} -3 ${rx} 0 q ${rx * 0.5} 3 ${rx} 0",
+      "filled": "M16.75 -21 q 9 -3 12 0 q -7.5 3 3.25 0"
+    },
+    {
+      "file": "src/mascot/parts.tsx",
+      "raw": "M${cx - rx * 0.97} ${top + 1.5} Q${cx} ${top - 2} ${cx + rx * 0.97} ${top + 1.5}",
+      "filled": "M-0.5 48 Q16.75 -21 9 12"
+    },
+    {
+      "file": "src/mascot/parts.tsx",
+      "raw": "M${hx + hr * 0.6} ${hy - 1.4} L${hx + hr + 3.6} ${hy + 0.4} L${hx + hr * 0.6} ${hy + 1.8} Z",
+      "filled": "M-7.5 3.25 L-0.5 48 L16.75 -21 Z"
+    },
+    {
+      "file": "src/mascot/parts.tsx",
+      "raw": "M${s.bx - 2} ${s.by} L${s.tx} ${s.ty} L${s.bx + 2} ${s.by} Z",
+      "filled": "M9 12 L-7.5 3.25 L-0.5 48 Z"
+    }
+  ],
+  "indirect": [
+    {
+      "file": "src/mascot/Rabbit.tsx",
+      "expr": "d"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "expr": "CUP_PATH"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "expr": "CUP_PATH"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "expr": "path"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "expr": "curve"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "expr": "curve"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "expr": "path"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "expr": "path"
+    },
+    {
+      "file": "src/mascot/dragonParts.tsx",
+      "expr": "path"
+    },
+    {
+      "file": "src/mascot/parts.tsx",
+      "expr": "bandPath"
+    },
+    {
+      "file": "src/mascot/parts.tsx",
+      "expr": "bandPath"
+    }
+  ],
+  "counts": {
+    "statics": 94,
+    "templates": 95,
+    "indirect": 11,
+    "total": 189
+  },
+  "commandHistogram": {
+    "L": 221,
+    "M": 190,
+    "Q": 147,
+    "Z": 87,
+    "C": 42,
+    "A": 12,
+    "l": 11,
+    "q": 10,
+    "H": 7,
+    "a": 6,
+    "z": 3,
+    "V": 2
   }
- ]
 }

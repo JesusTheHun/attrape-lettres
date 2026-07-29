@@ -494,3 +494,78 @@ Also measured, and simplifying: the two radial gradients declare no `cx`/`cy`/
 `r` (so SVG's 50%/50%/50% applies) and there are **no `fx`/`fy` focal offsets
 anywhere**. `GraphicsContext` cannot express a focal offset, so rather than
 accept one and silently ignore it, the focus is absent from the type.
+
+## D25 — D2 is now checked, not just asserted: 174/174 path skeletons matched
+
+`scripts/d2-skeleton-diff.mjs` extracts every path-shaped string literal from
+`Sources/ALArt`, replaces each `\(…)` interpolation with a placeholder, and
+looks for the same skeleton in the TypeScript.
+
+```
+Swift path literals             : 174
+  matched in the PAIRED TS file : 174
+  matched only in another file  : 0
+  no counterpart anywhere       : 0
+```
+
+**Zero retyped geometry.** Two things about how that number was reached matter
+more than the number:
+
+**Set-membership matching was not good enough.** The first version of the check
+also reported 174/174 — and still passed when the trailing `Z` was deleted from
+the cat's ear, because only 143 *distinct* skeletons exist across the whole app
+and a mangled path lands on somebody else's shape by coincidence. The check now
+requires the match to be in the *paired* file (`Cat.swift` ↔ `Cat.tsx`) and
+names the coincidence when it is not. It was then verified to fail on a retyped
+coordinate (`20.5`→`20.6`), a changed command (`Q`→`C`), and the dropped `Z`.
+
+**It has a blind spot, stated in the script header rather than hidden.**
+Whatever is inside `\(...)` is invisible to it. Changing `headR * 0.4` to
+`headR * 0.42` moves a real ear and this check will not see it. That is what the
+D3 pixel diff is for, and it is now the only thing that can catch that class.
+
+Twelve TypeScript paths have no Swift counterpart. Each is individually
+explained and all are unreachable: `dragonParts.tsx` exports 32 components and
+`Dragon.tsx` imports 20; the other 12 are referenced exactly once in all of
+`src/`, by their own `export function` line. Also unreachable are `SpadeTail`'s
+`tip === "bolt"` arm (the caller casts `tailTip` to `"spade" | "club" | "flame"`)
+and the `gem`/`gems` props, which are never passed. They are an **annotated
+allowlist**, not a silent skip, so a thirteenth gap becomes a finding instead of
+disappearing into a familiar list.
+
+## D26 — Two real defects the art phase surfaced, both worth remembering
+
+**The corpus generator had silently lost its emit block.** `extract-svg-corpus.mjs`
+was writing `{statics, templates, indirect}` while `SVGPathCorpusTests` decodes
+`{count, paths:[…]}`. Running the regeneration command in the header comment —
+which the port instructions told an agent to do — would have broken the golden
+test that guards every path in the app. Restored, and the reconstruction was
+verified byte-identical to the committed corpus before overwriting it.
+
+**`CapacitorInteropTests` was flaky across processes, not within one.** It failed
+once, then passed 73 runs. The cause: three *fixed* `UserDefaults` suite names
+plus `removePersistentDomain` in `init`. `UserDefaults` is host state, not
+process state, so two concurrent `swift test` runs wipe each other's fixtures.
+Reproduced standalone — two processes lose ~6% of reads (25/400, 22/400), one
+process loses 0/400. Fixed by making the suite name per-PID; no assertion
+changed. Worth remembering because the port runs several agents building the
+same package at once, and this failure mode looks exactly like a real bug.
+
+## D27 — Mascot node counts are frozen
+
+Ink-laying leaf counts per species, default look, growth stages 0→9:
+
+```
+unicorn  30  34  41  49  50  55  58  81  94 108
+cat      31  35  39  43  47  65  67  68  71  97
+fox      37  41  45  49  61  73  79 108 112 144
+rabbit   37  41  45  48  50  51  54  57  60  72
+dragon   28  32  33  41  47  52  57  74  84  91
+```
+
+Now a snapshot test, so a refactor that silently drops a part fails loudly.
+Before this only the dragon had any rig test at all.
+
+The measured envelope over all 50 combinations is x ∈ [−55.04, 155.04],
+y ∈ [−80.27, 112.98]. The low y is the unicorn's stage-9 halo — legitimate
+overflow, which is why D15 forbids the canvas from clipping at the viewBox.

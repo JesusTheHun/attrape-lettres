@@ -15,11 +15,20 @@ private final class TestUserDefaultsStore: KVStore {
     let defaults: UserDefaults
     let suiteName: String
 
+    /// NB: the suite name is made unique PER PROCESS. `UserDefaults` is host
+    /// state, not process state, so two `swift test` runs on the same machine —
+    /// two CI jobs, or two agents in one worktree — share a fixed suite name
+    /// and `removePersistentDomain` in one wipes the other's seeded keys
+    /// mid-test. Measured: two concurrent processes doing exactly the
+    /// clear/seed/read below lose ~6% of their reads; one process loses none.
+    /// That is a flake that reads as a persistence bug, so the domains are kept
+    /// disjoint instead.
     init?(suiteName: String) {
-        guard let defaults = UserDefaults(suiteName: suiteName) else { return nil }
+        let unique = "\(suiteName).pid\(ProcessInfo.processInfo.processIdentifier)"
+        guard let defaults = UserDefaults(suiteName: unique) else { return nil }
         self.defaults = defaults
-        self.suiteName = suiteName
-        defaults.removePersistentDomain(forName: suiteName)
+        self.suiteName = unique
+        defaults.removePersistentDomain(forName: unique)
     }
 
     func string(_ key: String) -> String? { defaults.string(forKey: key) }

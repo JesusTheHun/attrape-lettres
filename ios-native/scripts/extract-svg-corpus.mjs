@@ -150,7 +150,19 @@ for (const s of [...statics.map((x) => x.d), ...templates.map((x) => x.filled)])
   for (const c of s.replace(/[^A-Za-z]/g, '')) hist[c] = (hist[c] || 0) + 1
 }
 
+// The flat list the Swift golden test decodes: `{ file, d, kind }` per path,
+// statics first, then templates in source order. `Corpus` in
+// SVGPathCorpusTests.swift decodes `count` + `paths` and ignores the rest, so
+// the diagnostic arrays below ride along in the same file.
+const paths = [
+  ...statics.map((s) => ({ file: s.file, d: s.d, kind: 'static' })),
+  ...templates.map((t) => ({ file: t.file, d: t.filled, kind: t.viaVariable ? 'variable' : 'template' })),
+]
+
 const corpus = {
+  generated: 'scripts/extract-svg-corpus.mjs',
+  count: paths.length,
+  paths,
   statics,
   templates,
   indirect,
