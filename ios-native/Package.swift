@@ -33,10 +33,16 @@ let package = Package(
             dependencies: ["ALCore"],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
+        // No `resources:` — ALUI genuinely has none. It carried an empty
+        // `Resources/` with a `.gitkeep` from the scaffold, and SwiftPM duly
+        // emitted a bundle containing exactly one hidden file, which `codesign`
+        // rejects outright: "bundle format unrecognized, invalid, or
+        // unsuitable". `swift build` never noticed, because it does not sign;
+        // only the iOS build did. Re-add this line together with a real
+        // resource, never ahead of one.
         .target(
             name: "ALUI",
             dependencies: ["ALCore", "ALArt"],
-            resources: [.process("Resources")],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
         // The iOS adapters — StoreKit, URLSession, UserDefaults, AVFoundation,
@@ -45,6 +51,13 @@ let package = Package(
         .target(
             name: "ALPlatform",
             dependencies: ["ALCore"],
+            // The baked voice-over lives here. `Resources/vo/` is STAGED by
+            // `scripts/stage-vo.sh`, not committed: the 845 clips already exist
+            // once in the repo under `src/vo/clips/` and a second 17 MB copy in
+            // git buys nothing. The clip *manifest* is committed, so the tests
+            // that matter (every utterance the app can speak has a clip) run
+            // whether or not the audio has been staged.
+            resources: [.process("Resources")],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
         .testTarget(

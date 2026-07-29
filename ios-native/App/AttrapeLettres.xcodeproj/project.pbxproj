@@ -10,6 +10,7 @@
 		AA0000000000000000000014 /* ALCore in Frameworks */ = {isa = PBXBuildFile; productRef = AA0000000000000000000011 /* ALCore */; };
 		AA0000000000000000000015 /* ALArt in Frameworks */ = {isa = PBXBuildFile; productRef = AA0000000000000000000012 /* ALArt */; };
 		AA0000000000000000000016 /* ALUI in Frameworks */ = {isa = PBXBuildFile; productRef = AA0000000000000000000013 /* ALUI */; };
+		AA0000000000000000000018 /* ALPlatform in Frameworks */ = {isa = PBXBuildFile; productRef = AA0000000000000000000017 /* ALPlatform */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -32,6 +33,7 @@
 				AA0000000000000000000014 /* ALCore in Frameworks */,
 				AA0000000000000000000015 /* ALArt in Frameworks */,
 				AA0000000000000000000016 /* ALUI in Frameworks */,
+				AA0000000000000000000018 /* ALPlatform in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -77,6 +79,7 @@
 				AA0000000000000000000011 /* ALCore */,
 				AA0000000000000000000012 /* ALArt */,
 				AA0000000000000000000013 /* ALUI */,
+				AA0000000000000000000017 /* ALPlatform */,
 			);
 			productName = AttrapeLettres;
 			productReference = AA0000000000000000000003 /* Attrape-Lettres.app */;
@@ -297,6 +300,10 @@
 		AA0000000000000000000013 /* ALUI */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = ALUI;
+		};
+		AA0000000000000000000017 /* ALPlatform — the iOS adapters (D4); imported only by App/ */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ALPlatform;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

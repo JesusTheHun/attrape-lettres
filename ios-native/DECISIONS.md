@@ -569,3 +569,161 @@ Before this only the dragon had any rig test at all.
 The measured envelope over all 50 combinations is x ∈ [−55.04, 155.04],
 y ∈ [−80.27, 112.98]. The low y is the unicorn's stage-9 halo — legitimate
 overflow, which is why D15 forbids the canvas from clipping at the viewBox.
+
+## D28 — The baked voice-over is staged, not committed twice
+
+845 `.m4a` clips, 17 MB, already live once in this repo under `src/vo/clips/`,
+keyed by `voKey(text)`. Copying them into `ios-native/Sources/ALPlatform/Resources/`
+would put a second 17 MB in git that is byte-identical to the first and would
+drift the moment `pnpm vo:build` re-bakes a clip.
+
+So the audio resource is **staged**: `ios-native/scripts/stage-vo.sh` links the
+clips into `Sources/ALPlatform/Resources/vo/` before a build, and that folder is
+gitignored. What *is* committed is the clip **manifest** — the list of keys.
+
+The distinction that makes this safe rather than merely tidy: the test that
+matters is "every utterance the app can speak has a clip", and that test reads
+the manifest, not the audio. It therefore runs on a fresh checkout, in CI, and on
+a machine that has never staged a single byte of audio. The clips are needed to
+*hear* the app; they are not needed to *prove* it is complete.
+
+`Package.swift` declares `resources: [.process("Resources")]` on `ALPlatform`
+with a committed `.gitkeep`, so the manifest ships and an unstaged build still
+compiles — it just falls back to `AVSpeechSynthesizer`, exactly as the web falls
+back to `speechSynthesis` when a clip is missing. Invariant 3 all the way down:
+absent audio degrades, it never blocks.
+
+## D29 — Reduced motion is gated where the WEB gates it, and nowhere else
+
+The port initially gated all four interaction animations on `ReduceMotionSource`.
+Two agents flagged it as a deviation and both were right: my own instructions and
+`ARCHITECTURE.md` §3's invariant-6 row asked for "every `Anim.*` entry point",
+which is not what the app does. Measured, per file:
+
+| animation | web | gated? |
+|---|---|---|
+| `pop` | `usePopFlourish.ts:29` reads the media query | **yes** |
+| `pulse` | `GameFrame.tsx` writes `motion-safe:animate-pulse` — Tailwind's own gate | **yes** |
+| confetti | `useConfetti.ts:22` | **yes** |
+| mascot idle/cheer | `Mascot.tsx:60` | **yes** |
+| dashboard sweep, sheen, shop press/pop | `Dashboard.tsx:55`, `index.css:88`, `shop/anim.ts` | **yes** |
+| **tile press** (130 ms squish) | `Tile.tsx:59` — a bare `el.animate(press, …)` | **NO** |
+| **tile shake** (300 ms wobble) | `Tile.tsx:61` — likewise | **NO** |
+
+`Tile.tsx` contains no `matchMedia` call at all. CLAUDE.md's invariant 6 scopes
+itself the same way — "mascot + confetti" — and the distinction is a real one: a
+squish and a wobble are *how a tap feels*, not ornament. Suppressing them would
+leave a child who needs Reduce Motion tapping a dead slab, which is the opposite
+of an accessibility win.
+
+`Anim.press` and `Anim.shake` therefore take **no `ReduceMotionSource` parameter
+at all**. The absence of the parameter is the guard: the gate cannot be
+reintroduced by reflex, only by changing a signature and every call site.
+Mutation-checked — re-suppressing `press` fails four assertions across three
+tests.
+
+The general lesson, and the reason this entry exists rather than a silent fix:
+**a spec that overstates an invariant is more dangerous than one that omits it**,
+because agents implement it faithfully and the result looks principled.
+
+## D30 — An empty SwiftPM resource bundle breaks the iOS build, and only the iOS build
+
+`ALUI` carried `resources: [.process("Resources")]` from the scaffold over a
+folder containing nothing but `.gitkeep`. SwiftPM emitted a bundle with an
+`Info.plist` and one hidden file, and `codesign` refused it:
+
+```
+AttrapeLettres_ALUI.bundle: bundle format unrecognized, invalid, or unsuitable
+Command CodeSign failed with a nonzero exit code
+```
+
+`swift build` and `swift test` never saw it — they do not sign. The whole
+host-testing strategy (D1) rests on the host tier catching almost everything, and
+this is a clean example of what it structurally *cannot* catch. The declaration is
+removed until ALUI has a real resource; the comment in `Package.swift` says to
+re-add it *with* one, never ahead of one.
+
+Corollary for the build order: an iOS `xcodebuild` pass belongs in every phase
+gate, not only at the end. It is the only tier that signs.
+
+## D31 — The audio session is `.playback` + `.duckOthers`: the game is now audible on silent
+
+**Flagged for the user, not settled by me.** This is a deliberate behaviour change
+from the PWA and the only one in phase 4.
+
+The Capacitor WebView followed the ring/silent switch, so a muted iPad meant a
+silent game. Native, `AVAudioSession` category `.playback` ignores the switch and
+`.duckOthers` lowers other apps' audio rather than stopping it.
+
+Why: the game is voice-led end to end — every prompt, every letter, every syllable
+is spoken. On silent, the PWA is not a quieter game, it is an unplayable one, and
+a six-year-old cannot diagnose a hardware switch. Every voice-led kids' app makes
+the same call.
+
+Why it is nonetheless flagged: a parent who silenced a tablet deliberately did not
+expect it to start talking, and "behaviour identical to the PWA" was the standing
+constraint. The change is confined to
+`Sources/ALPlatform/Audio/AudioSession.swift` — one category constant. Reverting
+to `.ambient` restores the web's behaviour exactly and breaks nothing else.
+
+## D32 — There are two `ReduceMotionSource` implementations, and the layering forces it
+
+D14 asked for one. There are two, and neither is redundant:
+
+- `ALPlatform.SystemReduceMotion` observes
+  `UIAccessibility.reduceMotionStatusDidChangeNotification`, so it notices a
+  mid-session change. The app root injects this one.
+- `ALUI.SystemDefaultReduceMotion` reads the switch on every access but has no
+  notification. It is the `EnvironmentKey` default.
+
+ALUI may not import ALPlatform (ARCHITECTURE §1), so it cannot use the observing
+one as its default — and the alternative default, "assume motion is fine", would
+silently animate for a child who asked the OS not to. A non-observing honest read
+beats an observing unreachable one.
+
+They were originally named `SystemReduceMotion` and `PlatformReduceMotion`, which
+is exactly the kind of near-identical pair someone injects the wrong half of.
+Renamed so the fallback says it is a fallback.
+
+## D33 — Phase 4 inventory, and what is proved versus merely written
+
+```
+ALCore       63 files   7715 lines   (unchanged)
+ALArt        16 files   5673 lines   (unchanged)
+ALUI         18 files   4120 lines   interaction, design tokens, components
+ALPlatform   17 files   2622 lines   audio, adapters, composition root
+tests        79 files  16221 lines   969 tests, 161 suites, 1.1 s on the host
+```
+
+Proved on the host: the touch-down ordering contract; every `Anim` keyframe
+against the TSX numbers; `fluid`/`clamp` at the boundaries and three device
+widths; the French copy scalar-exact, including the mixed `’`/`'`; the
+miss-cooldown swallow window; the star strip greying on the *first* wrong tap of a
+round; the confetti particle system stepped deterministically under a seeded
+`RandomSource`; `say()`'s supersession and watchdog contracts; the 845↔845 clip
+bijection (which also proves the ten clips still at HEAD are deleted orphans, not
+a gap); the `CapacitorStorage.` key strings; every StoreKit failure path resolving
+playable; and — asserted on the transmitted bytes — that a roster containing "Léa"
+travels with no name and no device id.
+
+NOT proved, and honestly outstanding:
+
+- **No SwiftUI view body is exercised.** Every component's rules were extracted
+  into plain types (`TilePress`, `MissCooldown`, `StarStrip`, `FitLineFit`,
+  `ConfettiSystem`) and those are tested; the `body`s themselves are not. That was
+  the right trade — the rules are where the invariants live — but it leaves
+  layout, the rendered accessibility tree, and everything CSS-approximate (shadow
+  blur ≈ radius/2, `line-height` → `lineSpacing`) to the D3 pixel diff.
+- **The real UIKit recogniser** is proven by configuration assertions plus the
+  core-logic tests, not by driving actual touch delivery; recogniser state is not
+  externally settable. Scroll-view arbitration is reasoned from documented UIKit
+  behaviour, not observed.
+- **Everything the device owns**: tap→sound latency (the ~2 ms budget the whole
+  audio design exists to protect), the silent switch, ducking, call interruption,
+  StoreKit's `Transaction.updates`, and the reduce-motion notification name.
+- **Nothing is wired into `App/` yet.** `LiveAudioEngine`, `PlatformEnvironment`,
+  the `scenePhase` fan-out (`refresh` on active, `flush` on background) and the
+  `ALSyncURL` / `ALTelemetryURL` Info.plist keys all exist and are all
+  unreferenced. Sync and telemetry are therefore inert in a build made today —
+  fail-silent by design, which is precisely why it needs writing down rather than
+  trusting a later test to notice.
