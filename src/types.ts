@@ -1,6 +1,8 @@
 export type ExerciseId =
   | "first-letter"
   | "find-sound"
+  | "hear-syllable"
+  | "pick-vowel"
   | "sound-twins"
   | "read-image"
   | "match-case"
@@ -139,6 +141,46 @@ export interface BasicSound {
   traps?: string[];
 }
 
+/** Syllable-grid exercises --------------------------------------------------*/
+/**
+ * The « tableau des syllabes »: the exhaustive consonant × vowel combinatoire
+ * (VA VE VI VO VU VÉ) a child must fuse before any word work. ONE engine, two
+ * drills over the SAME grid:
+ *   - `hear`   hear « va », tap the tile that writes it (the neighbours are the
+ *              same consonant with the other vowels, so the VOWEL is the task).
+ *   - `vowel`  hear « vi », the consonant is already written, tap the vowel
+ *              that finishes it — the same contrast, from the other side.
+ */
+export type SyllableGridMode = "hear" | "vowel";
+
+/** One cell of the grid: a consonant row × a vowel column. */
+export interface GridSyllable {
+  /** Written form shown on the tile, uppercase (e.g. "VA", "CHÉ"). */
+  text: string;
+  /** Spoken form, lowercase for the TTS/VO (e.g. "va", "ché"). */
+  sound: string;
+  /** Its consonant row, uppercase ("V", "CH"). */
+  consonant: string;
+  /** Its vowel column, uppercase ("A" … "É"). */
+  vowel: string;
+}
+
+export interface SyllableGridLevel {
+  /** Distinct syllables drawn from the level's rows at the start of a run. */
+  pick: number;
+  /** How many of those come back a second time (spaced apart). */
+  repeats: number;
+  /** Tiles in a round: the answer + its distractors. */
+  choices: number;
+  /**
+   * How many distractors come from the same VOWEL column (another consonant,
+   * e.g. VA vs LA) instead of the same consonant row (VA vs VI). 0 on the first
+   * levels — the vowel alone is the whole task — then the consonant joins in.
+   * Ignored in `vowel` mode, where every tile is a vowel by construction.
+   */
+  column: number;
+}
+
 /** Sound-twins exercise ----------------------------------------------------*/
 /** One written form of a sound family + the anchor word that owns it. */
 export interface TwinGraphy {
@@ -204,6 +246,8 @@ export interface ExerciseMeta {
   hint?: string;
   /** Syllable exercises carry the seeding mode; first-letter leaves it undefined. */
   mode?: SyllableMode;
+  /** Syllable-grid drills carry which side of the grid they ask; others leave it undefined. */
+  grid?: SyllableGridMode;
   /** Fill-a-syllable siblings carry which letter mode they run; others leave it undefined. */
   spell?: SpellSyllableMode;
   /**

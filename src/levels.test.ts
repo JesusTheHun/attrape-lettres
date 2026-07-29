@@ -46,9 +46,25 @@ import {
   buildTwinSession,
   twinPrompt,
   twinSuccess,
+  SYLLABLE_GRID_LEVELS,
+  syllableGridLevel,
+  syllableGridPool,
+  gridSyllable,
+  buildGridRound,
+  buildSyllableGridSession,
+  gridPrompt,
+  gridSuccess,
+  EXERCISES,
 } from "./levels";
-import { LETTER_WORDS, LETTER_MATCH_ALPHABET, SOUND_LETTER_BANK } from "./content";
-import type { LetterMatchKind, SpellSyllableMode } from "./types";
+import {
+  GRID_CONSONANTS,
+  GRID_VOWELS,
+  LETTER_WORDS,
+  LETTER_MATCH_ALPHABET,
+  SOUND_LETTER_BANK,
+  SYLLABLE_GRID_ROWS,
+} from "./content";
+import type { LetterMatchKind, SpellSyllableMode, SyllableGridMode } from "./types";
 import type { SoundTarget, SyllableWord } from "./types";
 
 describe("firstLetterPool", () => {
@@ -810,5 +826,140 @@ describe("sound prompt lines", () => {
     expect(soundSuccess({ sound: "fo", spelling: ["P", "H", "O"], word: "photo" })).toBe(
       "Oui ! photo."
     );
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Syllable grid — the combinatoire drill (consonne × voyelle)                 */
+/* -------------------------------------------------------------------------- */
+
+describe("syllableGridPool", () => {
+  it("expands the level's rows to EVERY vowel — the grid is exhaustive", () => {
+    SYLLABLE_GRID_ROWS.forEach((rows, i) => {
+      const pool = syllableGridPool(i + 1);
+      const consonants = rows ?? GRID_CONSONANTS;
+      expect(pool).toHaveLength(consonants.length * GRID_VOWELS.length);
+      consonants.forEach((c) => {
+        GRID_VOWELS.forEach((v) => {
+          expect(pool.some((s) => s.consonant === c && s.vowel === v)).toBe(true);
+        });
+      });
+    });
+  });
+
+  it("keeps every cell unique and readable (text = consonne + voyelle)", () => {
+    const pool = syllableGridPool(SYLLABLE_GRID_LEVELS.length);
+    expect(new Set(pool.map((s) => s.text)).size).toBe(pool.length);
+    pool.forEach((s) => {
+      expect(s.text).toBe(s.consonant + s.vowel);
+      expect(s.sound).toBe(s.text.toLowerCase());
+    });
+  });
+
+  it("clamps out-of-range levels to the ladder ends", () => {
+    expect(syllableGridLevel(0)).toBe(SYLLABLE_GRID_LEVELS[0]);
+    expect(syllableGridLevel(999)).toBe(SYLLABLE_GRID_LEVELS[SYLLABLE_GRID_LEVELS.length - 1]);
+  });
+
+  it("teaches no consonant whose sound flips with the vowel (C, G, K, QU)", () => {
+    expect(GRID_CONSONANTS).not.toContain("C");
+    expect(GRID_CONSONANTS).not.toContain("G");
+    expect(GRID_CONSONANTS).not.toContain("K");
+    expect(GRID_CONSONANTS).not.toContain("QU");
+  });
+
+  it("has a pool big enough for a full run at every level", () => {
+    SYLLABLE_GRID_LEVELS.forEach((cfg, i) => {
+      expect(syllableGridPool(i + 1).length).toBeGreaterThanOrEqual(cfg.pick);
+    });
+  });
+});
+
+describe("buildGridRound", () => {
+  const MODES: SyllableGridMode[] = ["hear", "vowel"];
+  const runs = SYLLABLE_GRID_LEVELS.flatMap((cfg, i) =>
+    MODES.flatMap((mode) =>
+      syllableGridPool(i + 1).flatMap((target) =>
+        Array.from({ length: 4 }, () => ({
+          cfg,
+          mode,
+          round: buildGridRound(target, syllableGridPool(i + 1), cfg, mode),
+        }))
+      )
+    )
+  );
+
+  it("offers exactly `choices` tiles, the answer among them, never twice", () => {
+    runs.forEach(({ cfg, round }) => {
+      expect(round.choices).toHaveLength(cfg.choices);
+      expect(round.choices.filter((c) => c.text === round.target.text)).toHaveLength(1);
+      expect(new Set(round.choices.map((c) => c.text)).size).toBe(round.choices.length);
+    });
+  });
+
+  it("in `vowel` mode every tile shares the consonant — only the vowel is the task", () => {
+    runs
+      .filter((r) => r.mode === "vowel")
+      .forEach(({ round }) => {
+        round.choices.forEach((c) => expect(c.consonant).toBe(round.target.consonant));
+        expect(new Set(round.choices.map((c) => c.vowel)).size).toBe(round.choices.length);
+      });
+  });
+
+  it("in `hear` mode swaps at most `column` tiles onto another consonant", () => {
+    runs
+      .filter((r) => r.mode === "hear")
+      .forEach(({ cfg, round }) => {
+        const swapped = round.choices.filter((c) => c.consonant !== round.target.consonant);
+        expect(swapped.length).toBeLessThanOrEqual(cfg.column);
+        // a swapped tile is the SAME vowel on another row (VA vs LA), never a
+        // second axis of change at once.
+        swapped.forEach((c) => expect(c.vowel).toBe(round.target.vowel));
+      });
+  });
+
+  it("never puts a tile that sounds like the answer beside it", () => {
+    runs.forEach(({ round }) => {
+      const twins = round.choices.filter(
+        (c) => c.sound === round.target.sound && c.text !== round.target.text
+      );
+      expect(twins).toHaveLength(0);
+    });
+  });
+});
+
+describe("buildSyllableGridSession", () => {
+  it("seeds pick + repeats rounds, spaced so no syllable repeats back-to-back", () => {
+    SYLLABLE_GRID_LEVELS.forEach((cfg, i) => {
+      (["hear", "vowel"] as SyllableGridMode[]).forEach((mode) => {
+        for (let n = 0; n < 20; n++) {
+          const run = buildSyllableGridSession(i + 1, mode);
+          expect(run).toHaveLength(cfg.pick + cfg.repeats);
+          run.forEach((r, k) => {
+            if (k > 0) expect(run[k - 1].target.text).not.toBe(r.target.text);
+          });
+        }
+      });
+    });
+  });
+});
+
+describe("syllable grid prompt lines", () => {
+  it("speaks the bare syllable, and celebrates with it again", () => {
+    const va = gridSyllable("V", "A");
+    expect(gridPrompt(va)).toBe("va");
+    expect(gridSuccess(va)).toBe("Oui ! va.");
+    expect(gridSuccess(gridSyllable("CH", "É"))).toBe("Oui ! ché.");
+  });
+});
+
+describe("hub placement of the grid drills", () => {
+  it("puts both combinatoire drills before every word exercise", () => {
+    const at = (id: string) => EXERCISES.findIndex((e) => e.id === id);
+    ["hear-syllable", "pick-vowel"].forEach((id) => {
+      expect(at(id)).toBeGreaterThan(at("find-sound"));
+      expect(at(id)).toBeLessThan(at("spell-syllable"));
+      expect(at(id)).toBeLessThan(at("spell-sound"));
+    });
   });
 });

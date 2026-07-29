@@ -1,5 +1,7 @@
 import {
   BASIC_SOUNDS,
+  GRID_CONSONANTS,
+  GRID_VOWELS,
   LETTER_WORDS,
   LETTER_MATCH_ALPHABET,
   SYLLABLE_WORDS,
@@ -12,6 +14,9 @@ import {
   READ_IMAGE_PROMPT,
   findSoundPrompt,
   findSoundSuccess,
+  gridPrompt,
+  gridSuccess,
+  gridSyllable,
   letterMatchSuccess,
   soundPrompt,
   soundSuccess,
@@ -88,6 +93,17 @@ export function enumerateUtterances(): string[] {
     out.add(findSoundPrompt(s));
     out.add(findSoundSuccess(s));
   }
+
+  // Syllable grid: the WHOLE tableau, both drills. The prompt is the bare
+  // syllable (also what each tile's "Écouter" speaks, in either drill) and the
+  // success line names it again. Enumerated over every consonant × vowel, so a
+  // baked run covers the grid exactly once whatever the level draws.
+  for (const c of GRID_CONSONANTS)
+    for (const v of GRID_VOWELS) {
+      const s = gridSyllable(c, v);
+      out.add(gridPrompt(s));
+      out.add(gridSuccess(s));
+    }
 
   // Sound-twins: the hunt consigne + the bare family sound (tile "Écouter" —
   // every tile, twin or intruder, speaks its OWN family's sound) + one anchor

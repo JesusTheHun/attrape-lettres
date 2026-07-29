@@ -7,6 +7,7 @@ import { LetterMatchExercise } from "./exercises/LetterMatchExercise";
 import { ReadImageExercise } from "./exercises/ReadImageExercise";
 import { SpellSoundExercise } from "./exercises/SpellSoundExercise";
 import { SpellSyllableExercise } from "./exercises/SpellSyllableExercise";
+import { SyllableGridExercise } from "./exercises/SyllableGridExercise";
 import { Dashboard } from "./components/Dashboard";
 import { ExerciseIcon } from "./components/ExerciseIcon";
 import { WhoIsPlaying } from "./components/WhoIsPlaying";
@@ -89,6 +90,10 @@ export default function App() {
     if (view.exercise === "sound-twins")
       return (
         <SoundTwinsExercise key={key} exercise={view.exercise} level={view.level} onBack={back} onNext={next} />
+      );
+    if (meta.grid)
+      return (
+        <SyllableGridExercise key={key} exercise={view.exercise} mode={meta.grid} level={view.level} onBack={back} onNext={next} />
       );
     if (meta.spell)
       return (
