@@ -403,3 +403,51 @@ One thing the parser needed that D2 did not anticipate: Swift prints doubles as
 the shortest round-trip form, which can be exponent notation (`1e-05`). Since the
 `d` strings are built by interpolating computed numbers, the parser accepts
 exponents. It already does, and `SVGPathGrammarTests` covers it.
+
+## D22 — ALCore is complete and green; what the port proved and what it did not
+
+509 tests in 80 suites, on the host, in 0.43 seconds. Every TypeScript suite is
+ported at or above parity:
+
+| TS suite | tests | Swift |
+|---|---|---|
+| `levels.test.ts` | 80 | 99 |
+| `merge.test.ts` | 24 | 35 |
+| `useProfile.test.tsx` | 18 | 26 |
+| `entitlement.test.ts` | 16 | 17 |
+| `telemetry.test.ts` | 13 | 21 |
+| `rewards.test.ts` | 12 | 16 |
+| `client.test.ts` | 10 | 15 |
+| `updates.test.ts` | 5 | 16 |
+
+**Mechanically verified, each behind a test proved non-vacuous by mutation:**
+`ledgerKey` matches the string `ClearCounters` is keyed by, end to end through
+award → counter → persisted bytes → sync wire, for all 17 exercises (D11);
+exactly one line in ALCore assigns `stars.earned` and it is fed by
+`sessionReward` (invariant 8); nothing under `Telemetry/` references
+`deviceId()`; `WireChild` carries only `id`, `touchedAt`, `profile` (invariant
+10); `PersistedProfile` has no balance and no ledger (invariant 9); and ALCore's
+57 files import only `Foundation` and `Observation` — nothing else, ever.
+
+That last check found a real hole: the scan an agent had written banned StoreKit
+and UIKit but not SwiftUI or Network. It bans them now.
+
+**Content is byte-perfect.** Every string literal in `content.ts` was diffed as
+a multiset against the Swift tables: zero divergences. The only TS-only strings
+were the import and the four `img/*.svg` URLs, now the `ImageKey` enum. The
+mixed `’`/`'` apostrophes survived, which matters because they are VO lookup
+keys (D17).
+
+**Not proved here, and honestly so:** invariants 1, 2, 6 and 7 are owned by
+files that do not exist yet. ALCore's *contribution* to them is in place and is
+structural rather than conventional — `KVStore` and every `ProfileStore`
+mutation are synchronous by signature, so an adapter that wants to await cannot
+conform (invariant 1); `AudioEngine.say` returns `Bool` and can neither throw
+nor hang (invariant 3); `ReduceMotionSource` exists to be injected (invariant 6).
+
+**Two gaps carried forward into the art phase.** `src/mascot/catalog.ts` — the
+growth maths, the anchors, the ids and the catalog data — has no Swift home yet,
+and `VO/Utterances.swift` depends on its costs. Per D8 that data belongs in
+`ALCore/Mascot/`, not in ALArt, because the shop and the profile read it too.
+The integration agent declined to invent a shape the mascot port would then have
+to contradict, which was the right call.
