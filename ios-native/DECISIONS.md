@@ -971,3 +971,104 @@ is clipped by the status bar and the notch. On the web there is no notch and no
 keyboard inset, so nothing in the TSX corresponds to it. It needs a safe-area
 fix in the picker, and it is exactly the class of thing the D3 pixel diff and a
 simulator pass exist to catch.
+
+## D42 — The notch defect is fixed by scrolling, and the fix is gated
+
+D41's clipped 👋 is fixed. `KeyboardScroll` (`ALUI/Components/KeyboardScroll.swift`)
+wraps a subtree in a `ScrollView`, which turns SwiftUI's keyboard avoidance from
+a **translation** into a bottom **content inset** — so the stage top stays
+anchored and the focused field is still reachable.
+
+That is also the faithful answer rather than merely a working one. The web has
+no keyboard inset, but mobile Safari shrinks the visual viewport and scrolls the
+focused field into view; the page top is never lost, you can always scroll back
+to it. `.ignoresSafeArea(.keyboard)` would have matched the web's *static*
+layout more literally and been wrong in landscape, where the 402 pt height minus
+a keyboard leaves the name field underneath it with no way to see what you type.
+
+**Verified by reproduction, not by inspection.** Same seeded state, same device,
+two builds:
+
+| build | result |
+|---|---|
+| `enabled: isCreating` | 👋 fully clear of the status bar, field and button visible |
+| `enabled: false` (control) | 👋 sliced by the Dynamic Island, stage top off-screen |
+
+**The `enabled:` gate is load-bearing and must not be "simplified" away.** A
+`UIScrollView` sets `delaysContentTouches`, which holds a touch to see whether it
+becomes a pan — that is invariant 1 ("feedback fires on `pointerdown`") with
+extra latency bolted on. So the wrapper goes only over subtrees that own a
+keyboard AND carry no `LayerHost`. On `WhoIsPlayingView` the split is exact: the
+form branch is plain SwiftUI buttons, and the screen's only `LayerHost` is in
+`ChildCard`, in the mutually-exclusive grid branch. `KeyboardScrollTests` asserts
+`enabled: false` is the pixel-exact identity, so dropping the gate fails the
+suite. **Do not promote this to `RootView`.**
+
+### Two host-tier limits, both found the hard way
+
+**`ImageRenderer` cannot see inside a `ScrollView`.** Measured, not assumed: the
+same red block sampled bare gives `(255, 56, 60)`; inside a `ScrollView` it gives
+`(0, 0, 0)` — a valid `CGImage` containing nothing. So the enabled path is not
+host-testable at all, and the obvious "wrapped renders like bare" test cannot be
+written. **The D19 render harness inherits this**, and it matters more there than
+here: `ShopView` scrolls too, and a pixel differ that does not know this will
+happily report two blank images as a perfect match. The harness must assert its
+reference renders are non-empty before comparing them.
+
+**Never hand a pixel buffer to `#expect`.** `#expect(bare == wrapped)` on a
+1.12 MB `[UInt8]` does not fail — it *hangs*, because the macro captures its
+operands for failure diagnostics and reflecting a million-element array never
+finishes. The full suite went from 0.85 s to a hard timeout, which reads exactly
+like a deadlock in the code under test and is not. Compute the comparison first
+and pass the `Bool`; that is why `GameFrameZOrderTests` only ever hands the macro
+three `Int`s. (A third trap for the harness: a bare greedy `Color` inside a
+`ScrollView` resolves to infinite height and hangs the renderer outright — bound
+every stub on the scroll axis.)
+
+Related operational note: `timeout` kills `swift test` but NOT its
+`swiftpm-testing-helper` child. Eight orphans accumulated during this
+investigation and held the test bundle, producing hangs that had nothing to do
+with the code. `pkill -9 -f swiftpm-testing-helper` before trusting a repeat run.
+
+1424 tests, 247 suites, 0.995 s.
+
+## D43 — A local StoreKit configuration, so the purchase path is testable at all
+
+`App/Configuration.storekit` declares both products — `…unlock` at 9,99 € and the
+price-0 `…trial14` non-consumable that App Review 3.1.1 prescribes — and the
+scheme references it from its `LaunchAction`. Storefront `FRA`, so the price
+label comes back formatted as the screens expect.
+
+Without it there is no way to exercise `purchase()`, `restore()` or `beginTrial()`
+anywhere: the products do not exist in App Store Connect, so `Product.products(for:)`
+returns empty and every path collapses to `.unavailable`. A local configuration
+needs no paid account and no App Store Connect record.
+
+Note what this does NOT change: with no configuration the app is still correct,
+because invariant 11 is fail-open and `beginTrial()` stamps `trialStartedAt`
+locally with no network. The trial and the whole game work with a dead store;
+only the purchase button is inert.
+
+**Unverified from the CLI, deliberately flagged.** A scheme's StoreKit
+configuration is injected by Xcode's run action; `simctl launch` does not apply
+it, so nothing here proves it loads. The JSON parses and the scheme's relative
+path resolves to the file — that is all that has been checked. It takes effect on
+⌘R from Xcode.
+
+## D44 — What was NOT changed, and why
+
+**`ParentalGate` is a plausible sibling of D41 and was left alone.** It owns the
+only other keyboard (`.numberPad`) and its card is centred rather than pinned, so
+avoidance shifts it half the inset instead of the full amount — arithmetic says
+it clears the status bar on a 17 Pro, and it has no `LayerHost`, so the same
+wrapper would be safe. But no bug was reproduced there, and the gate cannot be
+reached from the CLI (it needs taps, and `simctl` has no input). An unverified
+change to a screen with a working layout is not a fix. Flagged, not touched.
+
+**The D36 quirks stay quirks.** The uncancelled 350 ms announce timer and the
+truthiness-not-equality vowel gap are faithful ports of PWA behaviour, and
+behaviour is frozen. They are reported for a decision, not fixed by reflex.
+
+**D31's audio session is still `.playback`.** It is a deliberate deviation
+(audible on silent, unlike the PWA), already flagged, and reverting is one
+constant — but that is a product call, not a defect.

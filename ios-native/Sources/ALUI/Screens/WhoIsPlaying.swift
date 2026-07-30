@@ -276,6 +276,16 @@ public struct WhoIsPlayingView: View {
             Button(Self.alertDelete, role: .destructive) { finish(confirmed: true) }
             Button(Self.alertCancel, role: .cancel) { finish(confirmed: false) }
         }
+        // D42. The form branch autofocuses its name field, so a keyboard is up
+        // from the moment this screen appears on an empty device — and the stage
+        // cannot compress below 620, so SwiftUI's avoidance slid the 👋 under the
+        // notch. Scrolling absorbs the inset the way mobile Safari does.
+        //
+        // Gated on `isCreating` and NOT hoisted to the whole screen: the grid
+        // branch's `ChildCard` is a `LayerHost`, and a `UIScrollView` over it
+        // would delay touch-down feedback (invariant 1). The two branches are
+        // mutually exclusive, so the wrapper never sees a tile.
+        .alKeyboardScroll(enabled: isCreating)
     }
 
     /// Alert button titles. NOT ported copy — the PWA never had them (browser
