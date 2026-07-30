@@ -880,3 +880,94 @@ four agent prompts are unchanged and re-runnable:
 ```
 .claude/…/workflows/scripts/al-ios-phase6-screens-wf_1665df0b-ea3.js
 ```
+
+## D39 — Three flaky tests, and what each one actually was
+
+The suite passed 12 of 15 runs when phase 6 landed. Intermittent failures are
+usually dismissed as "test flake"; these were three different things, and only
+one of them was a test problem.
+
+**1. A data race in `TileIDAllocator` — a real bug in shipped code.**
+`LevelsSpellSyllableTests.givesEveryTrayTileAUniqueId` handed out a duplicate id
+about one run in six. Its fixture is fully seeded and deterministic, so the
+duplicate could not have come from the generator — it came from
+`TileIDAllocator.shared`, a process-wide mutable counter doing an unsynchronised
+`counter += 1` while Swift Testing built rounds from several threads at once.
+
+In the shipped app every builder is reached from a `@MainActor` model, so the
+race is currently unreachable there. That is not a property anything enforces,
+and the consequence if it were reached is not cosmetic: tile ids are SwiftUI
+identities, so a collision reuses a view and carries press/shake layer state onto
+the wrong tile (invariants 1 and 2), and the undo logic matches a slot back to
+its tray tile BY ID. Now lock-protected and `@unchecked Sendable`. One
+uncontended lock per tile, of which a round allocates a handful.
+
+**2. `EntitlementModelTests` — untestable production code, flaky since phase 4.**
+`beginTrialTakesEarliest` failed about one run in eight. The test waited with
+`for _ in 0..<20 { await Task.yield() }`. `Task.yield()` offers the CURRENT
+executor a chance to run something else and promises nothing about a task on
+another thread, so "enough yields" is not a quantity that exists; it only started
+failing when the suite passed a thousand tests and the parallel load grew.
+
+Polling for the effect would have fixed three of the four call sites and not the
+fourth, because three of them assert that something did NOT change — and no
+condition becomes true when nothing happens. The real cause was that
+`beginTrial()` fired an unowned `Task` with no handle, so its completion was
+unobservable. It now keeps that task in `trialTask` and the tests await it.
+**A test cannot be made honest against work it has no way to wait for**; when
+that happens, the seam belongs in the production code, not in a cleverer poll.
+
+**3. `RosterPrivacyTests` — a genuine test bug, in the most important test.**
+Same fixed-yield pattern, now waiting on the actual condition. Worth stating what
+this flake was NOT: at no point did a child's name appear in a payload. The test
+guards with `#expect(!transport.pushed.isEmpty)` before searching the bytes,
+precisely so "nothing was pushed" can never be mistaken for "nothing identifying
+was pushed". An invariant-10 test that passed vacuously would be far worse than
+one that failed loudly.
+
+15 consecutive full runs green after all three.
+
+## D40 — `ALSyncURL` / `ALTelemetryURL` ship empty, exactly as the web ships them
+
+Every phase since D33 recorded that sync and telemetry are inert because nothing
+sets these Info.plist keys. Both are now declared in both build configurations,
+with empty values.
+
+Empty is the right value, not a placeholder: `.env.example` has
+`VITE_TELEMETRY_URL=` and `VITE_SYNC_URL=` with no values and there is no `.env`,
+so **the PWA also ships with both disabled**. The native port was never regressing
+anything — it was matching. `PlatformConfiguration.normalised` already treats `""`
+as absent, reproducing TS truthiness, so an empty key means "no endpoint" rather
+than "an endpoint that is the empty string".
+
+What the change buys is that the mechanism is now wired and verified end to end:
+filling either value is a one-line build-setting edit, not a code change.
+
+## D41 — Phase 6 verified on the simulator, not just on the host
+
+```
+ALCore       63 files   7729 lines
+ALArt        16 files   5673 lines
+ALUI         45 files  15189 lines
+ALPlatform   17 files   2622 lines
+tests        99 files  24397 lines    1423 tests, 246 suites, 0.85 s
+```
+
+The app was installed on an iPhone 17 Pro simulator and driven through the gate
+chain by seeding `CapacitorStorage.attrape-lettres:onboarded:v1` and a v4 roster —
+which incidentally exercised D7's migration contract for real, since the app read
+keys written from outside by `defaults write`.
+
+Onboarding renders with its consent control OFF and the trial terms above the
+button; the first-run picker follows, with its primary action disabled until a
+name is typed; the species picker draws all five mascots from ported SVG paths.
+Their closed eyes were checked against `parts.tsx:41` rather than assumed —
+`sleepy && mood === "idle"` is the authored stade-0 baby look, and every card is
+`Tout neuf`.
+
+**One layout defect found that no host test could see:** with the keyboard up on
+the first-run picker, keyboard avoidance slides the whole stage upward and the 👋
+is clipped by the status bar and the notch. On the web there is no notch and no
+keyboard inset, so nothing in the TSX corresponds to it. It needs a safe-area
+fix in the picker, and it is exactly the class of thing the D3 pixel diff and a
+simulator pass exist to catch.

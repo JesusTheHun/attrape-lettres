@@ -143,8 +143,27 @@ private final class ChaosPurchaseStore: PurchaseStore, @unchecked Sendable {
     func priceLabel() async -> String? { nil }
 }
 
-private func pump(_ times: Int = 20) async {
-    for _ in 0..<times { await Task.yield() }
+/// Awaits `beginTrial()`'s follow-up task.
+///
+/// This replaced a fixed `for _ in 0..<20 { await Task.yield() }`, which was
+/// quietly flaky from the day it was written and started failing about one run
+/// in eight once the suite passed a thousand tests: under parallel load the
+/// store call had not been scheduled by the time the yields ran out, so
+/// `beginTrialTakesEarliest` read the local stamp instead of the authoritative
+/// one.
+///
+/// `Task.yield()` offers the CURRENT executor a chance to run something else and
+/// promises nothing about a task on another thread, so "enough yields" is not a
+/// quantity that exists. Polling for the effect instead would fix these three
+/// tests and not the fourth, because three of them assert that something did NOT
+/// change — and there is no condition that becomes true when nothing happens.
+///
+/// The only reliable answer was to make the work awaitable, so `beginTrial()`
+/// now keeps its task in `trialTask`. A test cannot be made honest against work
+/// it has no way to wait for.
+@MainActor
+private func pump(_ model: EntitlementModel) async {
+    await model.trialTask?.value
 }
 
 // MARK: - Tests
@@ -210,7 +229,7 @@ struct EntitlementModelTests {
         #expect(model.license.trialStartedAt == T0)
         #expect(persist.load().trialStartedAt == T0)
 
-        await pump()
+        await pump(model)
         // nil from the store ⇒ the local stamp stands, silently.
         #expect(model.license.trialStartedAt == T0)
     }
@@ -221,7 +240,7 @@ struct EntitlementModelTests {
         LicenseStore(kv).save(LicenseState(trialStartedAt: T0 - 5 * dayMs))
         let (model, _, _) = make(store: ScriptedStore(), kv: kv, now: T0)
         model.beginTrial()
-        await pump()
+        await pump(model)
         #expect(model.license.trialStartedAt == T0 - 5 * dayMs)
     }
 
@@ -232,7 +251,7 @@ struct EntitlementModelTests {
         let (model, _, persist) = make(store: store, kv: kv, now: T0)
         model.beginTrial()
         #expect(model.license.trialStartedAt == T0)
-        await pump()
+        await pump(model)
         #expect(model.license.trialStartedAt == T0 - 12 * dayMs)
         #expect(persist.load().trialStartedAt == T0 - 12 * dayMs)
     }
@@ -242,7 +261,7 @@ struct EntitlementModelTests {
         let store = ScriptedStore(trialDate: T0 + 3 * dayMs)
         let (model, _, _) = make(store: store, now: T0)
         model.beginTrial()
-        await pump()
+        await pump(model)
         #expect(model.license.trialStartedAt == T0)
     }
 
@@ -331,7 +350,12 @@ struct EntitlementModelTests {
         #expect(gate.entered == 1)
 
         let second = Task { await model.refresh() }
-        await pump(50)  // every chance to start a second store call
+        // Deliberately a bounded yield loop and NOT a wait-for-condition: what
+        // is being checked is an ABSENCE (no second store call), and there is no
+        // event that signals "nothing is going to happen". The assertion after
+        // `gate.open()` is the real proof; this only widens the window in which
+        // a bug could show itself.
+        for _ in 0..<200 { await Task.yield() }
 
         gate.open()
         await first.value

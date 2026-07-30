@@ -62,7 +62,7 @@ public struct EmphasisRun: Equatable, Sendable {
 /// how the displayed copy and the tested copy drift apart.
 ///
 /// Returns runs in document order whose `text` concatenates back to `full`
-/// exactly — asserted in `AdultScreenTests`.
+/// exactly — asserted in `Tests/ALUITests/Screens/OnboardingTests.swift`.
 public func emphasisRuns(_ full: String, bold: [String]) -> [EmphasisRun] {
     var out: [EmphasisRun] = []
     var rest = Substring(full)
@@ -172,7 +172,7 @@ public struct OnboardingView: View {
     ///
     /// A named constant rather than a literal in the `@State` default: seeding
     /// it from `telemetry.hasConsent` would delete this line, which is what
-    /// `AdultScreenTests` is watching for. Do not make it a function of
+    /// `OnboardingTests` is watching for. Do not make it a function of
     /// anything.
     public static let initialConsent = false
 

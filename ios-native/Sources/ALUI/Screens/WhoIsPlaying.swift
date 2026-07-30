@@ -29,7 +29,7 @@ import ALCore
 /*     app state, deliberately.                                                */
 /*                                                                             */
 /* This file therefore emits no telemetry at all. If a property is ever needed  */
-/* here, that is a report, not an edit. `AdultScreenTests` drives the whole     */
+/* here, that is a report, not an edit. `WhoIsPlayingTests` drives the whole    */
 /* roster flow with a recording transport and asserts the name appears in the   */
 /* display labels and in NO sent byte.                                         */
 /*                                                                             */

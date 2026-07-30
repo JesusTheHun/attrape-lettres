@@ -83,6 +83,20 @@ public final class EntitlementModel {
     @ObservationIgnored private var inFlight: Task<Void, Never>?
     @ObservationIgnored private var priceFetched = false
 
+    /// `beginTrial()`'s follow-up task, kept only so a test can await it.
+    ///
+    /// It used to be fire-and-forget, which made its completion unobservable and
+    /// forced `EntitlementModelTests` to poll with a fixed number of
+    /// `Task.yield()`s. That was flaky from the day it was written and began
+    /// failing about one run in eight once the suite passed a thousand tests.
+    /// A test cannot be made reliable against work it has no way to wait for, so
+    /// the seam belongs here rather than in a cleverer poll.
+    ///
+    /// Deliberately NOT `inFlight`: the body awaits `inFlight?.value` to
+    /// serialise behind a concurrent `refresh()`, so parking itself there would
+    /// deadlock. Nothing in the app reads this.
+    @ObservationIgnored private(set) var trialTask: Task<Void, Never>?
+
     public init(store: PurchaseStore, persist: LicenseStore, time: TimeSource) {
         self.store = store
         self.persist = persist
@@ -170,7 +184,7 @@ public final class EntitlementModel {
         next.trialStartedAt = license.trialStartedAt ?? now
         commit(withClock(next, now))
 
-        Task { @MainActor [weak self] in
+        trialTask = Task { @MainActor [weak self] in
             guard let self else { return }
             guard let authoritative = await self.store.beginTrial() else { return }
             // Routed through the same serialisation as `refresh()`, then re-read:

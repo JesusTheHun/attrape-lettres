@@ -81,12 +81,23 @@ public struct GateChallenge: Equatable, Sendable {
 
 /// `e.target.value.replace(/\D/g, "").slice(0, 3)`.
 ///
-/// `\D` is "not [0-9]", so it also strips non-ASCII digits (Arabic-Indic,
-/// full-width). `Character.isNumber` would keep them and let a shape the field
-/// never accepts on the web through, so the test pins that.
+/// Filtered per UNICODE SCALAR, not per `Character`, because that is what the
+/// regex does. `\D` without the `u` flag matches one UTF-16 code unit at a time
+/// and deletes everything outside U+0030…U+0039, so:
+///
+///   • non-ASCII digits go (Arabic-Indic ٤٢, full-width ４２, superscript ²) —
+///     `Character.isNumber` would have KEPT them and let through a shape the web
+///     field never accepted;
+///   • a mark attached to a digit goes while the digit STAYS ("3" + U+0301 is
+///     "3"; the keycap "1️⃣" is "1") — a `Character`-level filter drops the whole
+///     grapheme cluster and answers "", which the web never does.
+///
+/// `.slice(0, 3)` counts code units too, and after the filter every survivor is
+/// exactly one unit wide, so `prefix(3)` over the filtered scalars is the same
+/// cut.
 public func sanitizeGateInput(_ raw: String) -> String {
-    let digits = raw.filter { $0.isASCII && $0.isNumber }
-    return String(digits.prefix(3))
+    let digits = raw.unicodeScalars.filter { $0.value >= 0x30 && $0.value <= 0x39 }
+    return String(String.UnicodeScalarView(digits.prefix(3)))
 }
 
 // MARK: - The retry behaviour (pure, host-tested)
