@@ -227,6 +227,33 @@ struct AssemblyHandlerTests {
         #expect(h.delays.requests == [350])
     }
 
+    /// D45 — the fast-child stall, on the assembly engine.
+    ///
+    /// Only round 0 uses the delayed announce here (later rounds announce
+    /// immediately), so this is the window: a child who completes the first row
+    /// within 350 ms used to have the prompt cut their own success line short,
+    /// and the advance is gated on that line finishing.
+    ///
+    /// `holdSays()` is load-bearing — it keeps `idx` at 0 while the timer fires,
+    /// which is the only state where the announce's guard would pass.
+    @Test func completingTheFirstRowCancelsThePendingAnnounce() async {
+        let h = EngineHarness()
+        h.delays.holdDelays()
+        h.audio.holdSays()
+        let model = makeAssembly(items: ["r1", "r2"], answer: ["BA", "TO"], h)
+        model.activate()
+        await eventually { h.delays.pendingCount == 1 }
+        _ = model.pick(tileID: 1, value: "BA")
+        #expect(model.pick(tileID: 2, value: "TO") == .accept)  // row complete, inside the window
+        await eventually { h.audio.pendingSayCount == 1 }  // success line in flight
+        h.delays.releaseNext()
+        // A negative assertion is only as strong as the wait before it.
+        for _ in 0..<50 { await Task.yield() }
+        #expect(
+            !h.audio.sayTexts.contains("P-r1"),
+            Comment(rawValue: "a completed row must not announce its own prompt"))
+    }
+
     @Test func pendingRound0AnnounceIsCancelledOnDeactivate() async {
         let h = EngineHarness()
         h.delays.holdDelays()

@@ -145,15 +145,23 @@ struct SyllableGridViewTests {
         #expect(SyllableGridMetrics.previewText(vi) == "vi")
     }
 
-    /// The `vowel`-mode gap: dashed and empty while `flash == nil`, a white card
-    /// showing the target's vowel once a pick has been accepted. The TSX tests
-    /// the TRUTHINESS of `flash`, not equality with the target — ported as-is.
-    @Test func theVowelGapFollowsFlashTruthiness() {
+    /// The `vowel`-mode gap: dashed and empty while nothing is flashing, a white
+    /// card showing the target's vowel once the RIGHT pick has been accepted.
+    ///
+    /// The TSX writes `flash ? … : …` and this port compares (D45). The two
+    /// agree on every reachable input, because `setFlash` runs only after the
+    /// `text !== round.target.text` early return — the first two cases below are
+    /// the only ones the app can actually produce. The third is unreachable
+    /// today and is pinned precisely so it stays a decision rather than a
+    /// side effect: if `flash` ever starts carrying a wrong pick, this gap must
+    /// NOT answer the question for the child (invariant 3 — a miss reveals
+    /// nothing). Deleting this case is how that protection would be lost.
+    @Test func theVowelGapFillsOnlyForTheTarget() {
         #expect(SyllableGridMetrics.gap(target: va, flash: nil) == .init(text: "", filled: false))
         #expect(SyllableGridMetrics.gap(target: va, flash: "VA") == .init(text: "A", filled: true))
         #expect(
-            SyllableGridMetrics.gap(target: va, flash: "VI") == .init(text: "A", filled: true),
-            Comment(rawValue: "`flash ? target.vowel : \"\"` — any non-nil flash fills it"))
+            SyllableGridMetrics.gap(target: va, flash: "VI") == .init(text: "", filled: false),
+            Comment(rawValue: "a non-target flash must not reveal the answer"))
         // The gap shows the TARGET's vowel, never the flash key's own letters.
         #expect(SyllableGridMetrics.gap(target: vi, flash: "VI").text == "I")
     }

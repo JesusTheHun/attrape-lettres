@@ -159,6 +159,13 @@ public final class SinglePickModel<Round> {
             return .reject
         }
         locked = true
+        // [DEVIATION, authorised] The round has been answered, so the pending
+        // "here is the task" prompt is stale. The TSX does NOT cancel it, and a
+        // correct tap inside the 350 ms window therefore let the prompt speak
+        // over the success line: `say` returned `ok == false`, the guard below
+        // dropped the advance, and the game stalled with `locked` still true —
+        // silently, on the fastest children. See D45.
+        announceTask?.cancel()
         flash = key
         mood = .happy
         deps.audio.success()

@@ -268,6 +268,44 @@ struct SinglePickAudioTests {
         #expect(h.delays.requests == [350, 350], Comment(rawValue: "every advance re-announces after 350 ms"))
     }
 
+    /// D45 — the fast-child stall.
+    ///
+    /// A correct tap inside the 350 ms announce window used to let the prompt
+    /// speak over the success line. The real `say` returns `false` when it is
+    /// cut short, the advance is gated on that `false`, and the round stranded
+    /// with `locked` still true — no error, no feedback, and only for children
+    /// quick enough to answer in a third of a second.
+    ///
+    /// `holdSays()` is what makes this test mean anything. It keeps the success
+    /// line open, so `idx` has NOT advanced when the timer fires — which is the
+    /// only state in which the announce's own `idx == expected` guard would let
+    /// it through. Without it the guard masks the bug and the test passes
+    /// against the unfixed model.
+    ///
+    /// The waits are load-bearing too, and this test was VACUOUS before they
+    /// were added: two bare `Task.yield()`s after `releaseNext()` were not
+    /// enough for the resumed announce task to reach its `say`, so it passed
+    /// against the unfixed model. It is verified by mutation now — remove the
+    /// `announceTask?.cancel()` from `pick` and this fails.
+    @Test func aCorrectPickCancelsThePendingAnnounce() async {
+        let h = EngineHarness()
+        h.delays.holdDelays()
+        h.audio.holdSays()
+        let model = makeModel(rounds: ["A", "B"], h)
+        model.activate()
+        await eventually { h.delays.pendingCount == 1 }
+        _ = model.pick("A")  // answered inside the window
+        // The success line is in flight and suspended: `idx` is pinned at 0.
+        await eventually { h.audio.pendingSayCount == 1 }
+        h.delays.releaseNext()  // …and the timer fires right after
+        // Give the resumed announce task room to reach its `say` if it is going
+        // to. A negative assertion is only as strong as the wait before it.
+        for _ in 0..<50 { await Task.yield() }
+        #expect(
+            !h.audio.sayTexts.contains("P-A"),
+            Comment(rawValue: "an answered round must not announce its own prompt"))
+    }
+
     @Test func pendingAnnounceIsCancelledOnDeactivate() async {
         let h = EngineHarness()
         h.delays.holdDelays()

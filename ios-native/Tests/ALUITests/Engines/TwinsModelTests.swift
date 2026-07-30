@@ -156,6 +156,34 @@ struct TwinsModelTests {
         #expect(h.audio.sayTexts.contains("Bravo ! Tu as tout trouvé !"))
     }
 
+    /// D45 — the fast-child stall, on the twins engine.
+    ///
+    /// A child who finds every twin inside the 350 ms window used to have
+    /// « Trouve tous les … » speak over the last success line, and the advance
+    /// is gated on that line finishing.
+    ///
+    /// `holdSays()` is load-bearing: it keeps the round from completing while
+    /// the timer fires, which is the only state in which the announce's own
+    /// guards would let it through.
+    @Test func completingTheRoundCancelsThePendingAnnounce() async {
+        let (h, model) = makeModel()
+        h.delays.holdDelays()
+        h.audio.holdSays()
+        model.activate()
+        await eventually { h.delays.pendingCount == 1 }
+        let prompt = Levels.twinPrompt(model.round.family)
+        let spoken = model.targets.count
+        for tile in model.targets { _ = model.pick(tile) }
+        await eventually { h.audio.pendingSayCount == spoken }
+        h.delays.releaseNext()  // the timer fires just after the last twin
+        // A negative assertion is only as strong as the wait before it.
+        for _ in 0..<50 { await Task.yield() }
+        #expect(
+            !h.audio.sayTexts.contains(prompt),
+            Comment(rawValue: "a completed round must not announce its own prompt"))
+        await drainSays(h.audio)
+    }
+
     @Test func announceSpeaksTheTwinPromptAfter350ms() async {
         let (h, model) = makeModel()
         model.activate()

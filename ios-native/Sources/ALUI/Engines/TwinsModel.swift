@@ -123,6 +123,10 @@ public final class TwinsModel {
             return .accept
         }
         locked = true
+        // [DEVIATION, authorised] Stale prompt — see D45 and the identical line
+        // in `SinglePickModel.pick`. The pair is complete; announcing the task
+        // now would cut the success line short and strand the round.
+        announceTask?.cancel()
         deps.audio.success()
         deps.fireConfetti()
         // Advance only after the LAST success line played in full (`ok`).

@@ -200,6 +200,11 @@ public final class AssemblyModel<Item, Round, Slot> {
         let filled = slots.compactMap { $0 }
         if descriptor.judge(round, filled) {
             locked = true
+            // [DEVIATION, authorised] Stale prompt — see D45 and the identical
+            // line in `SinglePickModel.pick`. The row is complete and correct;
+            // announcing the task now would cut the success line short and
+            // strand the round with `locked` still true.
+            announceTask?.cancel()
             mood = .happy
             deps.audio.success()
             deps.fireConfetti()

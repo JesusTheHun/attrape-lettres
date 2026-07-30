@@ -807,10 +807,15 @@ header, and identical to the PWA. Fixing it is a two-line change — cancel the
 announce task in `pick` — but it is a behaviour change.
 
 **The syllable-grid vowel gap tests truthiness, not equality.** The TSX writes
-`flash ? round.target.vowel : ""`. So *any* flash — including a wrong pick's —
-fills the gap with the **target's** vowel, not the picked one. Ported as written
-and pinned by a test so nobody "fixes" it by accident. Whether a child reads that
-as encouragement or as a lie is a design question.
+`flash ? round.target.vowel : ""`, rather than comparing with the target.
+
+> **CORRECTION (D45).** The sentence that stood here — "so *any* flash, including
+> a wrong pick's, fills the gap with the target's vowel" — was **wrong**, and it
+> was wrong in the direction that invents a defect rather than hides one. Both
+> `SyllableGridExercise.tsx` and `SinglePickModel.pick` assign `flash` only
+> AFTER the wrong-answer early return, so a miss never sets it and the two forms
+> agree on every reachable input. Nothing was ever revealed to a child on a wrong
+> tap. The port now compares anyway, for the reason given in D45.
 
 ## D37 — Phase 5 inventory
 
@@ -1072,3 +1077,75 @@ behaviour is frozen. They are reported for a decision, not fixed by reflex.
 **D31's audio session is still `.playback`.** It is a deliberate deviation
 (audible on silent, unlike the PWA), already flagged, and reverting is one
 constant — but that is a product call, not a defect.
+
+## D45 — The four flagged calls, decided
+
+The user ruled on every open product question. Recorded here with what each one
+cost, because two of the four turned out not to be what D31/D36 said they were.
+
+| # | Question | Ruling | Change |
+|---|---|---|---|
+| 1 | Audio session `.playback` (audible on silent) | keep | none |
+| 2 | The 350 ms announce timer stalls a fast child | **fix** | 3 engines |
+| 3 | The vowel gap tests truthiness | **fix** | 1 line, no behaviour change |
+| 4 | « OK » / « Annuler » / « Supprimer » | keep | none |
+
+### 2 — the fast-child stall, fixed in all three engines
+
+`SinglePickModel`, `TwinsModel` and `AssemblyModel` now cancel the pending
+announce on the pick that completes a round. The stall was real and nasty
+precisely because it was silent: the prompt spoke over the success line, the real
+`say` returns `false` when cut short, every advance is gated on that `false`, and
+the round stranded with `locked == true`. No error, no feedback, and only for
+children quick enough to answer inside 350 ms — the ones doing best.
+
+Deliberately NOT cancelled anywhere else. A miss leaves the prompt pending, which
+is right: the round is still unanswered, so its instruction is still current. The
+cancel goes on the branch that has been answered correctly, which is exactly the
+branch that gates on `ok`.
+
+**Verified by mutation, and the first attempt failed that check.** Each of the
+three tests was re-run against the un-fixed model; each must fail. `holdSays()`
+is what makes them mean anything — it pins `idx` while the timer fires, and
+without it the announce's own `idx == expected` guard masks the bug. The
+`SinglePickModel` test initially PASSED against the unfixed model: two bare
+`Task.yield()`s after releasing the timer were not enough for the resumed
+announce task to reach its `say`, so it asserted a negative that had not had time
+to become true. A negative assertion is only as strong as the wait in front of
+it. All three now wait on a positive signal (`pendingSayCount`) and then yield 50
+times, and all three fail under mutation.
+
+**This is a deviation from the PWA, which still has the bug.** It is authorised
+and marked `[DEVIATION, authorised]` at each site. Fixing the TSX is a two-line
+change in each engine and belongs on a web branch, not this one — flagged.
+
+### 3 — the vowel gap: no defect, a guard anyway
+
+**D36's description of this was wrong and is corrected above.** Re-reading both
+`SyllableGridExercise.tsx` and `SinglePickModel.pick`: `setFlash`/`flash = key`
+run only after the wrong-answer early return, so `flash` is non-nil if and only
+if the pick was correct, and then it equals the target. Truthiness and equality
+agree on every input the app can produce. No child was ever shown the answer on a
+miss.
+
+The comparison went in regardless, because *why* it was harmless matters: it was
+harmless only by virtue of a guard three files away, in a different type. If
+`flash` ever starts carrying a wrong pick — to highlight what the child tapped,
+say — the truthy form silently begins revealing the answer on a miss, in a game
+whose invariant 3 is that a wrong tap costs nothing and reveals nothing. The test
+pins the unreachable case for that reason and says so, so nobody deletes it as
+dead weight.
+
+Cost: one line, zero behaviour change, verified by mutation (reverting to
+truthiness fails the test).
+
+1427 tests, 247 suites, ~1.0 s.
+
+### Housekeeping, learned this session
+
+`$SCRATCH/bak` from an earlier session still held five ALArt files. A wildcard
+restore (`cp $SP/bak/*.swift Sources/ALUI/Engines/`) dumped all of them into
+`Engines/`, and the build failed with `cannot find type 'SVGCanvas' in scope` —
+an error that points at ALArt and has nothing to do with ALArt. Back up to a
+freshly created directory, restore by explicit filename, and treat a sudden
+unrelated-looking compile error after a restore as a misplaced-file symptom.

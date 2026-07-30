@@ -55,11 +55,25 @@ public enum SyllableGridMetrics {
     /// What the gap shows and how it is dressed.
     ///
     /// The TSX is `flash ? … : …` — TRUTHINESS of the flash key, not a
-    /// comparison with the target. Ported as written: any non-nil flash fills
-    /// the gap with the target's vowel. (In practice `flash` can only ever be
-    /// the target's own text, since it is set from the accepted pick.)
+    /// comparison with the target. This port compares (D45), which today is
+    /// **exactly equivalent**, and that equivalence is the reason the change is
+    /// safe rather than the reason it is pointless:
+    ///
+    /// `SyllableGridExercise.tsx` calls `setFlash(text)` only AFTER the
+    /// `text !== round.target.text` early return, so `flash` is non-nil if and
+    /// only if the pick was correct, and then it IS `round.target.text`. Both
+    /// forms therefore fill the gap on exactly the same picks. The original
+    /// D36 note claimed a wrong pick could fill the gap with the target's
+    /// vowel; re-reading the TSX and `SinglePickModel.pick` shows it cannot —
+    /// a miss returns `.reject` before `flash` is ever assigned.
+    ///
+    /// What comparing buys is that it stays true. Truthiness only became
+    /// harmless because of a guard three files away; if `flash` is ever set on
+    /// a wrong pick (to highlight what the child tapped, say) the truthy form
+    /// silently starts showing the ANSWER on a miss, in a game whose invariant 3
+    /// is that a wrong tap costs nothing and reveals nothing.
     public struct Gap: Equatable, Sendable {
-        /// `{flash ? round.target.vowel : ""}`.
+        /// `{flash ? round.target.vowel : ""}` — filled only for the target.
         public let text: String
         /// `background: flash ? "#FFFFFF" : "transparent"`, and the dashed
         /// border / drop shadow follow the same flag.
@@ -68,7 +82,7 @@ public enum SyllableGridMetrics {
 
     /// `SyllableGridExercise.tsx`'s gap span, as data.
     public static func gap(target: GridSyllable, flash: String?) -> Gap {
-        flash == nil ? Gap(text: "", filled: false) : Gap(text: target.vowel, filled: true)
+        flash == target.text ? Gap(text: target.vowel, filled: true) : Gap(text: "", filled: false)
     }
 
     /// `aria-label={`Syllabe à compléter : ${round.target.consonant}`}` on the
