@@ -837,3 +837,46 @@ Two of the four agents also flagged a one-frame `runner == nil` placeholder: D9
 forbids seeding in a `@State` default, so the session is built in `.task` and the
 first frame renders an empty stage. Nothing is interactive or audible in it, but
 whether it is perceptible on device is a simulator question, not a host one.
+
+## D38 — Phase 6 stopped at the weekly account limit, mid-flight
+
+All four phase-6 agents died on the same error:
+
+```
+You've hit your weekly limit · resets Aug 2 at 2pm (Europe/Paris)
+```
+
+Five of the eleven planned files had already been written and are committed:
+`Onboarding.swift`, `ParentalGate.swift`, `WhoIsPlaying.swift`, `Shop/Meter.swift`,
+`Shop/Picker.swift` — 2058 lines. They compile, the package is green at 1117
+tests, and the iOS build still succeeds, because nothing constructs them yet:
+there is no router. They are inert additions.
+
+**They have ZERO tests, and that is the thing to know before touching them.**
+Every other line in this port has a host test behind it. These five files do not,
+because the agents that wrote them were killed before the test-writing step.
+The code is well-shaped for it — the rules are already extracted into pure types
+(`GateChallenge`, `ParentalGateModel`, `RosterAction`, the meter arithmetic, the
+picker's two variants) precisely so they could be tested — but nothing yet proves
+any of them right. Spot-checked by hand, not by machine:
+
+- `ParentalGate` is fail-open by construction, which is the property invariant 11
+  needs: the challenge is generated, not loaded, so there is no read that can fail
+  and no state that can lock. A wrong answer costs one retry.
+- `WhoIsPlaying` emits no telemetry at all and touches no transport, so the child's
+  first name has no path off the device from this screen (invariant 10).
+
+Both readings come from the code and its comments; neither is asserted anywhere.
+
+Not started: `Dashboard`, `Paywall`, the shop itself (`ShopView`, `ShopItem`,
+`GrowthCard`, `ItemPreview`, `ShopAnim`), `HubView`, `Router`, `RootView` (still
+the placeholder star), and the App composition root. The consequence of that last
+one is unchanged from D33: **sync and telemetry are inert in a build made today**,
+the audio engine is never constructed, and nothing wires `scenePhase`.
+
+Resuming needs no archaeology — the phase-6 workflow script is on disk and its
+four agent prompts are unchanged and re-runnable:
+
+```
+.claude/…/workflows/scripts/al-ios-phase6-screens-wf_1665df0b-ea3.js
+```
