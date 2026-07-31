@@ -10,23 +10,23 @@ state, and nothing to buy in front of a child.
 apps/
   game-web/       the PWA — Vite · React 18 · TypeScript (strict) · Tailwind
   game-ios/       the native app — SwiftPM package + a thin Xcode wrapper
-  game-android/   not built yet
+  game-android/   the native app — Kotlin · Compose · Gradle. Port in progress
   backoffice/     not built yet
 services/
   api/            household sync + telemetry — Hono · Zod · DynamoDB · S3
 packages/         shared TypeScript — empty on purpose
 ```
 
-`apps/game-web` and `apps/game-ios` are two independent implementations of the
-same game. They are not a shared core with two shells: the port was written
-against the web app line by line, and ~1450 host tests are what hold the two in
-agreement. What they genuinely share is the baked voice-over — 855 clips that
-live once, in `apps/game-web/src/vo/clips/`, hard-linked into the iOS bundle at
-build time and never committed twice.
+`apps/game-web`, `apps/game-ios` and `apps/game-android` are independent
+implementations of the same game. They are not a shared core with three shells:
+each port was written against the web app line by line, and ~1450 host tests are
+what hold the iOS one in agreement. What they genuinely share is the baked
+voice-over — 845 clips that live once, in `apps/game-web/src/vo/clips/`,
+hard-linked into each app's bundle at build time and never committed twice.
 
-Each app carries its own docs. `apps/game-ios/` in particular has its own
-`CLAUDE.md`, an `ARCHITECTURE.md` and a `DECISIONS.md` recording every decision
-the port made and why.
+Each app carries its own docs. `apps/game-ios/` and `apps/game-android/` have an
+`ARCHITECTURE.md` and a `DECISIONS.md` recording every decision their port made
+and why.
 
 ## Run
 

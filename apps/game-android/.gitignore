@@ -1,0 +1,17 @@
+*.iml
+.gradle/
+build/
+local.properties
+.cxx/
+.kotlin/
+
+# The baked voice-over is STAGED here by scripts/stage-vo.sh, never committed:
+# the 855 clips live once, in apps/game-web/src/vo/clips/. What IS committed is
+# platform/src/main/assets/vo-manifest.txt, so the coverage test runs on a
+# machine that has never staged the audio.
+platform/src/main/assets/vo/
+
+# Signing material never lands in the repo.
+*.jks
+*.keystore
+keystore.properties

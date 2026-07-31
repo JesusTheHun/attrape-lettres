@@ -1,11 +1,30 @@
-# apps/game-android — not built yet
+# apps/game-android
 
-**Route decided: native Kotlin + Compose.** Nothing is scaffolded.
+**Route: native Kotlin + Compose.** Scaffolded; the port has started.
 
 There used to be a second option. The repo carried a Capacitor shell — the same
 web bundle in a WebView, `cap add android` away — and it was removed rather than
 finished, because the decision is to go fully native on both phones. So this app
-mirrors `apps/game-ios/`: a real port, not a wrapper.
+mirrors `apps/game-ios/`: a real port, not a wrapper. `ARCHITECTURE.md` is the
+map; `DECISIONS.md` records what was chosen here and why.
+
+## Commands
+
+```bash
+export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
+
+./gradlew :core:test        # the whole game's logic, as JUnit, no emulator
+./gradlew test              # every module's host tests
+./gradlew assembleDebug     # app/build/outputs/apk/debug/app-debug.apk
+scripts/stage-vo.sh         # hard-link the 845 baked clips into :platform
+```
+
+`:core` is a plain JVM module and does not apply the Android plugin, so
+`./gradlew :core:test` is the Kotlin analogue of `swift test`: the entire game's
+logic runs as ordinary JUnit in milliseconds, with no emulator, no store, no
+network and no signing. That is the loop the port is written in.
+
+`local.properties` is not committed; it holds `sdk.dir` for this machine.
 
 ## What a port has to reproduce
 
@@ -23,9 +42,12 @@ mirrors `apps/game-ios/`: a real port, not a wrapper.
 - **The v4 storage schema and its migrations.** Stars and clears are per-device
   counters precisely so a child playing offline on two phones merges instead of
   losing stars. Android Auto Backup is the analogue of what iOS gets from
-  `UserDefaults`.
+  `UserDefaults` — see `app/src/main/res/xml/backup_rules.xml`, which excludes
+  the device id on purpose and says why.
 - **The sync wire.** `GET`/`PUT /household/{id}` with ETag optimistic
-  concurrency, merged on the device. See `services/api/README.md`.
+  concurrency, merged on the device. See `services/api/README.md`. That contract
+  is being reworked, so `:core` declares the transport as an interface and ships
+  a stub; no HTTP exists in this app yet (A7).
 - **Money, and the platforms not being symmetric.** Play has no price-0 IAP, so
   the trial is a local stamp rather than a signed receipt, and Play Family
   Library does **not** share in-app purchases — Android restores per Google
@@ -33,7 +55,19 @@ mirrors `apps/game-ios/`: a real port, not a wrapper.
 
 ## What it gets for free
 
-The baked voice-over. 855 clips live once in `apps/game-web/src/vo/clips/`,
-named by a hash of the utterance they speak. `apps/game-ios/scripts/stage-vo.sh`
-hard-links them into the iOS bundle at build time instead of committing a second
-copy; do the same rather than adding 13.7 MiB to the repo again.
+The baked voice-over. 845 clips live once in `apps/game-web/src/vo/clips/`,
+named by a hash of the utterance they speak. `scripts/stage-vo.sh` hard-links
+them into `platform/src/main/assets/vo/` instead of committing a third copy.
+What *is* committed is `platform/src/main/assets/vo-manifest.txt`, byte-identical
+to the iOS one, so the coverage test ("every utterance the app can speak has a
+clip") runs on a machine that has never staged the audio.
+
+## Status
+
+| Layer | State |
+|-------|-------|
+| Toolchain, Gradle module graph, debug APK | done — builds |
+| `:core` `ExerciseId` + rewards | done — 14 tests, ported line-for-line from `rewards.test.ts` |
+| `:core` content, levels, persistence, merge, licensing, telemetry | next |
+| `:platform` audio, storage, billing | after `:core` |
+| `:art` mascots and icons, `:ui` screens | last |

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Auto Backup rules for Android 11 and below (API 30-). The Android 12+ twin is
+  xml/data_extraction_rules.xml and must stay in step with this file.
+
+  Auto Backup is this platform's answer to what iOS gets from UserDefaults being
+  in the device backup: it is what carries the 14-day trial stamp across a
+  reinstall. Play has no price-0 in-app product, so unlike iOS there is no
+  signed StoreKit `purchaseDate` to lean on — the stamp is a local value, and if
+  it did not survive a reinstall the trial would be infinitely re-rollable.
+
+  Everything in shared_prefs is backed up EXCEPT the device id.
+
+  Excluding the device id is deliberate and it protects invariant 9. Stars and
+  clears are per-device grow-only counters merged with max(), which is lossless
+  only while one counter key belongs to exactly one device. Restore a backup
+  onto a new phone while the old phone is still in the house and a backed-up
+  device id would put two live devices on the same key: max() would then read
+  two devices' independent progress as one stale one, and a child would lose
+  stars. A restored device mints a fresh id instead. Nothing is lost by that —
+  its historical counts travel inside the roster blob under the OLD id and still
+  sum correctly; only new earnings land on the new key.
+-->
+<full-backup-content>
+    <include domain="sharedpref" path="." />
+    <exclude domain="sharedpref" path="fr.dappit.attrapelettres.device.xml" />
+</full-backup-content>

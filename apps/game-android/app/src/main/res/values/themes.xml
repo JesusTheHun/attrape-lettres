@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  A platform theme, not a Material Components one: every pixel of this app is
+  drawn by Compose, so the only job left for the XML theme is the window itself
+  — no title bar, and a background that matches the stage wash so the launch
+  window does not flash white.
+-->
+<resources>
+    <style name="Theme.AttrapeLettres" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/stage_background</item>
+        <item name="android:statusBarColor">@color/stage_theme</item>
+        <item name="android:navigationBarColor">@color/stage_background</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+    </style>
+</resources>

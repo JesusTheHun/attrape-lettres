@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The two colours the OS sees before a single pixel of the game is drawn.
+  Byte-identical to apps/game-web/public/manifest.webmanifest, so the splash
+  and the first frame do not flash a different beige at a six-year-old.
+-->
+<resources>
+    <color name="stage_background">#efe6da</color>
+    <color name="stage_theme">#FFE7C9</color>
+</resources>

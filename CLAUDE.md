@@ -10,20 +10,22 @@ A French early-reading game for ~6yo children, as a monorepo.
 apps/game-web/       the PWA. Vite + React 18 + TypeScript (strict) + Tailwind.
                      Also the home of the VO clip bank and its generator.
 apps/game-ios/       the native app. SwiftPM package + a thin Xcode wrapper.
-                     Has its OWN CLAUDE.md, ARCHITECTURE.md and DECISIONS.md.
-apps/game-android/   not built. Two candidate routes, see its README.
+                     Has its OWN ARCHITECTURE.md and DECISIONS.md.
+apps/game-android/   the native app. Kotlin + Compose, a 5-module Gradle build.
+                     Has its OWN ARCHITECTURE.md and DECISIONS.md. Port in
+                     progress: toolchain, module graph and rewards are in.
 apps/backoffice/     not built.
 services/api/        Hono + Zod. Household sync (ETag/412) on DynamoDB and
                      telemetry on S3. Built; see its README.
 packages/            shared TS. Empty on purpose — see its README.
 ```
 
-The two game apps are **independent implementations of the same game**, not a
-shared core with two shells. They agree because the port was written against the
-web app line by line and its tests say so, not because they share code. The one
-thing they do share is the baked voice-over: 855 clips that live once, in
-`apps/game-web/src/vo/clips/`, staged into the iOS bundle by
-`apps/game-ios/scripts/stage-vo.sh` and never committed twice.
+The three game apps are **independent implementations of the same game**, not a
+shared core with three shells. They agree because each port was written against
+the web app line by line and its tests say so, not because they share code. The
+one thing they do share is the baked voice-over: 845 clips that live once, in
+`apps/game-web/src/vo/clips/`, staged into each native bundle by that app's own
+`scripts/stage-vo.sh` and never committed twice.
 
 ## Commands
 
@@ -35,6 +37,10 @@ pnpm test           # every JS/TS package
 pnpm vo:build       # bake the VO clip bank (needs GEMINI_API_KEY)
 
 cd apps/game-ios && swift test    # 1454 host tests, no simulator needed
+
+# Android needs JDK 21 on JAVA_HOME; see apps/game-android/README.md.
+cd apps/game-android && ./gradlew :core:test   # game logic, no emulator needed
+cd apps/game-android && ./gradlew assembleDebug
 ```
 
 Anything scoped to one package also works from inside it (`cd apps/game-web &&

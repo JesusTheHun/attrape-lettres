@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The same drawn A as apps/game-web/public/icon.svg, scaled 0.85 and recentred
+  so it sits inside the adaptive-icon safe zone (the launcher may mask anything
+  outside the centre 66/108 of the canvas). Same orange, same round caps.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+
+    <path
+        android:pathData="M165.9,392 L256,120 L346.1,392"
+        android:strokeColor="#E8722C"
+        android:strokeWidth="41"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M203.3,298.5 L308.7,298.5"
+        android:strokeColor="#E8722C"
+        android:strokeWidth="41"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>
