@@ -7,12 +7,11 @@ import { getItem, setItem } from "./kv";
  * Every accessor is synchronous and total: a caller gets a value or a safe
  * default, never a promise and never a throw. That contract is load-bearing —
  * `useState(initialRoster)` and the award/spend path inside a pointerdown
- * handler (invariant 1) have nowhere to await. kv.ts is what keeps it true on
- * native, where the underlying store is async.
+ * handler (invariant 1) have nowhere to await.
  *
- * Backends live in kv.ts: localStorage on the web, `@capacitor/preferences`
- * on device (not evictable under disk pressure, and the thing iCloud KVS and
- * Android Auto Backup actually back up).
+ * The backend is kv.ts, which is localStorage. The native apps do not go
+ * through here at all; iOS reads the same schema through `ProfileStorage` in
+ * ALCore, over `UserDefaults`.
  *
  * Schema history (useProfile owns the migration logic; storage just fetches the
  * raw blobs so defaults/domain shapes live in one place):

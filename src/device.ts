@@ -9,11 +9,10 @@
  * endpoint — that is what makes the telemetry payload genuinely anonymous
  * rather than merely pseudonymous.
  *
- * Resolved LAZILY, not at module load: on native the id lives behind kv.ts's
- * hydrated cache, so the first read has to happen after `hydrateKv()` — which
- * it does, since nothing calls this before the roster is built. Reads stay
- * synchronous because useProfile's award/spend path runs inside a pointerdown
- * handler and cannot await.
+ * Resolved LAZILY and memoised, not at module load — one read of localStorage
+ * at whatever moment the roster is first built, rather than one on every import
+ * of this module. Reads stay synchronous because useProfile's award/spend path
+ * runs inside a pointerdown handler and cannot await.
  */
 
 import { getItem, removeItem, setItem } from "./kv";

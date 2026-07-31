@@ -1,5 +1,3 @@
-import { Capacitor } from "@capacitor/core";
-
 /* -------------------------------------------------------------------------- */
 /* The in-app-purchase seam.                                                    */
 /*                                                                             */
@@ -88,60 +86,25 @@ const webStore: PurchaseStore = {
   },
 };
 
-/**
- * Native build.
- *
- * The plugin is not wired yet, so `refresh` reports UNREACHABLE and the app
- * fails open — a native build today behaves exactly like the web one plus a
- * running trial clock. Nothing is charged, nothing is locked. Wiring it means
- * implementing four calls against StoreKit 2 / Play Billing:
- *
- *   refresh()   iOS: iterate `Transaction.currentEntitlements`; the JWS is
- *               signed by Apple and verifies ON DEVICE — no server needed.
- *               paid = PRODUCT_UNLOCK present (this also covers a Family
- *               Sharing grant, which arrives as an ordinary entitlement).
- *               trialStartedAt = PRODUCT_TRIAL's `purchaseDate`.
- *               Android: `queryPurchasesAsync(INAPP)`, verify the signature
- *               against the Play Console RSA key, paid = unlock purchased and
- *               acknowledged. Android reports trialStartedAt: null.
- *   purchase()  StoreKit `product.purchase()` / Play `launchBillingFlow`, then
- *               finish/acknowledge — an unacknowledged Play purchase is
- *               auto-refunded after three days.
- *   restore()   iOS `AppStore.sync()`; Android just re-queries.
- *   beginTrial  iOS only, and it is a purchase() of the price-0 product; on
- *               Android the provider's local stamp is the whole mechanism.
- *
- * Until then this stub is the honest state of the world, and every screen
- * downstream is already written against the finished interface.
- */
-const nativeStore: PurchaseStore = {
-  available: true,
-  async refresh() {
-    return UNREACHABLE;
-  },
-  async beginTrial() {
-    return null;
-  },
-  async purchase() {
-    return false;
-  },
-  async restore() {
-    return false;
-  },
-  async priceLabel() {
-    return null;
-  },
-};
-
 let override: PurchaseStore | null = null;
 
+/**
+ * Always `webStore` — this file has one implementation and no platform branch.
+ *
+ * It used to have two. An earlier native shell wrapped this same web bundle, so
+ * a `nativeStore` stub lived here waiting to be wired to StoreKit 2 and Play
+ * Billing. The phones are real native apps now, and the finished iOS
+ * implementation is `StoreKitPurchaseStore` in ALPlatform — against the same
+ * four calls this interface names, because the interface was ported too. A TS
+ * stub describing a purchase path that no TS build can reach would just be a
+ * second, staler description of it.
+ *
+ * The interface itself stays. `UNREACHABLE` and the fail-open rule in
+ * `applySnapshot` are what invariant 11 is made of, and the tests that hold
+ * them down substitute a store through `__setPurchaseStore`.
+ */
 export function purchaseStore(): PurchaseStore {
-  if (override) return override;
-  try {
-    return Capacitor.isNativePlatform() ? nativeStore : webStore;
-  } catch {
-    return webStore;
-  }
+  return override ?? webStore;
 }
 
 /** Tests only — swap in a fake store. */

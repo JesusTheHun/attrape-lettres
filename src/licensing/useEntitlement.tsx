@@ -8,7 +8,6 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { App as CapApp } from "@capacitor/app";
 import {
   entitlementOf,
   withClock,
@@ -99,17 +98,11 @@ export function EntitlementProvider({ children }: { children: ReactNode }) {
   // Re-check when the app comes back to the foreground: that is when a purchase
   // made in the store UI, a Family Sharing grant, or a refund shows up.
   useEffect(() => {
-    let cancel: (() => void) | undefined;
-    void CapApp.addListener("appStateChange", ({ isActive }) => {
-      if (isActive) void refresh();
-    })
-      .then((h) => {
-        cancel = () => void h.remove();
-      })
-      .catch(() => {
-        /* web build: no native app-state events, the mount refresh is enough */
-      });
-    return () => cancel?.();
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void refresh();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
   }, [refresh]);
 
   const beginTrial = useCallback(() => {

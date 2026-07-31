@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Capacitor } from "@capacitor/core";
 import { useEntitlement } from "../licensing/useEntitlement";
 import { TRIAL_DAYS, UNLOCK_PRICE_EUR } from "../licensing/entitlement";
 import { setConsent, track } from "../telemetry";
@@ -30,17 +29,12 @@ export function Onboarding() {
   const { beginTrial, storeAvailable, priceLabel } = useEntitlement();
   const [analytics, setAnalytics] = useState(false);
 
-  // Apple's Family Sharing really does cover the whole household on the £/€
-  // unlock. Google Play Family Library explicitly does NOT share in-app
-  // purchases, so the Android copy promises only what Android delivers.
-  const ios = (() => {
-    try {
-      return Capacitor.getPlatform() === "ios";
-    } catch {
-      return false;
-    }
-  })();
-  const scope = ios ? "pour toute la famille" : "sur vos appareils";
+  // "sur vos appareils", never "pour toute la famille": Apple's Family Sharing
+  // does cover the household on the unlock, but that promise belongs to the app
+  // that can keep it. This build has no store at all (see licensing/store.ts),
+  // so the block below never renders here — the native app makes the
+  // platform-accurate promise in `Copy.swift`.
+  const scope = "sur vos appareils";
 
   const start = () => {
     setConsent(analytics);

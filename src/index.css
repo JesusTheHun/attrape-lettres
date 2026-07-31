@@ -34,8 +34,8 @@ textarea {
 #root {
   display: grid;
   place-items: start center;
-  /* Safe-area aware for notched phones / rounded tablet corners in the native
-     (Capacitor) shell; falls back to 16px on the web. */
+  /* Safe-area aware for a notched phone in standalone/installed PWA mode, where
+     the page really does run under the notch; falls back to 16px in a tab. */
   padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
     max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
 }

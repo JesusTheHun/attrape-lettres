@@ -8,7 +8,6 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { App as CapApp } from "@capacitor/app";
 import type {
   ChildProfile,
   ClearCounters,
@@ -388,17 +387,11 @@ export function ProfileProvider({ children: kids }: { children: ReactNode }) {
         });
     };
     run();
-    let cancel: (() => void) | undefined;
-    void CapApp.addListener("appStateChange", ({ isActive }) => {
-      if (isActive) run();
-    })
-      .then((h) => {
-        cancel = () => void h.remove();
-      })
-      .catch(() => {
-        /* web build: no native app-state events */
-      });
-    return () => cancel?.();
+    const onVisible = () => {
+      if (document.visibilityState === "visible") run();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
   }, [commit]);
 
   const award = useCallback(

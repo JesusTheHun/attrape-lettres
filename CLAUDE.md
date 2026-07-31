@@ -50,10 +50,9 @@ libraries.
 - `components/ExerciseIcon.tsx` — the hub's original per-exercise icons (tinted
   badge + in-house white pictogram, NO emoji). Keyed by `ExerciseId`, so a new
   exercise fails to compile until it has an icon.
-- `kv.ts` — the key/value primitive. localStorage on web; on native, an in-memory
-  cache hydrated once at boot from `@capacitor/preferences` so every read stays
-  synchronous (invariant 1 has nowhere to await). `main.tsx` awaits `hydrateKv()`
-  before mounting.
+- `kv.ts` — the key/value primitive: localStorage, wrapped so every access is
+  inside a try/catch. Synchronous by contract (invariant 1 has nowhere to
+  await), so there is no boot gate to hydrate.
 - `storage.ts` — the ONLY module that reads or writes profiles. Schema history +
   the forward-migration rule live in its header. Currently `roster:v4`.
 - `hooks/useProfile.tsx` — the roster, the economy writes, and the v1/v2/v3 → v4
@@ -69,11 +68,10 @@ libraries.
   a write (gameplay stays offline-first).
 - `licensing/` — `entitlement.ts` (pure: trial clock, offline grace, fail-open),
   `store.ts` (the vendor-free IAP seam — StoreKit 2 / Play Billing and nobody
-  else; native adapter still a stub), `useEntitlement.tsx` (provider),
-  `persist.ts`.
+  else; this build has no store behind it, so the seam always answers "web"),
+  `useEntitlement.tsx` (provider), `persist.ts`.
 - `telemetry.ts` — first-party analytics + JS error reporting. Closed event list,
   closed property allowlist, no identifier of any kind.
-- `updates.ts` — self-hosted live updates + the native-version guard.
 - `components/Onboarding.tsx`, `Paywall.tsx`, `ParentalGate.tsx` — the only
   screens written for the adult in the room. Deliberately not kid-styled.
 
@@ -132,15 +130,13 @@ These are why the game feels alive to a child. Changing them silently will regre
 
 ## Native, store and money
 
-- **What may ship over the air, and what may not.** A Capacitor app runs its web
-  layer in WKWebView, and the DPLA §3.3.1(B) carve-out permits downloaded
-  *interpreted* code run by WebKit — so JS, CSS, content, levels and VO are
-  fair game, same-day, no review. Never OTA the paywall logic, the price,
-  anything under `licensing/`, a feature hidden at submission, or a bundle
-  needing a native capability the installed binary lacks. That last one is what
-  `minNative` in the update manifest guards; when it trips, the fix is a store
-  release. Guidelines 2.3.1 (hidden features) and 2.5.2 are what get accounts
-  pulled — not shipping a bug fix.
+- **The phones are native apps; nothing ships over the air.** This was once a
+  Capacitor shell around this same web bundle, which bought same-day JS updates
+  under the DPLA §3.3.1(B) interpreted-code carve-out. That whole mechanism is
+  gone with it — a native binary changes only through store review, so every
+  fix, including a one-character content fix, waits for a release. Budget for
+  it. (The carve-out never covered the paywall, the price or anything under
+  `licensing/` anyway; guidelines 2.3.1 and 2.5.2 are what get accounts pulled.)
 - **Kids Category (guideline 1.3) shapes the UI, not just the paperwork.** No
   purchase may sit in front of a child: the expired-trial screen shows a
   kid-legible "ask a grown-up", and the price only exists behind
@@ -159,13 +155,10 @@ These are why the game feels alive to a child. Changing them silently will regre
   on for the €9.99 non-consumable in App Store Connect — six people, free, no
   code. Google Play Family Library explicitly does not share in-app purchases,
   ever; Android restores per Google account only. Any copy promising "toute la
-  famille" must be platform-conditional (`Onboarding.tsx` does this). The fix,
-  when it is wanted, is entitlement on the sync backend keyed by `familyId` —
-  cheap now that the household record exists.
-- **`ios/` and `android/` are not scaffolded yet.** `npx cap add ios` needs
-  CocoaPods; `cap add android` needs the Android SDK. Both directories get
-  committed once created (they hold signing config, icons, Info.plist); the
-  generated contents inside them are gitignored.
+  famille" belongs to the app that can keep the promise — it lives in the iOS
+  app's `Copy.swift`, and the web build, which has no store, says "sur vos
+  appareils". The fix, when it is wanted, is entitlement on the sync backend
+  keyed by `familyId` — cheap now that the household record exists.
 
 ## Recipes
 

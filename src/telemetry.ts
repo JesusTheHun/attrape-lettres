@@ -182,9 +182,9 @@ export function reportError(err: unknown, where = "unknown"): void {
 }
 
 /**
- * Catch what a WebView otherwise swallows. A Capacitor app's failures are JS
- * exceptions, not native crashes — App Store Connect and Play Console vitals
- * never see them, so without this we are blind to our own bugs.
+ * Catch what a browser otherwise swallows. There is no crash reporter behind a
+ * self-distributed PWA — an uncaught exception just leaves a child looking at a
+ * frozen screen — so without this we are blind to our own bugs.
  */
 export function installErrorReporting(): void {
   if (typeof window === "undefined") return;
