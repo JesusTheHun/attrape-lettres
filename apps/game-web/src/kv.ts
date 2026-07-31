@@ -17,7 +17,7 @@
  * their own storage (iOS: `UserDefaultsKVStore` in ALPlatform), which is why
  * this file has no platform branch. It used to: an earlier native shell wrapped
  * this same web bundle and needed an async device store behind a memory cache.
- * See DECISIONS.md § "Capacitor removed".
+ * See the repo root's DECISIONS.md, R2.
  */
 
 export function getItem(key: string): string | null {
