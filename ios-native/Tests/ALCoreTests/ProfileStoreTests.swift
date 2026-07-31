@@ -104,24 +104,28 @@ private func makeStore(
         #expect(pts == Rewards.curve[0] + 2)
     }
 
-    @Test func trainingExercisesAwardNothingButStillCountInTheLedger() {
+    @Test func trainingExercisesPayTheCurveWithNoAccuracyBonus() {
         let store = makeStore()
         store.createChild(name: "Léa")
-        let pts = store.award(exercise: .firstLetter, level: 1, perfectRounds: 8, totalRounds: 8) // even full-perfect
-        #expect(pts == 0)
-        #expect(store.profile.balance == 0)
+        // first-letter is difficulty 0: the curve, and not one point more.
+        let perfect = store.award(exercise: .firstLetter, level: 1, perfectRounds: 8, totalRounds: 8)
+        let sloppy = store.award(exercise: .firstLetter, level: 2, perfectRounds: 0, totalRounds: 8)
+        #expect(perfect == Rewards.curve[0])
+        #expect(sloppy == Rewards.curve[0], Comment(rawValue: "a second level, so the curve resets"))
+        #expect(store.profile.balance == Rewards.curve[0] * 2)
         #expect(store.profile.ledger["first-letter:1"] == 1)
-        #expect(store.preview(exercise: .firstLetter, level: 1) == 0) // hub shows no pill
+        // …and the hub promises it in advance, like any other row.
+        #expect(store.preview(exercise: .firstLetter, level: 1) == Rewards.curve[1])
     }
 
-    @Test func aZeroPointAwardStillCreatesThisDevicesEarnedKey() {
-        // TS `bump(earned, device, 0)` writes a `+0`, creating the key — the
-        // counter's presence (not its value) is what records "this device
-        // played". Ported as-is.
+    @Test func anAwardCreatesThisDevicesEarnedKey() {
+        // TS `bump(earned, device, n)` writes this device's slot — the counter's
+        // PRESENCE is what records "this device played", which is what keeps the
+        // per-device merge lossless (invariant 9).
         let store = makeStore()
         store.createChild(name: "Léa")
         store.award(exercise: .firstLetter, level: 1, perfectRounds: 8, totalRounds: 8)
-        #expect(store.profile.stars.earned[device] == 0)
+        #expect(store.profile.stars.earned[device] == Rewards.curve[0])
     }
 
     @Test func awardWithNoActiveChildReturnsThePointsButWritesNothing() {

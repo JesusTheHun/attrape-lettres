@@ -34,7 +34,7 @@ import Testing
     @Test func previewReturnsTheFirstClearJackpotForAnUntouchedLevel() {
         let ledger: CompletionLedger = [:]
         #expect(
-            Rewards.previewReward(ledger: ledger, exercise: .readImage, level: 1, difficulty: .d2)
+            Rewards.previewReward(ledger: ledger, exercise: .readImage, level: 1)
                 == Rewards.curve[0]
         )
     }
@@ -42,32 +42,35 @@ import Testing
     @Test func previewReflectsPriorClearsFromTheLedger() {
         let ledger: CompletionLedger = [Rewards.ledgerKey(exercise: .readImage, level: 1): 2]
         #expect(
-            Rewards.previewReward(ledger: ledger, exercise: .readImage, level: 1, difficulty: .d2)
+            Rewards.previewReward(ledger: ledger, exercise: .readImage, level: 1)
                 == Rewards.curve[2]
         )
     }
 
-    @Test func previewPromisesNothingForATrainingExercise() {
+    @Test func previewPromisesATrainingExerciseTheSameCurveAsAnyOtherRow() {
         #expect(
-            Rewards.previewReward(ledger: [:], exercise: .firstLetter, level: 1, difficulty: .d0)
-                == 0
+            Rewards.previewReward(ledger: [:], exercise: .firstLetter, level: 1)
+                == Rewards.curve[0]
         )
     }
 
     // MARK: - sessionReward — the anti-farming math
 
-    @Test func trainingExercisesPayNothingEvenFullPerfect() {
+    @Test func trainingExercisesPayTheCurveAndNeverABonus() {
         #expect(
-            Rewards.sessionReward(difficulty: .d0, priorClears: 0, perfectRounds: 10, totalRounds: 10) == 0
+            Rewards.sessionReward(difficulty: .d0, priorClears: 0, perfectRounds: 10, totalRounds: 10)
+                == Rewards.curve[0]
         )
         #expect(
-            Rewards.sessionReward(difficulty: .d0, priorClears: 999, perfectRounds: 0, totalRounds: 10) == 0
+            Rewards.sessionReward(difficulty: .d0, priorClears: 999, perfectRounds: 0, totalRounds: 10)
+                == Rewards.floor
         )
     }
 
-    /// Difficulty 0 pays nothing EVER — no clear count, no accuracy, no round
-    /// count can make it pay.
-    @Test func difficultyZeroPaysNothingOverTheWholeInputSpace() {
+    /// Difficulty 0 pays the completion curve and NOTHING on top — no accuracy
+    /// and no round count can move it, which is what makes a training row
+    /// pointless to grind: finishing pays, playing well pays the same.
+    @Test func difficultyZeroPaysTheCurveOverTheWholeInputSpace() {
         for priorClears in 0...6 {
             for total in 0...8 {
                 for perfect in 0...total {
@@ -77,9 +80,37 @@ import Testing
                             priorClears: priorClears,
                             perfectRounds: perfect,
                             totalRounds: total
-                        ) == 0
+                        ) == Rewards.rewardFor(priorClears: priorClears)
                     )
                 }
+            }
+        }
+    }
+
+    /// What difficulty 0 now MEANS, stated as the thing a child could exploit:
+    /// on a training row there is no reward for accuracy, so there is nothing
+    /// there to farm. Finishing pays; playing well pays exactly the same.
+    @Test func onATrainingRowCarefulPlayIsWorthExactlyWhatSpamIs() {
+        for priorClears in 0...5 {
+            let careful = Rewards.sessionReward(
+                difficulty: .d0, priorClears: priorClears, perfectRounds: 12, totalRounds: 12)
+            let spam = Rewards.sessionReward(
+                difficulty: .d0, priorClears: priorClears, perfectRounds: 0, totalRounds: 12)
+            #expect(careful == spam)
+        }
+    }
+
+    /// The gradient, which is what the training rows must not break: the BEST a
+    /// training row can pay is the WORST a paying row can pay. Climbing the hub
+    /// still out-earns grinding the bottom of it.
+    @Test func aTrainingRowNeverOutEarnsAPayingOne() {
+        for d in Difficulty.allCases where d != .d0 {
+            for priorClears in 0...5 {
+                let bestTraining = Rewards.sessionReward(
+                    difficulty: .d0, priorClears: priorClears, perfectRounds: 12, totalRounds: 12)
+                let worstPaying = Rewards.sessionReward(
+                    difficulty: d, priorClears: priorClears, perfectRounds: 0, totalRounds: 12)
+                #expect(bestTraining <= worstPaying)
             }
         }
     }

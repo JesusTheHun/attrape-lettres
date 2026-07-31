@@ -71,8 +71,12 @@ These are why the game feels alive to a child. Changing them silently will regre
    (sequence engines pace retries with the "Oh non" line instead); each round's
    star greys on its FIRST wrong tap, at pointerdown, in the GameFrame strip;
    and all points flow through `sessionReward()` — completion curve + accuracy
-   bonus weighted by the exercise's authored `difficulty` (0 = training, pays
-   nothing ever). Never award points outside `sessionReward`, and never make a
+   bonus weighted by the exercise's authored `difficulty`. Finishing pays the
+   curve on EVERY row, training rows included; `difficulty: 0` means the bonus
+   is zero, so on those rows careful play earns exactly what spam earns and
+   there is nothing to grind for. The gradient is what carries the invariant:
+   the best a training row can pay is the worst a paying row can pay. Never
+   award points outside `sessionReward`, and never let accuracy on a
    spam-completable path pay.
 
 ## Recipes
@@ -129,9 +133,9 @@ English).
 
 **Add a syllable-style exercise:** add a `SyllableMode`, branch it in
 `buildSyllableRound`, add an `EXERCISES` row with that `mode` and a `difficulty`
-(required — 0 = training/no points, 1–4 = accuracy-bonus weight rising with the
-hub progression). No new component. Then add its icon (next recipe) — that step
-is not optional.
+(required — 0 = training/no accuracy bonus, 1–4 = accuracy-bonus weight rising
+with the hub progression). No new component. Then add its icon (next recipe) —
+that step is not optional.
 
 **Add an exercise icon (ALWAYS when adding an exercise):** add a `GLYPHS[<id>]`
 entry in `components/ExerciseIcon.tsx` — a distinct `tint` + an in-house white

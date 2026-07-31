@@ -33,8 +33,13 @@ export const MISS_COOLDOWN_MS = 800;
  * when it took no wrong tap; a full-perfect run earns exactly `difficulty`
  * bonus points on top of the completion curve, proportionally fewer with
  * misses. Spam-tapping earns zero bonus, so careful play always out-earns
- * farming, and harder exercises out-pay easier ones. Difficulty 0 = training
- * exercise: pays nothing, ever — the cheer is the reward.
+ * farming, and harder exercises out-pay easier ones.
+ *
+ * EVERY exercise pays the completion curve, training rows included: finishing
+ * is the thing being rewarded, and a child who finishes has finished. What
+ * difficulty 0 buys is a bonus of exactly zero — on a training row careful play
+ * earns precisely what spam earns, so there is nothing to grind for. The
+ * gradient still holds: the only way to out-earn the curve is a harder row.
  */
 export function sessionReward(
   difficulty: Difficulty,
@@ -42,19 +47,18 @@ export function sessionReward(
   perfectRounds: number,
   totalRounds: number
 ): number {
-  if (difficulty === 0) return 0;
+  // `difficulty === 0` needs no branch: it multiplies the bonus to nothing.
   const bonus = totalRounds > 0 ? Math.floor((perfectRounds * difficulty) / totalRounds) : 0;
   return rewardFor(priorClears) + bonus;
 }
 
 /** What the child will earn next time they clear this (exercise, level) —
- *  the guaranteed part only (the accuracy bonus is earned, not promised). */
+ *  the guaranteed part only (the accuracy bonus is earned, not promised).
+ *  Difficulty plays no part: the curve is what every row pays. */
 export function previewReward(
   ledger: CompletionLedger,
   exercise: ExerciseId,
-  level: number,
-  difficulty: Difficulty
+  level: number
 ): number {
-  if (difficulty === 0) return 0;
   return rewardFor(ledger[ledgerKey(exercise, level)] ?? 0);
 }

@@ -1955,3 +1955,81 @@ That the fix was heard. The reasoning is about the signal and the speaker, and
 both halves are argued rather than measured on hardware — no phone-speaker
 response curve was taken. The device listen is the verification, and it is the
 one step this tier cannot do.
+
+## D57 — Training exercises pay for finishing
+
+Reported from the device: « I earn no point at the end of an exercise ».
+
+The economy was intact. The report was against « La première lettre » or
+« Complète le mot », the two `difficulty: 0` rows, and `sessionReward` opened
+with `if difficulty === 0 return 0` — authored, ported faithfully, and doing
+exactly what it said.
+
+The rule it encoded is the one that changed. « Difficulty 0 pays nothing, ever »
+conflates two things a six-year-old experiences differently: **finishing**, and
+**finishing well**. Only the second is farmable. A child who works through five
+rounds of « La première lettre » has finished something, and getting nothing for
+it teaches that the first row of the hub is not really part of the game.
+
+So `difficulty` now weights the bonus alone, and the curve is paid by every row:
+
+```swift
+// `.d0` needs no branch: it multiplies the bonus to nothing.
+let bonus = totalRounds > 0 ? (perfectRounds * difficulty.weight) / totalRounds : 0
+return rewardFor(priorClears: priorClears) + bonus
+```
+
+### Why this does not reopen farming
+
+Invariant 8 was never « training pays nothing » — that was one implementation of
+it. The invariant is that grinding must not out-earn climbing, and it now rests
+on the gradient, which is stated as its own test:
+
+> the BEST a training row can pay is the WORST a paying row can pay.
+
+Both equal `rewardFor(priorClears)`. On a training row careful play and spam pay
+the identical number, so there is nothing there for accuracy to farm; the only
+way to beat the curve remains a harder row. The curve itself is the other half:
+10 → 3 → 2 → 2 → 1, so replaying « Complète le mot » forever converges on one
+point a run, against 14 for a first-try « écritures mêlées ».
+
+What it does cost, stated plainly: the two training rows have 9 levels between
+them, so 90 stars of first-clear jackpot now exist that did not before, and a
+child who spam-taps can reach them. That is the price of the rule, and it was
+weighed rather than discovered.
+
+### `previewReward` lost its `difficulty` argument
+
+It now returns the curve for every row, so the parameter had nothing to decide.
+Dropping it (rather than leaving it unread) is what keeps the hub honest: the
+level pill is drawn from `preview`, and a pill that promised nothing while the
+exercise paid 10 would be a lie with a compiler-shaped excuse. Training levels
+now wear the same « +10 ⭐ » and announce « Niveau 1, gagne 10 étoiles ».
+
+`Copy.Hub.levelTraining` (« pour s'entraîner ») and the `reward == nil` branch
+of `hubLevelCells` survive with no caller. `hubLevelCells` is a pure function of
+a preview closure, and « promises nothing ⇒ shows nothing » stays the right
+answer for an input it can still be handed; the alternative is a « +0 » pill.
+`Finished`'s `earned > 0` guard is dead for the same reason and kept for the
+same one.
+
+### Both codebases, one commit
+
+The port's contract is that behaviour matches the PWA, so `rewards.ts` and
+`Rewards.swift` changed together, along with both suites and CLAUDE.md's
+invariant 8. Changing only the Swift would have made every future audit report a
+divergence — and shipped two different economies to one family's two devices,
+which the per-device counters would then merge into a number neither side could
+explain.
+
+### What paid for the diagnosis
+
+`EconomyE2ETests` — written before the change, to answer the report. It plays
+all seventeen catalog rows to a full-perfect finish through the real
+`engine(for:)` dispatch, the real content and a real `ProfileStore`, and asserts
+the balance. It is the only test that would catch an engine that stopped calling
+`award`, a row dispatched to the wrong engine, or an empty session (which sets
+`done` in the model's init and skips the finish transition entirely). It found
+nothing wrong, which is what made the answer « this is your design » defensible
+rather than a shrug — and after the change its expectation collapsed from a
+conditional to `curve[0] + difficulty.weight` for every row.

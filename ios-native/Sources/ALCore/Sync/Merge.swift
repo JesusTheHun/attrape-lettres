@@ -43,8 +43,9 @@ public func sumCounter(_ c: Counter) -> Int {
 /** Add to this device's own slot. The only legal way to change a counter. */
 public func bump(_ c: Counter, device: String, by: Int) -> Counter {
     var out = c
-    // NB: a bump of +0 still CREATES the key (TS spreads `[device]: 0` in) —
-    // `award` relies on it when a training exercise pays nothing.
+    // NB: a bump of +0 still CREATES the key (TS spreads `[device]: 0` in).
+    // No `award` passes 0 any more — every finished run pays the curve — but
+    // the key-creating behaviour is the TS's and stays ported as-is.
     out[device] = (c[device] ?? 0) + by
     return out
 }

@@ -3,9 +3,10 @@ import { EndButtons } from "./EndButtons";
 
 /**
  * Shared end-of-session screen. The star row mirrors the in-game strip: gold =
- * cleared first-try, greyed = the round took a wrong tap. Training exercises
- * (difficulty 0) earn nothing — the points pill hides and the cheer IS the
- * reward, so a 0 never reads as a punishment.
+ * cleared first-try, greyed = the round took a wrong tap. Every finished run
+ * now pays at least the curve's floor, so the `earned > 0` guard on the pill no
+ * longer fires; it stays because the day an exercise pays nothing again, a
+ * « +0 » would read as a punishment.
  */
 export function Finished({
   onMenu,

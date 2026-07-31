@@ -76,15 +76,20 @@ struct HubUnlockedTests {
 @MainActor
 struct HubRewardPillTests {
 
-    @Test("a training row (difficulty 0) shows no pill on any level, ever")
-    func trainingPaysNothing() {
+    @Test("a training row (difficulty 0) promises the same curve as any other")
+    func trainingRowsPayTheCurve() throws {
         let store = makeStore()
-        // levels.ts: first-letter and fill-blank are difficulty 0.
+        // levels.ts: first-letter and fill-blank are difficulty 0 — no accuracy
+        // bonus, but the completion curve like every other row, so the pill
+        // shows and the level announces « gagne 10 étoiles ».
         for id in [ExerciseId.firstLetter, .fillBlank] {
             let row = Levels.exercises.first { $0.id == id }!
             let cells = hubLevelCells(for: row) { store.preview(exercise: $0, level: $1) }
             for cell in cells {
-                #expect(cell.reward == nil, Comment(rawValue: "\(id.rawValue) must never pay"))
+                let reward = try #require(
+                    cell.reward, Comment(rawValue: "\(id.rawValue) level \(cell.level) shows no pill"))
+                #expect(reward.points == Rewards.curve[0])
+                #expect(reward.jackpot)
             }
         }
     }

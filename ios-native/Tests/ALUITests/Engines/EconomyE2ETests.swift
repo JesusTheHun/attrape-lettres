@@ -156,8 +156,10 @@ struct EconomyE2ETests {
         let world = economyWorld()
         await playCatalogRow(meta, level: 1, deps: world.deps, seed: 20_260_729)
 
-        // A full-perfect run: `floor(perfect * difficulty / total) == difficulty`.
-        let expected = meta.difficulty == .d0 ? 0 : Rewards.curve[0] + meta.difficulty.weight
+        // A full-perfect run: `floor(perfect * difficulty / total) == difficulty`,
+        // on top of the curve every row pays — including the training rows,
+        // whose weight is 0 and whose bonus is therefore nothing.
+        let expected = Rewards.curve[0] + meta.difficulty.weight
         #expect(
             world.store.profile.balance == expected,
             Comment(

@@ -120,12 +120,12 @@ public final class ProfileStore {
      * Award for clearing (exercise, level). Returns points granted: the
      * decaying completion curve plus the first-try accuracy bonus (see
      * `Rewards.sessionReward` — the ONLY earner, invariant 8). Training
-     * exercises (difficulty 0) grant 0 but still count in the ledger.
+     * exercises (difficulty 0) pay the curve like any other row; what they
+     * never pay is the bonus.
      *
      * NB oddity, ported as-is: with no active child the update no-ops but the
      * computed points are still returned (TS — `updateActive` guards, `award`
-     * doesn't). And a 0-point award still bumps `earned` by +0, creating the
-     * device's key.
+     * doesn't).
      */
     @discardableResult
     public func award(exercise: ExerciseId, level: Int, perfectRounds: Int, totalRounds: Int) -> Int {
@@ -154,8 +154,7 @@ public final class ProfileStore {
         Rewards.previewReward(
             ledger: ledgerOf(activeProfile.clears),
             exercise: exercise,
-            level: level,
-            difficulty: Levels.exerciseDifficulty(exercise)
+            level: level
         )
     }
 

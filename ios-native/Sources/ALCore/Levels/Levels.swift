@@ -26,8 +26,9 @@ public enum Levels {}
 
 extension Levels {
     // `difficulty` is the reward weight (see rewards.sessionReward): 0 = training,
-    // pays nothing; 1–4 = bonus points a full first-try run earns. It rises with
-    // the hub progression so the point-optimal strategy is climbing, not farming.
+    // which pays the completion curve but never a bonus; 1–4 = bonus points a
+    // full first-try run earns. It rises with the hub progression so the
+    // point-optimal strategy is climbing, not farming.
     //
     // NB: the array ORDER is the hub order and is behaviour. The only ordering
     // the TypeScript itself pins is the grid drills' placement (its

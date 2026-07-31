@@ -696,7 +696,12 @@ the derivation, do not inline the numbers, so adding a level updates the hub for
 
 `exerciseDifficulty(id)` is a linear `first(where:)` returning `.d0` when absent. Keep the
 `.d0` fallback (unreachable once the exhaustiveness test below exists, but it is the
-documented "not in the catalog pays nothing" behaviour).
+documented "not in the catalog earns no bonus" behaviour).
+
+> **Superseded, D57 (2026-07-31).** This section was written when `difficulty: 0`
+> meant "pays nothing, ever". It now means "no accuracy bonus": every row,
+> training included, pays the completion curve. Read the passages below with
+> that substitution; `Rewards.swift` and `rewards.ts` are the authority.
 
 French copy in `name` / `hint` / `MODE_HINT` / `MATCH_HINT` / `SPELL_HINT` / `MIXED_HINT` /
 `GRID_PROMPT` / `LETTER_MATCH_PROMPTS` / `READ_IMAGE_PROMPT` is copied **byte for byte**,
@@ -875,8 +880,9 @@ flaky. Assert:
 ### 6.2 Straight port of `rewards.test.ts`
 
 All 7 blocks, unchanged: `ledgerKey` format; the curve and its floor; `previewReward`
-(untouched → jackpot, prior clears → curve index, difficulty 0 → 0); `sessionReward`
-(training pays nothing; full-perfect earns exactly `difficulty`; zero perfect earns the
+(untouched → jackpot, prior clears → curve index; D57 dropped its `difficulty`
+argument); `sessionReward`
+(D57 — training pays the curve and no bonus; full-perfect earns exactly `difficulty`; zero perfect earns the
 bare curve; partial scales and floors; hard-careful beats easy-farming by >4×; empty
 session does not divide by zero).
 

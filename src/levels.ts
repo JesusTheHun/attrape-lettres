@@ -770,8 +770,9 @@ function spellIntruders(
 /* -------------------------------------------------------------------------- */
 
 // `difficulty` is the reward weight (see rewards.sessionReward): 0 = training,
-// pays nothing; 1–4 = bonus points a full first-try run earns. It rises with
-// the hub progression so the point-optimal strategy is climbing, not farming.
+// which pays the completion curve but never a bonus; 1–4 = bonus points a full
+// first-try run earns. It rises with the hub progression so the point-optimal
+// strategy is climbing, not farming.
 export const EXERCISES: ExerciseMeta[] = [
   { id: "first-letter", name: "La première lettre", emoji: "🔤", levelCount: FIRST_LETTER_LEVELS.length, difficulty: 0 },
   // Trouve le son sits this early with difficulty 1 ON PURPOSE (a deliberate

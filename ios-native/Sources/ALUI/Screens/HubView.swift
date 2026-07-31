@@ -134,8 +134,10 @@ public enum HubMetrics {
 
 // MARK: - The pure rules (host-tested in HubTests)
 
-/// One level button, resolved. `reward == nil` ⇒ no pill at all (a training
-/// exercise, difficulty 0 — invariant 8: it never pays, so nothing is promised).
+/// One level button, resolved. `reward == nil` ⇒ no pill at all — a state no
+/// shipped row reaches any more (every level promises the curve, training rows
+/// included), kept because this is a pure function of `preview` and a level
+/// that promises nothing must not show a « +0 ».
 public struct HubLevelCell: Equatable, Sendable {
     public let level: Int
     public let reward: HubLevelReward?

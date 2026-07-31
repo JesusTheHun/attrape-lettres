@@ -29,23 +29,29 @@ describe("rewardFor", () => {
 describe("previewReward", () => {
   it("returns the first-clear jackpot for an untouched level", () => {
     const ledger: CompletionLedger = {};
-    expect(previewReward(ledger, "read-image", 1, 2)).toBe(REWARD_CURVE[0]);
+    expect(previewReward(ledger, "read-image", 1)).toBe(REWARD_CURVE[0]);
   });
 
   it("reflects prior clears from the ledger", () => {
     const ledger: CompletionLedger = { [ledgerKey("read-image", 1)]: 2 };
-    expect(previewReward(ledger, "read-image", 1, 2)).toBe(REWARD_CURVE[2]);
+    expect(previewReward(ledger, "read-image", 1)).toBe(REWARD_CURVE[2]);
   });
 
-  it("promises nothing for a training exercise", () => {
-    expect(previewReward({}, "first-letter", 1, 0)).toBe(0);
+  it("promises a training exercise the same curve as any other row", () => {
+    expect(previewReward({}, "first-letter", 1)).toBe(REWARD_CURVE[0]);
   });
 });
 
 describe("sessionReward — the anti-farming math", () => {
-  it("training exercises (difficulty 0) pay nothing, even full-perfect", () => {
-    expect(sessionReward(0, 0, 10, 10)).toBe(0);
-    expect(sessionReward(0, 999, 0, 10)).toBe(0);
+  it("training exercises (difficulty 0) pay the curve, and never a bonus", () => {
+    expect(sessionReward(0, 0, 10, 10)).toBe(REWARD_CURVE[0]);
+    expect(sessionReward(0, 999, 0, 10)).toBe(REWARD_FLOOR);
+  });
+
+  it("on a training row, a full-perfect run is worth exactly what spam is", () => {
+    // The whole point of difficulty 0: finishing pays, accuracy does not, so
+    // there is nothing on a training row worth grinding for.
+    expect(sessionReward(0, 0, 10, 10)).toBe(sessionReward(0, 0, 0, 10));
   });
 
   it("a full-perfect run earns exactly `difficulty` bonus points", () => {

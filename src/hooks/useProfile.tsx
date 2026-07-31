@@ -186,7 +186,8 @@ export interface ProfileAPI {
 
   /** Award for clearing (exercise, level). Returns points granted: the decaying
    *  completion curve plus the first-try accuracy bonus (see sessionReward).
-   *  Training exercises (difficulty 0) grant 0 but still count in the ledger. */
+   *  Training exercises (difficulty 0) pay the curve like any other row; what
+   *  they never pay is the bonus. */
   award: (exercise: ExerciseId, level: number, perfectRounds: number, totalRounds: number) => number;
   /** Points the NEXT clear of (exercise, level) guarantees — for "seen in advance" cues. */
   preview: (exercise: ExerciseId, level: number) => number;
@@ -272,12 +273,7 @@ export function ProfileProvider({ children: kids }: { children: ReactNode }) {
 
   const preview = useCallback(
     (exercise: ExerciseId, level: number) =>
-      previewReward(
-        activeProfileOf(ref.current).ledger,
-        exercise,
-        level,
-        exerciseDifficulty(exercise)
-      ),
+      previewReward(activeProfileOf(ref.current).ledger, exercise, level),
     []
   );
 

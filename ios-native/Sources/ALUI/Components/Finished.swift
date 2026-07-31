@@ -26,9 +26,10 @@ import ALCore
 /*                                                                             */
 /*  - `earned` is `ALCore.sessionReward`'s return value, shown as-is. This file */
 /*    performs no arithmetic on it. The only decision it makes is whether the   */
-/*    pill APPEARS: « Training exercises (difficulty 0) earn nothing — the      */
-/*    points pill hides and the cheer IS the reward, so a 0 never reads as a    */
-/*    punishment. » That is `earned > 0`, and it is a visibility rule.          */
+/*    pill APPEARS — `earned > 0`, a visibility rule. Every finished run now    */
+/*    pays at least the curve's floor, so the guard no longer fires; it stays   */
+/*    because the day an exercise pays nothing again, a « +0 » would read as a  */
+/*    punishment.                                                              */
 /*  - `stars` is the same per-round first-try array the in-game strip rendered. */
 /*    A greyed star is still DRAWN: the round counts as played (invariants 3    */
 /*    and 8). Never filter the array, never re-derive it.                       */

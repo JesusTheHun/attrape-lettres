@@ -92,17 +92,23 @@ describe("useProfile — points (per active child)", () => {
     expect(pts).toBe(REWARD_CURVE[0] + 2);
   });
 
-  it("training exercises (difficulty 0) award nothing but still count in the ledger", () => {
+  it("training exercises (difficulty 0) pay the curve, with no accuracy bonus", () => {
     const { result } = render();
     act(() => result.current.createChild("Léa"));
-    let pts = 99;
+    let perfect = 0;
     act(() => {
-      pts = result.current.award("first-letter", 1, 8, 8); // even full-perfect
+      perfect = result.current.award("first-letter", 1, 8, 8); // full-perfect
     });
-    expect(pts).toBe(0);
-    expect(result.current.profile.balance).toBe(0);
+    expect(perfect).toBe(REWARD_CURVE[0]); // the curve, and not one point more
+
+    let sloppy = 0;
+    act(() => {
+      sloppy = result.current.award("first-letter", 2, 0, 8); // every round missed
+    });
+    expect(sloppy).toBe(REWARD_CURVE[0]); // a second level, so the curve resets
+    expect(result.current.profile.balance).toBe(REWARD_CURVE[0] * 2);
     expect(result.current.profile.ledger["first-letter:1"]).toBe(1);
-    expect(result.current.preview("first-letter", 1)).toBe(0); // hub shows no pill
+    expect(result.current.preview("first-letter", 1)).toBe(REWARD_CURVE[1]); // hub shows the pill
   });
 
   it("spend fails when unaffordable and succeeds otherwise", () => {

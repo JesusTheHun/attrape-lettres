@@ -186,7 +186,8 @@ export interface SoundLevel {
 /** Hub / navigation --------------------------------------------------------*/
 /**
  * Reward weight of an exercise — the anti-farming knob. 0 = training exercise:
- * pays NOTHING (no jackpot, no trickle, no bonus); the cheer is the reward.
+ * finishing pays the completion curve like any other row, but no accuracy
+ * bonus exists there, so careful play is worth exactly what spam is.
  * 1–4 = how many bonus points a full first-try run earns on top of the
  * completion curve. See rewards.sessionReward.
  */
@@ -197,7 +198,7 @@ export interface ExerciseMeta {
   name: string;
   emoji: string;
   levelCount: number;
-  /** Reward weight (0 = training, pays nothing). Required: every new exercise
+  /** Reward weight (0 = training: the curve, never a bonus). Required: every new exercise
    *  must place itself in the economy, same deal as its ExerciseIcon. */
   difficulty: Difficulty;
   /** Extra hub chip when the name alone doesn't say what to do (parent-facing). */

@@ -184,7 +184,8 @@ export default function App() {
               const pts = preview(ex.id, lvl);
               // First clear is the jackpot (10) — a big gold star pill; repeats
               // decay to a small coin pill so the child sees the reward up front.
-              // Training exercises (difficulty 0) pay nothing: no pill at all.
+              // Every row promises the curve, training rows included; what they
+              // don't promise is the accuracy bonus, which is earned, never shown.
               const jackpot = pts === 10;
               return (
                 <button

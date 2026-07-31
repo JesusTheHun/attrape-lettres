@@ -56,8 +56,14 @@ public enum Rewards {
      * when it took no wrong tap; a full-perfect run earns exactly `difficulty`
      * bonus points on top of the completion curve, proportionally fewer with
      * misses. Spam-tapping earns zero bonus, so careful play always out-earns
-     * farming, and harder exercises out-pay easier ones. Difficulty 0 = training
-     * exercise: pays nothing, ever — the cheer is the reward.
+     * farming, and harder exercises out-pay easier ones.
+     *
+     * EVERY exercise pays the completion curve, training rows included:
+     * finishing is the thing being rewarded, and a child who finishes has
+     * finished. What difficulty 0 buys is a bonus of exactly zero — on a
+     * training row careful play earns precisely what spam earns, so there is
+     * nothing to grind for. The gradient still holds: the only way to out-earn
+     * the curve is a harder row.
      */
     public static func sessionReward(
         difficulty: Difficulty,
@@ -65,7 +71,7 @@ public enum Rewards {
         perfectRounds: Int,
         totalRounds: Int
     ) -> Int {
-        if difficulty == .d0 { return 0 }
+        // `.d0` needs no branch: it multiplies the bonus to nothing.
         // NB: `Math.floor(a / b)` equals Swift's truncating `Int` division only
         // for non-negative operands. Both are non-negative here by construction
         // (`Difficulty` is 0…4, round counts are counts) — do not add a signed
@@ -76,13 +82,12 @@ public enum Rewards {
 
     /// What the child will earn next time they clear this (exercise, level) —
     /// the guaranteed part only (the accuracy bonus is earned, not promised).
+    /// Difficulty plays no part: the curve is what every row pays.
     public static func previewReward(
         ledger: CompletionLedger,
         exercise: ExerciseId,
-        level: Int,
-        difficulty: Difficulty
+        level: Int
     ) -> Int {
-        if difficulty == .d0 { return 0 }
-        return rewardFor(priorClears: ledger[ledgerKey(exercise: exercise, level: level)] ?? 0)
+        rewardFor(priorClears: ledger[ledgerKey(exercise: exercise, level: level)] ?? 0)
     }
 }

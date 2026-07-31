@@ -84,7 +84,8 @@ public enum Copy {
             "Niveau \(level), gagne \(points) \(Copy.stars(points))"
         }
 
-        /// A training level (difficulty 0 — invariant 8: it never pays).
+        /// A level that promises nothing. No shipped row does since training
+        /// rows started paying the curve; the string stays with its branch.
         public static func levelTraining(_ level: Int) -> String {
             "Niveau \(level), pour s'entraîner"
         }

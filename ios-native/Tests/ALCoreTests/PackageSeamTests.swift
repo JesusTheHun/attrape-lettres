@@ -212,17 +212,18 @@ struct SoleEarnerSeamTests {
         #expect(body.contains("p.stars.earned = bump(p.stars.earned, device: device, by: points)"))
     }
 
-    /// The economy's floor: a training exercise cannot be made to pay by any
-    /// combination of arguments — including the perfect run that maximises the
-    /// bonus. `difficulty == 0` short-circuits before the curve.
-    @Test func noArgumentsMakeATrainingExercisePay() {
+    /// The economy's floor: a training exercise pays the completion curve and
+    /// nothing else. No combination of arguments — not the perfect run that
+    /// maximises the bonus, not a negative clear count — can add a point to it.
+    @Test func noArgumentsMakeATrainingExercisePayABonus() {
         for prior in [-1, 0, 1, 2, 3, 4, 99] {
             for rounds in [0, 1, 8, 40] {
                 for perfect in 0...rounds {
                     #expect(
                         Rewards.sessionReward(
                             difficulty: .d0, priorClears: prior,
-                            perfectRounds: perfect, totalRounds: rounds) == 0)
+                            perfectRounds: perfect, totalRounds: rounds)
+                            == Rewards.rewardFor(priorClears: prior))
                 }
             }
         }
@@ -230,7 +231,7 @@ struct SoleEarnerSeamTests {
 
     /// And the anti-farming gradient, at the seam rather than in the unit: for
     /// every exercise in the hub, a careful run out-earns a spammed one — or
-    /// ties it at zero, which is the training case.
+    /// ties it at the bare curve, which is the training case.
     @Test func carefulPlayNeverEarnsLessThanSpamForAnyExerciseInTheHub() {
         for meta in Levels.exercises {
             let d = Levels.exerciseDifficulty(meta.id)
@@ -240,7 +241,7 @@ struct SoleEarnerSeamTests {
             let careful = Rewards.sessionReward(
                 difficulty: d, priorClears: 0, perfectRounds: 8, totalRounds: 8)
             #expect(careful >= spam, "\(meta.id.rawValue)")
-            #expect(careful - spam == (d == .d0 ? 0 : d.weight), "\(meta.id.rawValue)")
+            #expect(careful - spam == d.weight, "\(meta.id.rawValue)")
         }
     }
 }

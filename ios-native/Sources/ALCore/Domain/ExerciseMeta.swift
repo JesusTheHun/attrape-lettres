@@ -7,7 +7,7 @@ public struct ExerciseMeta: Hashable, Sendable {
     public var name: String
     public var emoji: String
     public var levelCount: Int
-    /// Reward weight (0 = training, pays nothing). Required: every new exercise
+    /// Reward weight (0 = training: the curve, never a bonus). Required: every new exercise
     /// must place itself in the economy, same deal as its ExerciseIcon.
     public var difficulty: Difficulty
     /// Extra hub chip when the name alone doesn't say what to do (parent-facing).
