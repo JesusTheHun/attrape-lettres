@@ -125,6 +125,57 @@ costs and collect none of its benefit.
 Third, smaller: the REST contract is already frozen in two shipped clients, so
 changing it is a migration rather than a design choice.
 
+## R8 — The API is Hono + Zod, and the schemas are the contract
+
+Built. Four routes, ~600 lines, 31 tests that need no database.
+
+**Zod schemas earn their place three times over**, which is why they drive the
+routes rather than being bolted on after: runtime validation on a public write
+endpoint, TypeScript types inferred for free, and an OpenAPI document generated
+for the Android port to work from. One source of truth, no spec file to drift.
+
+`@hono/zod-openapi` was chosen over bare Hono for that third job. What it does
+*not* pull in is a second protocol: the backoffice can later take Hono's `hc`
+typed client and get end-to-end inference over these same ordinary REST routes,
+which is the thing tRPC would have been for (R5).
+
+**The app is a pure function of its dependencies.** `buildApp({households,
+telemetry})` reads no env, opens no pool and listens on nothing; `server.ts` does
+all three. That is what lets every route test exercise real routing and real
+validation against an in-memory store in milliseconds — and the in-memory store
+parses etags exactly as the Postgres one does, so the double is not a
+simplification.
+
+**Privacy is re-enforced server-side.** The clients already strip names and
+already have a closed telemetry allowlist; that proves our clients behave, and
+says nothing about the database, because the endpoints are public and
+unauthenticated. Every schema is `.strict()`, so an unknown key is a 400 rather
+than a silently-kept column, and validation failures never echo the payload back.
+Both guarantees were mutation-checked: dropping `.strict()` from `WireChild`
+fails the "rejects a child's name" test, dropping it from the telemetry props
+fails "there is no free-text escape hatch".
+
+Two things the build turned up that the plan did not know:
+
+- **Zod 4's `z.record` is EXHAUSTIVE on an enum key.** It rejected a document
+  missing any of the five mascots. Every client fills all five today, so it
+  would have passed — and would have turned a future client that trims an
+  untouched species into a silent sync outage, since both clients swallow a 400.
+  Now `z.partialRecord`. The key stays closed, which means **this service must be
+  deployed before any client that adds a sixth mascot.**
+- **Anything that strips or weakens the `ETag` header breaks sync permanently
+  and invisibly.** Both clients read `etag ?? ""` and send no `If-Match` when it
+  is empty, so a proxy dropping ETag turns every push into a create → 412 → three
+  retries → give up, forever, with no error anywhere because both clients fail
+  silent by design. Recorded at the top of the service's README because it is the
+  easiest way to break this without anyone noticing.
+
+Deliberately absent, each for a reason written down in that README: no auth (a
+household id is the only credential and the server holds nothing worth
+stealing), no counter ceiling (no shared economy — a cheat gets your own kid free
+hats, while a false rejection stops sync silently), no CORS, no migration runner
+until there is a second migration.
+
 The merge stays on the device. The server never merges; it only refuses a write
 built on a superseded read (412), and the client re-pulls and retries. Full
 contract in `services/api/README.md`.
