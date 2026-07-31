@@ -184,6 +184,49 @@ contract in `services/api/README.md`.
 name and its stamp before upload, so the server receives counters and opaque
 ids. The database must not become the place where PII starts — see invariant 10.
 
+## R9 — Households go to DynamoDB, telemetry to S3, and no relational database
+
+**Decided, not yet implemented.** `postgres.ts` is what runs today; this records
+where it is going and why, before the reason is forgotten.
+
+Nothing in this service uses a database. No join, no aggregate, no second index —
+the join code *is* the household id, so there is no code-to-id lookup to serve —
+no transaction across rows, and no query that is not "get by primary key". What
+it needs is a conditional write, and Postgres, S3 and DynamoDB all have one:
+`WHERE revision = $n`, `If-Match` on the object ETag, and a `ConditionExpression`
+respectively. Capability did not separate them. Three other things did.
+
+**Postgres bills for existing.** €15–50/month whether or not one family syncs,
+plus a version to patch and a pool to size, for a workload of a few hundred
+requests a day. That is the whole case against it.
+
+**S3 was close, and lost on the ETag.** Its ETag is a hash of the content, so
+identical content yields an identical tag. Sync would still be correct — the
+merge is idempotent and commutative, so a write landing on identical content is a
+no-op — but `InMemoryHouseholdStore` parses etags as revision numbers, and it
+would stop mirroring production. Thirty-one tests would keep passing while
+proving something subtly different from what runs. DynamoDB keeps a stored
+integer revision, so `etagOf`/`revisionOf` and the double are unchanged. Its
+free allowance is also real rather than symbolic: S3's ~2 000 writes/month is
+about thirteen families, DynamoDB's 25 GB + 25 RCU/WCU covers actual usage.
+
+**Telemetry does not go in the same store.** It is append-many, read-rarely, and
+the reads are aggregations — the one thing a key-value store is bad at. NDJSON
+under a date prefix in S3 costs cents, keeps everything, and is read with Athena
+or by downloading a day. It also keeps family data and analytics physically
+apart, which is the isolation the split was asked for in the first place.
+
+**The one number that could reverse this: DynamoDB caps an item at 400 KB.** The
+household document is the only unbounded thing here — children × five mascots ×
+hundreds of accessories × per-device clear counters, for years. Crossing that
+line fails the push, and both clients swallow it, so the family just stops
+syncing. It needs a size alarm well below the ceiling. S3 has no such limit.
+
+Being wrong costs one file. `HouseholdStore` is `read(id)` and
+`write(id, roster, ifMatch)`; the routes never see the store, and three
+implementations already coexist behind it. A change of mind is a fourth
+implementation, not a migration.
+
 ## R6 — Android is native, and unbuilt
 
 The route is decided (Kotlin + Compose, mirroring `apps/game-ios`), the app is
