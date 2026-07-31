@@ -12,6 +12,19 @@ dist-ssr
 /vite.config.js
 /vite.config.d.ts
 
+# capacitor native shells: `ios/` and `android/` ARE committed (they hold
+# signing config, icons and Info.plist), but everything generated inside them
+# is not — `cap sync` rebuilds all of it from dist/.
+/ios/App/Pods/
+/ios/App/App/public/
+/ios/App/build/
+/ios/App/Podfile.lock
+/android/app/src/main/assets/public/
+/android/app/build/
+/android/build/
+/android/.gradle/
+/android/local.properties
+
 # editor / os
 .DS_Store
 .vscode/*
@@ -38,3 +51,8 @@ pnpm-debug.log*
 
 # vo:build takes thrown out by the length gate (kept for listening, never shipped)
 src/vo/clips/.rejects/
+
+# AI
+.claude/*
+!.claude/skills/
+.claude/skills/*-workspace/

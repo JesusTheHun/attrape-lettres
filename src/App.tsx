@@ -7,8 +7,11 @@ import { LetterMatchExercise } from "./exercises/LetterMatchExercise";
 import { ReadImageExercise } from "./exercises/ReadImageExercise";
 import { SpellSoundExercise } from "./exercises/SpellSoundExercise";
 import { SpellSyllableExercise } from "./exercises/SpellSyllableExercise";
+import { SyllableGridExercise } from "./exercises/SyllableGridExercise";
 import { Dashboard } from "./components/Dashboard";
 import { ExerciseIcon } from "./components/ExerciseIcon";
+import { Onboarding } from "./components/Onboarding";
+import { Paywall } from "./components/Paywall";
 import { WhoIsPlaying } from "./components/WhoIsPlaying";
 import { Mascot } from "./mascot/Mascot";
 import { MascotGallery } from "./dev/MascotGallery";
@@ -17,6 +20,9 @@ import { Shop } from "./shop/Shop";
 import { Picker } from "./shop/Picker";
 import { useProfile } from "./hooks/useProfile";
 import { useAudio } from "./hooks/useAudio";
+import { useEntitlement } from "./licensing/useEntitlement";
+import { canPlay, trialNotice } from "./licensing/entitlement";
+import { track } from "./telemetry";
 import { EXERCISES, MATCH_HINT, MIXED_HINT, MODE_HINT, SPELL_HINT } from "./levels";
 import type { ExerciseId, View } from "./types";
 
@@ -26,6 +32,7 @@ const ROUNDED = "ui-rounded,'SF Pro Rounded',system-ui,sans-serif";
 export default function App() {
   const [view, setView] = useState<View>({ kind: "hub" });
   const { profile, preview, children, activeId, switchChild } = useProfile();
+  const { entitlement, onboarded } = useEntitlement();
   const audio = useAudio();
 
   // "Écouter" the score: fr-FR TTS reads the bare digits as the whole number
@@ -49,6 +56,11 @@ export default function App() {
   // Dev-only VO audition bench (bake-and-LISTEN loop), reachable at #vo.
   if (hash === "#vo")
     return <VoGallery onClose={() => (window.location.hash = "")} />;
+
+  // Parent gate, once per device, before anything else: App Review 3.1.1 wants
+  // the trial's terms shown BEFORE the trial starts, and GDPR wants the
+  // analytics choice made by an adult. Both happen on one screen.
+  if (!onboarded) return <Onboarding />;
 
   // Who's-playing gate: siblings share the device. No active player ⇒ the
   // welcome screen (pick a child or create one). selectChild/createChild set
@@ -90,6 +102,10 @@ export default function App() {
       return (
         <SoundTwinsExercise key={key} exercise={view.exercise} level={view.level} onBack={back} onNext={next} />
       );
+    if (meta.grid)
+      return (
+        <SyllableGridExercise key={key} exercise={view.exercise} mode={meta.grid} level={view.level} onBack={back} onNext={next} />
+      );
     if (meta.spell)
       return (
         <SpellSyllableExercise key={key} exercise={view.exercise} mode={meta.spell} mixed={meta.mixed} level={view.level} onBack={back} onNext={next} />
@@ -123,7 +139,19 @@ export default function App() {
       />
     );
 
-  const open = (exercise: ExerciseId, level: number) => setView({ kind: "play", exercise, level });
+  if (view.kind === "paywall") return <Paywall onBack={() => setView({ kind: "hub" })} />;
+
+  // The ONLY thing an expired trial blocks: starting a new round. The hub, the
+  // mascot, the shop and every star stay exactly where they were (invariant 3 —
+  // nothing is ever taken away from a child as a consequence).
+  const open = (exercise: ExerciseId, level: number) => {
+    if (!canPlay(entitlement)) {
+      track("trial_expired");
+      return setView({ kind: "paywall" });
+    }
+    track("exercise_started", { exercise, level });
+    setView({ kind: "play", exercise, level });
+  };
 
   return (
     <div
@@ -167,7 +195,21 @@ export default function App() {
       <h1 className="m-0 font-black text-[#5A3A1E]" style={{ fontSize: "clamp(28px,8vw,44px)" }}>
         Attrape-Lettres
       </h1>
-      <p className="mb-6 mt-1 text-[#7A5A3A]">Choisis un jeu et un niveau.</p>
+      <p className="mb-2 mt-1 text-[#7A5A3A]">Choisis un jeu et un niveau.</p>
+
+      {/* Trial countdown — parent-facing, and the only route to the paywall that
+          isn't a blocked exercise tap. Tapping it lands on the child-safe "ask a
+          grown-up" step, so the purchase still sits behind the parental gate. */}
+      {trialNotice(entitlement) && (
+        <button
+          onClick={() => setView({ kind: "paywall" })}
+          className="mb-6 rounded-full bg-white/70 px-4 py-1.5 text-sm font-semibold text-[#8A6A4A] shadow-sm active:scale-95 [touch-action:manipulation]"
+          style={{ border: "none" }}
+        >
+          {trialNotice(entitlement)}
+        </button>
+      )}
+      {!trialNotice(entitlement) && <div className="mb-6" />}
 
       {EXERCISES.map((ex) => (
         <section key={ex.id} className="mb-6 w-full max-w-md">

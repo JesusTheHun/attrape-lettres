@@ -96,6 +96,32 @@ const GLYPHS: Record<ExerciseId, { tint: string; glyph: ReactNode }> = {
       </>
     ),
   },
+  // Hear the syllable — sound waves arriving at two coupled tiles (consonne +
+  // voyelle), joined underneath by the fusion arc: two letters, one syllable.
+  "hear-syllable": {
+    tint: "#26A69A",
+    glyph: (
+      <>
+        <path d="M8.5 12.8 a4.2 4.2 0 0 0 0 6.4" {...line} strokeWidth={2} />
+        <path d="M6 10.2 a8 8 0 0 0 0 11.6" {...line} strokeWidth={2} opacity={0.65} />
+        <rect x={12} y={10.5} width={7.5} height={9.5} rx={2.4} fill="#fff" />
+        <rect x={20.5} y={10.5} width={6.5} height={9.5} rx={2.4} fill="#fff" opacity={0.8} />
+        <path d="M13.5 22.8 C 16.5 25.6, 22 25.6, 25 22.8" {...line} strokeWidth={2} />
+      </>
+    ),
+  },
+  // The right vowel — the consonant is written, the vowel's place is still open.
+  "pick-vowel": {
+    tint: "#F06292",
+    glyph: (
+      <>
+        <Glyph x={11} y={16} size={17}>
+          V
+        </Glyph>
+        <rect x={18} y={9} width={9.5} height={14} rx={2.8} fill="none" stroke="#fff" strokeWidth={1.9} strokeDasharray="2.5 2.3" />
+      </>
+    ),
+  },
   // Complete the word — three slots, the middle piece missing (dashed).
   "fill-blank": {
     tint: "#7C6FF0",

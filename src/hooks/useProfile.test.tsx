@@ -2,8 +2,9 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { ProfileProvider, useProfile } from "./useProfile";
-import { REWARD_CURVE } from "../rewards";
+import { REWARD_CURVE, rewardFor } from "../rewards";
 import type { CustomizationOption } from "../types";
+import { balanceOf, mergeProfile } from "../sync/merge";
 
 const wrapper = ({ children }: { children: ReactNode }) => (
   <ProfileProvider>{children}</ProfileProvider>
@@ -193,6 +194,128 @@ describe("useProfile — siblings are isolated", () => {
 
     act(() => result.current.selectChild(lea));
     expect(result.current.profile.balance).toBe(REWARD_CURVE[0]);
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Upgrade path. A child who has been playing for months is sitting on a v3     */
+/* blob; the v4 counters must reproduce her stars EXACTLY, not approximately.   */
+/* Per storage.ts, the old keys and readers stay intact so a rollback still     */
+/* finds data it understands.                                                   */
+/* -------------------------------------------------------------------------- */
+
+const V3_KEY = "attrape-lettres:roster:v3";
+const V1_KEY = "attrape-lettres:profile:v1";
+
+const V3_ROSTER = {
+  children: [
+    {
+      id: "lea-v3",
+      name: "Léa",
+      profile: {
+        chosen: true,
+        current: "fox",
+        species: {
+          fox: {
+            config: {
+              species: "fox",
+              stage: 3,
+              colors: { furColor: "#F80" },
+              styles: {},
+              accessories: [],
+            },
+            owned: ["fox.fur.orange"],
+          },
+        },
+        balance: 17,
+        ledger: { "read-image:1": 2 },
+      },
+    },
+  ],
+  activeId: "lea-v3",
+};
+
+describe("useProfile — v3 → v4 migration", () => {
+  beforeEach(() => {
+    localStorage.setItem(V3_KEY, JSON.stringify(V3_ROSTER));
+  });
+
+  it("carries stars, clears, look and items across untouched", () => {
+    const { result } = render();
+    expect(result.current.children).toHaveLength(1);
+    expect(result.current.children[0].name).toBe("Léa");
+    expect(result.current.activeId).toBe("lea-v3");
+
+    expect(result.current.profile.balance).toBe(17);
+    expect(result.current.profile.ledger["read-image:1"]).toBe(2);
+    expect(result.current.profile.config.species).toBe("fox");
+    expect(result.current.profile.config.stage).toBe(3);
+    expect(result.current.profile.config.colors.furColor).toBe("#F80");
+    expect(result.current.profile.owned).toContain("fox.fur.orange");
+  });
+
+  it("keeps the reward curve where it was — no re-opening the jackpot", () => {
+    const { result } = render();
+    expect(result.current.preview("read-image", 1)).toBe(rewardFor(2));
+    let pts = 0;
+    act(() => {
+      pts = result.current.award("read-image", 1, 0, 8);
+    });
+    expect(pts).toBe(rewardFor(2));
+    expect(result.current.profile.balance).toBe(17 + rewardFor(2));
+  });
+
+  it("leaves the v3 blob in place so a rollback still reads data", () => {
+    render();
+    expect(localStorage.getItem(V3_KEY)).not.toBeNull();
+  });
+
+  it("migrated stars merge with another device instead of overwriting", () => {
+    const { result } = render();
+    const migrated = result.current.children[0].profile;
+    // Mum's phone migrated its own v3 blob: two genuinely separate progressions
+    // that only meet now, so they sum rather than one replacing the other.
+    const mum = {
+      ...migrated,
+      stars: { earned: { "mum-phone": 6 }, spent: {} },
+    };
+    expect(balanceOf(mergeProfile(migrated, mum).stars)).toBe(23);
+  });
+});
+
+describe("useProfile — v1 → v4 migration", () => {
+  it("promotes the single legacy mascot into its species slot with its stars", () => {
+    localStorage.setItem(
+      V1_KEY,
+      JSON.stringify({
+        chosen: true,
+        config: { species: "cat", stage: 1, colors: {}, styles: {}, accessories: [] },
+        balance: 5,
+        ledger: { "first-letter:1": 1 },
+        owned: ["cat.whiskers.long"],
+      })
+    );
+    const { result } = render();
+    expect(result.current.children).toHaveLength(1);
+    expect(result.current.profile.balance).toBe(5);
+    expect(result.current.profile.ledger["first-letter:1"]).toBe(1);
+    expect(result.current.profile.config.species).toBe("cat");
+    expect(result.current.profile.config.stage).toBe(1);
+    expect(result.current.profile.owned).toContain("cat.whiskers.long");
+  });
+});
+
+describe("useProfile — deleting a child", () => {
+  it("tombstones the id so the family's other device can't hand them back", () => {
+    const { result } = render();
+    act(() => result.current.createChild("Léa"));
+    const id = result.current.activeId!;
+    act(() => result.current.deleteChild(id));
+
+    expect(result.current.children).toHaveLength(0);
+    expect(result.current.activeId).toBeNull();
+    const saved = JSON.parse(localStorage.getItem("attrape-lettres:roster:v4")!);
+    expect(saved.removed[id]).toBeGreaterThan(0);
   });
 });
 

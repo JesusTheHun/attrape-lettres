@@ -79,7 +79,11 @@ export const SYLLABLE_WORDS: SyllableWord[] = [
   { word: "BATEAU", syllables: ["BA", "TEAU"], emoji: "⛵" },
   { word: "GÂTEAU", syllables: ["GÂ", "TEAU"], emoji: "🍰" },
   { word: "POISSON", syllables: ["POIS", "SON"], emoji: "🐟" },
-  { word: "MAISON", syllables: ["MAI", "SON"], emoji: "🏠" },
+  // SAPIN, not MAISON: MAI-SON would make SON say /zɔ̃/ (s between vowels),
+  // while POIS-SON says /sɔ̃/. One tile string = one baked clip, so a shared
+  // syllable must sound the same in every word that uses it — no exceptions,
+  // no engine can voice both. SA-PIN reuses PIN from LAPIN at the same /pɛ̃/.
+  { word: "SAPIN", syllables: ["SA", "PIN"], emoji: "🎄" },
   { word: "CANARD", syllables: ["CA", "NARD"], emoji: "🦆" },
   { word: "TORTUE", syllables: ["TOR", "TUE"], emoji: "🐢" },
   { word: "VOITURE", syllables: ["VOI", "TURE"], emoji: "🚗" },
@@ -93,7 +97,10 @@ export const SYLLABLE_WORDS: SyllableWord[] = [
   { word: "TOMATE", syllables: ["TO", "MATE"], emoji: "🍅" },
   // 3 syllables
   { word: "BANANE", syllables: ["BA", "NA", "NE"], emoji: "🍌" },
-  { word: "PAPILLON", syllables: ["PA", "PI", "LLON"], emoji: "🦋" },
+  // PERROQUET, not PAPILLON: PA-PI-LLON needs LLON to say /jɔ̃/, but "ll" alone
+  // never says /j/ in French — "ill" does, and it straddles the split. That
+  // teaches a rule that doesn't exist. /papijɔ̃/ has no honest 3-way split.
+  { word: "PERROQUET", syllables: ["PER", "RO", "QUET"], emoji: "🦜" },
   { word: "ÉLÉPHANT", syllables: ["É", "LÉ", "PHANT"], emoji: "🐘" },
   { word: "CROCODILE", syllables: ["CRO", "CO", "DILE"], emoji: "🐊" },
   { word: "CHOCOLAT", syllables: ["CHO", "CO", "LAT"], emoji: "🍫" },
@@ -142,8 +149,8 @@ export const SYLLABLE_BANK: string[] = Array.from(
  */
 export const SPELL_SYLLABLE_WORD_NAMES: string[][] = [
   ["PYJAMA", "PANTALON", "CHOCOLAT", "CINÉMA", "MACARON"],
-  ["BIBERON", "PAPILLON", "CROCODILE", "KANGOUROU", "DINOSAURE", "PARAPLUIE"],
-  ["TÉLÉPHONE", "ÉLÉPHANT", "ANANAS", "KOALA", "HÔPITAL", "PAPILLON", "CROCODILE", "DINOSAURE"],
+  ["BIBERON", "PERROQUET", "CROCODILE", "KANGOUROU", "DINOSAURE", "PARAPLUIE"],
+  ["TÉLÉPHONE", "ÉLÉPHANT", "ANANAS", "KOALA", "HÔPITAL", "PERROQUET", "CROCODILE", "DINOSAURE"],
   ["ORDINATEUR", "HÉLICOPTÈRE", "HIPPOPOTAME", "LOCOMOTIVE", "ANNIVERSAIRE", "AQUARIUM", "SUPERMARCHÉ", "TÉLÉVISION"],
 ];
 
@@ -262,7 +269,10 @@ export const SOUND_TARGETS: SoundTarget[][] = [
     { sound: "oi", spelling: ["O", "I"], word: "poisson", emoji: "🐟" },
     { sound: "oi", spelling: ["O", "I"], word: "étoile", emoji: "⭐" },
     { sound: "oi", spelling: ["O", "I"], word: "noix", emoji: "🥜" },
-    { sound: "au", spelling: ["A", "U"], word: "auto", emoji: "🚗" },
+    // Not "auto": an anchor must contain its target sound ONCE. /oto/ has two
+    // /o/, and the second is spelled O — so « au, comme dans auto » points at
+    // the very spelling the child is being asked to tell AU apart from.
+    { sound: "au", spelling: ["A", "U"], word: "faucon", emoji: "🦅" },
     { sound: "au", spelling: ["A", "U"], word: "jaune", emoji: "💛" },
     { sound: "au", spelling: ["A", "U"], word: "sauter", emoji: "🦘" },
     { sound: "au", spelling: ["A", "U"], word: "chaud", emoji: "🥵" },
@@ -287,7 +297,7 @@ export const SOUND_TARGETS: SoundTarget[][] = [
   [
     { sound: "o", spelling: ["O"], word: "moto", emoji: "🏍️" },
     { sound: "o", spelling: ["O"], word: "vélo", emoji: "🚲" },
-    { sound: "o", spelling: ["A", "U"], word: "auto", emoji: "🚗" },
+    { sound: "o", spelling: ["A", "U"], word: "jaune", emoji: "💛" },
     { sound: "o", spelling: ["E", "A", "U"], word: "eau", emoji: "💧" },
     { sound: "o", spelling: ["E", "A", "U"], word: "bateau", emoji: "⛵" },
     { sound: "o", spelling: ["E", "A", "U"], word: "gâteau", emoji: "🍰" },
@@ -346,7 +356,7 @@ export const BASIC_SOUNDS: BasicSound[][] = [
     { sound: "an", graphy: "AN", word: "gant", emoji: "🧤" },
     { sound: "in", graphy: "IN", word: "lapin", emoji: "🐰" },
     { sound: "eu", graphy: "EU", word: "feu", emoji: "🔥" },
-    { sound: "au", graphy: "AU", word: "auto", emoji: "🚗" },
+    { sound: "au", graphy: "AU", word: "jaune", emoji: "💛" },
     { sound: "che", graphy: "CH", word: "cheval", emoji: "🐴" },
   ],
   // Level 3 — vowel + R rimes, with two team revisits.
@@ -371,6 +381,39 @@ export const BASIC_SOUNDS: BasicSound[][] = [
     { sound: "eu", graphy: "EU", word: "bleu", emoji: "🔵", traps: ["AU", "OU"] },
   ],
 ];
+
+/**
+ * Syllable-grid dataset — the « tableau des syllabes ». The exhaustive
+ * consonant × vowel combinatoire (VA VE VI VO VU VÉ) that has to be automatic
+ * BEFORE a child can spell a word: one consonant row per pair of levels' worth
+ * of drilling, every vowel every time, nothing else ever added.
+ *
+ * Rows are ordered by how forgiving the consonant is: the continuous ones a
+ * child can stretch and hear (L, M, R, V) come first, the plosives (P/T, B/D)
+ * next, the hissing ones last. C, G, K, QU are DELIBERATELY absent — CE/CI and
+ * GE/GI flip sound, which is a different lesson (Trouve le son / Les syllabes
+ * jumelles own it). CH earns its own row: one sound, two letters.
+ *
+ * Vowels stay the six simple ones. The teams (EU, OU, OI, IN, AN…) are a later
+ * exercise's job — here NOTHING changes between levels except the consonant, so
+ * a level is short, familiar and repeatable.
+ */
+export const GRID_VOWELS: string[] = ["A", "E", "I", "O", "U", "É"];
+
+/** Consonant rows per level (index = level - 1); `null` = every row (révision). */
+export const SYLLABLE_GRID_ROWS: (string[] | null)[] = [
+  ["L", "M"],
+  ["R", "V"],
+  ["P", "T"],
+  ["B", "D"],
+  ["F", "S"],
+  ["N", "J"],
+  ["Z", "CH"],
+  null, // révision: le tableau entier
+];
+
+/** Every consonant the ladder teaches, in teaching order — the null level's pool. */
+export const GRID_CONSONANTS: string[] = SYLLABLE_GRID_ROWS.flatMap((row) => row ?? []);
 
 /**
  * Sound-twins dataset — one authored pool of families per level. A family is

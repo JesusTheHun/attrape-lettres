@@ -1,7 +1,10 @@
 import {
   BASIC_SOUNDS,
+  GRID_CONSONANTS,
+  GRID_VOWELS,
   LETTER_WORDS,
   LETTER_MATCH_ALPHABET,
+  SYLLABLE_GRID_ROWS,
   SYLLABLE_WORDS,
   SYLLABLE_BANK,
   SPELL_SYLLABLE_WORD_NAMES,
@@ -15,6 +18,7 @@ import type {
   ExerciseId,
   ExerciseMeta,
   FirstLetterLevel,
+  GridSyllable,
   LetterFace,
   LetterMatchKind,
   LetterMatchRound,
@@ -24,6 +28,8 @@ import type {
   SoundLevel,
   SoundTarget,
   SpellSyllableMode,
+  SyllableGridLevel,
+  SyllableGridMode,
   SyllableMode,
   SyllableTier,
   SyllableWord,
@@ -440,6 +446,115 @@ export function findSoundSuccess(t: BasicSound): string {
 }
 
 /* -------------------------------------------------------------------------- */
+/* Syllable grid — 8 explicit levels, ONE ladder shared by both drills.        */
+/* The « tableau des syllabes »: level = one consonant row × every vowel (the  */
+/* rows are authored in content), so the ONLY thing that ever changes inside a */
+/* level is the vowel. Difficulty is two knobs: how many tiles are on screen,  */
+/* and how many of them swap the consonant instead of the vowel.               */
+/* -------------------------------------------------------------------------- */
+
+export const SYLLABLE_GRID_LEVELS: SyllableGridLevel[] = [
+  { pick: 6, repeats: 3, choices: 3, column: 0 },
+  { pick: 6, repeats: 3, choices: 4, column: 0 },
+  { pick: 7, repeats: 3, choices: 4, column: 1 },
+  { pick: 7, repeats: 3, choices: 5, column: 1 },
+  { pick: 8, repeats: 4, choices: 5, column: 1 },
+  { pick: 8, repeats: 4, choices: 6, column: 2 },
+  { pick: 8, repeats: 4, choices: 6, column: 2 },
+  { pick: 8, repeats: 4, choices: 6, column: 2 }, // révision: tout le tableau
+];
+
+export const SYLLABLE_GRID_LEVEL_COUNT = SYLLABLE_GRID_LEVELS.length;
+
+function gridIdx(level: number): number {
+  return Math.min(Math.max(level, 1), SYLLABLE_GRID_LEVEL_COUNT) - 1;
+}
+
+export function syllableGridLevel(level: number): SyllableGridLevel {
+  return SYLLABLE_GRID_LEVELS[gridIdx(level)];
+}
+
+/** One cell of the grid. The spoken form is just the written one, lowercased. */
+export function gridSyllable(consonant: string, vowel: string): GridSyllable {
+  const text = consonant + vowel;
+  return { text, sound: text.toLowerCase(), consonant, vowel };
+}
+
+/** The level's rows, expanded to every syllable they hold (row order, then vowel order). */
+export function syllableGridPool(level: number): GridSyllable[] {
+  const rows = SYLLABLE_GRID_ROWS[gridIdx(level)] ?? GRID_CONSONANTS;
+  return rows.flatMap((c) => GRID_VOWELS.map((v) => gridSyllable(c, v)));
+}
+
+export interface GridRound {
+  target: GridSyllable;
+  /**
+   * The tiles, shuffled, target included. In `hear` mode a tile shows its
+   * `text` (the whole syllable); in `vowel` mode its `vowel` — every tile then
+   * shares the target's consonant, so the tiles ARE the vowel column.
+   */
+  choices: GridSyllable[];
+}
+
+/**
+ * One round's tiles. `vowel` mode is the pure drill: the same consonant, the
+ * other vowels, nothing else. `hear` mode starts there too and, from level 3,
+ * swaps `column` of the distractors for the SAME vowel on another consonant
+ * (VA vs LA) — so a child who only hears the vowel starts having to read the
+ * consonant as well. Tiles are deduped by text; a short pool just yields a
+ * smaller (still valid) round.
+ */
+export function buildGridRound(
+  target: GridSyllable,
+  pool: readonly GridSyllable[],
+  cfg: SyllableGridLevel,
+  mode: SyllableGridMode
+): GridRound {
+  const need = cfg.choices - 1;
+  const sameRow = shuffle(
+    pool.filter((s) => s.consonant === target.consonant && s.vowel !== target.vowel)
+  );
+  if (mode === "vowel") return { target, choices: shuffle([target, ...sameRow.slice(0, need)]) };
+
+  const sameColumn = shuffle(
+    pool.filter((s) => s.vowel === target.vowel && s.consonant !== target.consonant)
+  ).slice(0, Math.min(cfg.column, need));
+  const picked: GridSyllable[] = [];
+  const seen = new Set([target.text]);
+  for (const s of [...sameColumn, ...sameRow]) {
+    if (picked.length >= need) break;
+    if (seen.has(s.text)) continue;
+    seen.add(s.text);
+    picked.push(s);
+  }
+  return { target, choices: shuffle([target, ...picked]) };
+}
+
+export function buildSyllableGridSession(level: number, mode: SyllableGridMode): GridRound[] {
+  const cfg = syllableGridLevel(level);
+  const pool = syllableGridPool(level);
+  return repeatSession(pool, cfg.pick, cfg.repeats).map((t) =>
+    buildGridRound(t, pool, cfg, mode)
+  );
+}
+
+/** What the child hears: the bare syllable — no word, no letter names. */
+export function gridPrompt(s: GridSyllable): string {
+  return s.sound;
+}
+
+/** The success line: the syllable again, so the last thing heard is the answer. */
+export function gridSuccess(s: GridSyllable): string {
+  return `Oui ! ${s.sound}.`;
+}
+
+/** The on-screen consigne, per drill. */
+export const GRID_PROMPT: Record<SyllableGridMode, string> = {
+  hear: "Écoute la syllabe et trouve son écriture",
+  vowel: "Écoute la syllabe et trouve la voyelle qui manque",
+};
+
+/* -------------------------------------------------------------------------- */
 /* Sound-twins — 4 explicit levels                                            */
 /* Hear one sound, find ALL the tiles that write it. Families are authored     */
 /* (TWIN_FAMILIES); intruders come from the level's OTHER families, so every   */
@@ -780,6 +895,12 @@ export const EXERCISES: ExerciseMeta[] = [
   // lets a pre-reader earn shop stars at all. Farming still doesn't pay — the
   // bonus needs first-try rounds, and spam only ever gets the bare curve.
   { id: "find-sound", name: "Trouve le son", emoji: "👂", levelCount: FIND_SOUND_LEVEL_COUNT, difficulty: 1, hint: "Écoute le son, tape son écriture" },
+  // The combinatoire rungs — consonne + voyelle, drilled row by row. They sit
+  // BEFORE every word exercise on purpose: fusing VA / VE / VI / VO / VU / VÉ is
+  // the step between knowing letters and reading. Two drills, one grid: hear the
+  // syllable and find it written, then find just the vowel that finishes it.
+  { id: "hear-syllable", name: "Écoute la syllabe", emoji: "🔊", levelCount: SYLLABLE_GRID_LEVEL_COUNT, grid: "hear", difficulty: 1, hint: "VA, VE, VI… trouve celle que tu entends" },
+  { id: "pick-vowel", name: "La bonne voyelle", emoji: "🅰️", levelCount: SYLLABLE_GRID_LEVEL_COUNT, grid: "vowel", difficulty: 1, hint: "La consonne est écrite — pose la voyelle" },
   { id: "fill-blank", name: "Complète le mot", emoji: "🧩", levelCount: SYLLABLE_LEVEL_COUNT, mode: "fill-blank", difficulty: 0 },
   { id: "order-syllables", name: "Range les syllabes", emoji: "🔀", levelCount: SYLLABLE_LEVEL_COUNT, mode: "order", difficulty: 1 },
   { id: "find-intruder", name: "Trouve l’intrus", emoji: "🕵️", levelCount: SYLLABLE_LEVEL_COUNT, mode: "order-distractor", difficulty: 1 },
