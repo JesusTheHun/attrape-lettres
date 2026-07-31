@@ -285,7 +285,7 @@ public struct WhoIsPlayingView: View {
         // branch's `ChildCard` is a `LayerHost`, and a `UIScrollView` over it
         // would delay touch-down feedback (invariant 1). The two branches are
         // mutually exclusive, so the wrapper never sees a tile.
-        .alKeyboardScroll(enabled: isCreating)
+        .alPageScroll(enabled: isCreating)
     }
 
     /// Alert button titles. NOT ported copy — the PWA never had them (browser

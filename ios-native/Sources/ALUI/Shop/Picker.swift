@@ -245,6 +245,11 @@ public struct PickerView: View {
         .background(Palette.stageAdult.gradient)
         .clipShape(RoundedRectangle(cornerRadius: PickerMetrics.cornerRadius))
         .fontDesign(.rounded)
+        // D46. The stage is pinned to `minHeight` and the card list grows with
+        // the roster: on a phone the FIFTH companion sat below the screen with
+        // no way to reach it, so one animal could not be chosen at all. On the
+        // web the document scrolls and the question never arises.
+        .alPageScroll()
     }
 
     /// `const pick = (s) => { chooseSpecies(s); onDone(); }` — in that order, so

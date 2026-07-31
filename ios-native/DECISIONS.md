@@ -1149,3 +1149,71 @@ restore (`cp $SP/bak/*.swift Sources/ALUI/Engines/`) dumped all of them into
 an error that points at ALArt and has nothing to do with ALArt. Back up to a
 freshly created directory, restore by explicit filename, and treat a sudden
 unrelated-looking compile error after a restore as a misplaced-file symptom.
+
+## D46 — The species picker scrolls (bug 1 of three reported from the device)
+
+`SpeciesPickerView`'s stage is pinned to `PickerMetrics.minHeight` and the card
+list grows with the species catalog. On a phone the FIFTH companion sat below the
+screen edge with no way to reach it: the dragon could not be chosen at all. On
+the web the document scrolls, so the question never arose — this is a port
+artefact, not a ported behaviour.
+
+`KeyboardScroll` became `PageScroll` (`alPageScroll`), because the two callers
+want the same thing for what only look like different reasons: on the web the
+page always scrolls, so neither a keyboard inset (D42) nor a long list can put
+content permanently out of reach.
+
+**What is verified and what is not.** The fix builds, the suite is green at 1430
+tests, and the picker was installed and photographed on the simulator: it renders
+correctly and does not crash. The DRAG itself is unverified — `simctl` has no tap
+or swipe input and `osascript` has no assistive access on this machine, so no
+scroll gesture can be issued. The reachability claim rests on the code, not on a
+photograph of the dragon.
+
+**An unmeasured cost, flagged rather than waived.** The picker cards are
+`LayerHost`s, and a `UIScrollView` sets `delaysContentTouches`, which holds a
+touch to see whether it becomes a pan — invariant 1's exact enemy. The shop has
+always scrolled `LayerHost` tiles, so this is not a new class of risk, but it is
+not measured either: no host test and no `simctl` session can time a touch-down.
+Exercise screens remain off limits to `PageScroll` regardless.
+
+### A correction to D42
+
+D42 presented "`ImageRenderer` cannot draw `ScrollView` content" as a new
+finding. It was a RE-discovery: `HubView.swift:275` already documents it and
+already works around it, by keeping the scrolled content in a separate
+`HubStage` view that the raster tier can see. The measurement in D42 stands;
+the novelty does not, and the hub's pattern is the one to copy. `PickerView`
+should get the same split when it next needs raster coverage — today neither
+`PickerTests` nor `WhoIsPlayingTests` rasterise, so wrapping those two screens
+hollowed nothing out. That was checked, not assumed: a `ScrollView` silently
+turns any existing raster assertion into a comparison of two blank images.
+
+### Bugs 2 and 3 are NOT fixed
+
+The shop-scroll crash and the correct-answer crash are still open. What has been
+ruled out by measurement rather than reading:
+
+- **not the shop's drawing.** A new sweep (`ShopTileRenderTests`) rasterises
+  every catalog item for every species at the locking stage, the freeing stage
+  and stage 9, plus every factory look, plus the owned/worn branch. All pass. A
+  `LazyVGrid` only builds what scrolls into view, so the failing tile would have
+  been the one nothing ever evaluated — it now is evaluated, and it draws.
+- **not the confetti**, which is the one thing unique to a correct answer:
+  `colorIndex` cannot exceed the palette (`int(below: 2^53)/2^53 < 1`), and the
+  cull loop walks DESCENDING, so it cannot index past the end.
+- **not the SFX synth**: the sample rate is `outputFormat.sampleRate > 0 ? … :
+  48_000`, so the `precondition` cannot fire, and `sfxNodes` is `max(1, voices)`,
+  so the round-robin cannot divide by zero.
+- **not the wrap arithmetic** in `GameFrame` or `EndButtons`: both keep indices
+  and sizes in the same array.
+
+What that leaves is the iOS-only tier the host suite cannot reach at all —
+`LayerHost`'s `UIHostingController`, `TouchDown`'s recogniser, Core Animation
+completions, and the audio session. Both crashes involve a `LayerHost` whose
+content changes (a lazily-built shop tile; a tile that flashes on a correct
+pick), which is a hypothesis and not a finding.
+
+**The missing tier is UI testing.** There is no XCUITest target, so nothing in
+this repo can tap. That is why three device bugs arrived by hand and why two of
+them cannot be reproduced here.

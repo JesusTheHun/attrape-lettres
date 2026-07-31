@@ -2,12 +2,12 @@ import SwiftUI
 import Testing
 @testable import ALUI
 
-// `KeyboardScroll` fixes something no host test can see (D42): a keyboard inset
+// `PageScroll` fixes something no host test can see (D42): a keyboard inset
 // sliding the first-run picker under the notch. The fix itself was verified on
 // the simulator, and this file does NOT pretend to re-verify it.
 //
 // It guards the one thing here that is both host-visible and dangerous: THE
-// GATE. `alKeyboardScroll(enabled:)` must be the exact identity when disabled,
+// GATE. `alPageScroll(enabled:)` must be the exact identity when disabled,
 // because the branch that passes `false` is the roster grid, and `ChildCard` is
 // a `LayerHost`. A `UIScrollView` over it sets `delaysContentTouches`, which
 // holds a touch back to see whether it becomes a pan — and that is invariant 1,
@@ -74,9 +74,9 @@ private struct StageStub: View {
     }
 }
 
-@Suite("KeyboardScroll — the gate that keeps scroll views off the tiles", .serialized)
+@Suite("PageScroll — the gate that keeps scroll views off the tiles", .serialized)
 @MainActor
-struct KeyboardScrollTests {
+struct PageScrollTests {
 
     private static let frame = CGSize(width: 400, height: 700)
 
@@ -90,7 +90,7 @@ struct KeyboardScrollTests {
     func disabledIsIdentity() throws {
         let bare = try #require(raster(Self.frame) { StageStub(height: 620) })
         let off = try #require(
-            raster(Self.frame) { StageStub(height: 620).alKeyboardScroll(enabled: false) })
+            raster(Self.frame) { StageStub(height: 620).alPageScroll(enabled: false) })
         // Compute FIRST — see trap 2. Never `#expect(bare == off)`.
         let identical = bare == off
         #expect(identical, Comment(rawValue: "enabled:false must not build a ScrollView"))

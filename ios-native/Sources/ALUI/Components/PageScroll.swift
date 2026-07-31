@@ -1,8 +1,18 @@
 import SwiftUI
 
 /* -------------------------------------------------------------------------- */
-/* Absorb the keyboard by SCROLLING, never by translating.                      */
+/* The page scrolls — because on the web, the page always scrolled.             */
 /* -------------------------------------------------------------------------- */
+//
+// Two screens need this, for what look like different reasons and are the same
+// one: on the web the document scrolls, and neither the keyboard nor a long list
+// can ever put content permanently out of reach.
+//
+//   • the first-run name form (D42) — a keyboard inset that would otherwise
+//     slide the 👋 under the notch;
+//   • the species picker (D46) — five companion cards in a stage pinned to
+//     `minHeight`, of which the fifth sat below the screen with no way to
+//     reach it. The child could not choose the last animal at all.
 //
 // There is no TSX counterpart to this file, and that is the whole point (D42).
 // The web has no notch and no keyboard inset: when a soft keyboard opens in
@@ -28,14 +38,25 @@ import SwiftUI
 // once at the shell.** A `UIScrollView` sets `delaysContentTouches`, which holds
 // a touch back to see whether it becomes a pan. That is precisely invariant 1 —
 // "feedback fires on `pointerdown`, before React commits" — and putting one over
-// a tile grid would delay the press animation and the SFX by the pan-recognition
-// window. So this goes ONLY over subtrees that (a) own a keyboard and (b) carry
-// no `LayerHost`. On `WhoIsPlayingView` the split is exact: the form branch is
-// plain SwiftUI buttons, and the only `LayerHost` on that screen lives in
-// `ChildCard`, in the grid branch, which is never wrapped.
+// the EXERCISE tile grid would delay the press animation and the SFX by the
+// pan-recognition window. Every exercise screen is therefore off limits.
 //
-// Do not promote this to `RootView`.
-public struct KeyboardScroll: ViewModifier {
+// Two places scroll a `LayerHost` anyway: the shop tiles (which always did) and
+// now the species picker, where the alternative was a card the child cannot
+// reach at all. **Whether `delaysContentTouches` actually costs anything there
+// is UNVERIFIED** — SwiftUI may already clear it, and neither the host suite nor
+// `simctl` (which has no tap input) can measure touch-down latency. It needs a
+// device check, and if it does cost something the fix is to clear the flag on
+// the enclosing `UIScrollView`. Flagged in D46 rather than pre-emptively
+// "fixed", because unverified UIKit interop is what the open crashes are made
+// of.
+//
+// On `WhoIsPlayingView` no such waiver is needed: the wrapped branch is the form
+// (plain SwiftUI buttons) and the screen's only `LayerHost` is `ChildCard`, in
+// the mutually-exclusive grid branch.
+//
+// Do not promote this to `RootView`: the exercise engines live under it.
+public struct PageScroll: ViewModifier {
 
     /// False leaves the subtree completely untouched — no scroll view is built.
     let enabled: Bool
@@ -65,8 +86,8 @@ public struct KeyboardScroll: ViewModifier {
 
 extension View {
     /// Let the keyboard inset scroll this subtree instead of sliding it under
-    /// the notch. See `KeyboardScroll` — NOT for subtrees containing tiles.
-    public func alKeyboardScroll(enabled: Bool = true) -> some View {
-        modifier(KeyboardScroll(enabled: enabled))
+    /// the notch. See `PageScroll` — NOT for subtrees containing tiles.
+    public func alPageScroll(enabled: Bool = true) -> some View {
+        modifier(PageScroll(enabled: enabled))
     }
 }
