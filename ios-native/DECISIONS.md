@@ -1734,3 +1734,51 @@ differently on iOS than on macOS (the growth bar's green reads back
 `(255, 56, 60)`). The tests are calibrated to the host tier they were written
 for; they need re-calibrating per destination, not deleting.
 
+---
+
+## D53 — « Jamais le prénom de v… »
+
+Found in a gallery render (D52), not reported: the paywall's parent layer was
+drawing its consent card as
+
+> Nous aider à améliorer le jeu — exercice, niveau, réussi ou non. **Jamais le
+> prénom de v…**
+
+An ellipsis three words into the sentence that says what the app does *not*
+collect. The rest — « …otre enfant. » — was not on the screen.
+
+Not a copy bug and not a `lineLimit`: there is none in `ConsentCheckboxStyle` or
+at either call site. Hosting the same card on its own, at the same width and in
+the same wrapper (`.frame(maxWidth: 448, alignment: .leading)` + `.padding(24)`),
+wraps it to three lines correctly. Raising the window to 1400 pt changed
+nothing, so it was not the stack running out of room either. The height came
+from the `VStack` proposing one and the label accepting it.
+
+```swift
+Text(verbatim: Copy.Paywall.Parent.consentBody)
+    …
+    .fixedSize(horizontal: false, vertical: true)
+```
+
+That is the answer whatever the proposal was: take the height this width needs.
+Applied to the onboarding card too, which renders in full today — the paywall's
+did as well until the stack around it changed shape, and this is the one class
+of copy where "renders fine at the moment" is not good enough. Invariant 10's
+promise is only worth what is legible of it.
+
+### Why the guard is a source scan
+
+`ConsentCopyTests` greps both screens for the modifier between `consentBody` and
+`.toggleStyle`. A raster assertion would be the obvious choice and is the wrong
+one: what went wrong was a MISSING MODIFIER, and a failing screenshot does not
+tell a reviewer which line to add. Same mechanism, and the same reasoning, as
+`MoneySourceScanTests` — a review-time rule turned into a build-time one.
+Mutation-checked by deleting the modifier.
+
+### The wider point about the render gallery
+
+This defect was on a shipping screen, behind a parental gate, in the copy that
+carries the app's privacy promise. Nobody reported it because reaching that
+screen takes two deliberate taps and an adult. It was found the first time
+anything rendered the screen and looked at it — which is the argument for the
+gallery, and the reason it writes its PNGs unconditionally.

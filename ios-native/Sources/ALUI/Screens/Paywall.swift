@@ -446,6 +446,16 @@ public struct PaywallView: View {
                 .lineSpacing(
                     Typography.lineSpacing(
                         size: Typography.Size.sm, ratio: Typography.LineHeight.snug))
+                // D53. This is a CONSENT disclosure and it was rendering as
+                // « … Jamais le prénom de v… ». Inside this `VStack` the label
+                // settled on a two-line height and truncated the third; the card
+                // hosted on its own, at the same width, wraps to three lines
+                // fine, so the height came from the stack, not from the text.
+                // `fixedSize(vertical:)` is the answer either way: take the
+                // height this width needs, and never truncate. Nothing a parent
+                // proposes may shorten what a parent is told they are agreeing
+                // to.
+                .fixedSize(horizontal: false, vertical: true)
         }
         .toggleStyle(
             ConsentCheckboxStyle(

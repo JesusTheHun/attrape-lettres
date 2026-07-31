@@ -299,6 +299,10 @@ public struct OnboardingView: View {
                 .lineSpacing(
                     Typography.lineSpacing(
                         size: Typography.Size.sm, ratio: Typography.LineHeight.snug))
+                // D53 — the same guard on the same kind of copy. This card
+                // renders in full today; the paywall's did too until the stack
+                // around it changed shape.
+                .fixedSize(horizontal: false, vertical: true)
         }
         .toggleStyle(
             ConsentCheckboxStyle(
