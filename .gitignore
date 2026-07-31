@@ -39,6 +39,15 @@ pnpm-debug.log*
 # vo:build takes thrown out by the length gate (kept for listening, never shipped)
 apps/game-web/src/vo/clips/.rejects/
 
+# a hand-taken snapshot of the clip bank, from before a re-bake. Ignored rather
+# than deleted: git holds every take that was ever committed, but a snapshot can
+# also hold one that was replaced before it ever reached a commit.
+clips.bak/
+
+# companion design proposals — the screenshot-QA pages written while a new mascot
+# is being designed. Nothing ships from here; see the new-companion skill.
+apps/game-web/src/dev/proposals/
+
 # AI
 .claude/*
 !.claude/skills/
