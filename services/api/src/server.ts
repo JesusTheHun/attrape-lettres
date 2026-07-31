@@ -1,63 +1,50 @@
+import { DescribeTableCommand } from "@aws-sdk/client-dynamodb";
 import { serve } from "@hono/node-server";
-import { DescribeTableCommand, DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
-import { S3Client } from "@aws-sdk/client-s3";
 
 import { buildApp } from "./app.js";
-import { DynamoHouseholdStore } from "./household/dynamo.js";
-import { S3TelemetrySink } from "./telemetry/s3.js";
-import { nullTelemetrySink } from "./telemetry/sink.js";
+import { ConfigError, wireFromEnv } from "./aws.js";
+import { log } from "./log.js";
 
 /* -------------------------------------------------------------------------- */
-/* The entrypoint: the only file that reads env, opens a client or listens.    */
-/* Everything it wires together is testable without it.                        */
+/* The long-running entrypoint: `pnpm dev`, a container, a box.                 */
+/*                                                                             */
+/* NOT what ships. Production is `lambda.ts` behind an HTTP API — see           */
+/* `infra/template.yaml`. This stays because a service that can only run inside */
+/* its own deployment is a service nobody can debug, and because `pnpm dev`     */
+/* against DynamoDB Local needs no AWS account at all.                          */
 /* -------------------------------------------------------------------------- */
 
-const TABLE = process.env.HOUSEHOLD_TABLE;
-const BUCKET = process.env.TELEMETRY_BUCKET;
 const PORT = Number(process.env.PORT ?? 8787);
-/** Set to "0" on a deployment that wants sync without analytics. */
-const TELEMETRY = process.env.TELEMETRY !== "0";
-/** Point at DynamoDB Local for development. Unset in production. */
-const DYNAMO_ENDPOINT = process.env.DYNAMO_ENDPOINT;
 
-if (!TABLE) {
-  console.error("HOUSEHOLD_TABLE is required");
-  process.exit(1);
+let wiring;
+try {
+  wiring = wireFromEnv();
+} catch (error) {
+  if (error instanceof ConfigError) {
+    console.error(error.message);
+    process.exit(1);
+  }
+  throw error;
 }
-if (TELEMETRY && !BUCKET) {
-  console.error("TELEMETRY_BUCKET is required unless TELEMETRY=0");
-  process.exit(1);
-}
-
-const dynamo = new DynamoDBClient(DYNAMO_ENDPOINT ? { endpoint: DYNAMO_ENDPOINT } : {});
-const documents = DynamoDBDocumentClient.from(dynamo, {
-  // The clients send JSON that Zod has already validated, so there should be
-  // nothing undefined to strip — but a marshalling error at 3am is a silent
-  // sync outage, and this costs nothing.
-  marshallOptions: { removeUndefinedValues: true },
-});
 
 // Fail fast rather than create. Creating the table on boot would need
 // CreateTable in the running role's policy, and a service that can create its
 // own store will happily create a second, empty one after a typo in
 // HOUSEHOLD_TABLE — at which point every family looks brand new and nothing
-// errors. The table definition is in the README.
+// errors. The table definition is in `infra/template.yaml`.
+//
+// `lambda.ts` deliberately skips this: there the name arrives from a
+// CloudFormation `Ref` to the table that was just created, so there is no typo
+// to catch and no reason to spend a control-plane call on every cold start.
 try {
-  await dynamo.send(new DescribeTableCommand({ TableName: TABLE }));
+  await wiring.dynamo.send(new DescribeTableCommand({ TableName: wiring.table }));
 } catch (error) {
-  console.error(`cannot describe DynamoDB table "${TABLE}":`, error);
+  console.error(`cannot describe DynamoDB table "${wiring.table}":`, error);
   process.exit(1);
 }
 
-const app = buildApp({
-  households: new DynamoHouseholdStore(documents, TABLE),
-  telemetry: TELEMETRY ? new S3TelemetrySink(new S3Client({}), BUCKET!) : nullTelemetrySink,
-  openapi: true,
-});
-
-const server = serve({ fetch: app.fetch, port: PORT }, (info) => {
-  console.log(`api listening on :${info.port}` + (TELEMETRY ? "" : " (telemetry off)"));
+const server = serve({ fetch: buildApp(wiring.deps).fetch, port: PORT }, (info) => {
+  log("info", "boot", { runtime: "node", port: info.port, telemetry: wiring.telemetry });
 });
 
 // A household PUT cut off mid-write costs a device one sync cycle; it retries on
@@ -65,7 +52,7 @@ const server = serve({ fetch: app.fetch, port: PORT }, (info) => {
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
   process.on(signal, () => {
     server.close(() => {
-      documents.destroy();
+      wiring.close();
       process.exit(0);
     });
   });

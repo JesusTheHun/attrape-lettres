@@ -9,11 +9,15 @@ import { createHash } from "node:crypto";
 /* a user, a support inbox or a crash reporter. A log line is the only place a  */
 /* failure can appear at all, so the lines have to be worth alarming on.        */
 /*                                                                             */
-/* Records are emitted as OBJECTS, not as strings. Under Lambda's JSON log      */
-/* format they land as `{"level":…,"requestId":…,"message":{…our fields…}}`,    */
-/* which is what lets the CloudWatch metric filters in `infra/template.yaml`    */
-/* match on `$.message.event`. Change the shape here and those filters stop     */
-/* matching — silently, which is the failure this whole file exists to prevent. */
+/* Records are emitted as ONE LINE OF JSON, deliberately pre-serialised rather  */
+/* than handed to `console.log` as an object. Lambda wraps whatever a handler   */
+/* prints, and the wrapping differs by log format: an object may arrive nested  */
+/* under `message`, or inspected into `{ event: 'x' }` — single quotes, no      */
+/* colon-quote pair, nothing a filter can match. A string survives both, so the */
+/* CloudWatch metric filters in `infra/template.yaml` match the literal         */
+/* substring `"event":"…"` and stay correct whatever the runtime does around    */
+/* them. Those filters are the only thing between a broken deploy and nobody    */
+/* noticing; they do not get to depend on a wrapping convention.                */
 /*                                                                             */
 /* WHAT MAY NOT BE LOGGED. A household id is the only credential this service   */
 /* has: whoever holds one can read and overwrite that family's roster. Writing  */
@@ -28,10 +32,26 @@ export type LogFields = Record<string, unknown>;
 
 type Sink = (level: LogLevel, record: LogFields) => void;
 
+/**
+ * The exact bytes that reach CloudWatch.
+ *
+ * Exported because `test/alarms.test.ts` reads every `FilterPattern` out of
+ * `infra/template.yaml` and asserts it still matches a line this produces. The
+ * alarms match literal substrings of this string, so a reordered field or a
+ * renamed event breaks them — and breaks them silently, which is the one
+ * failure mode this service must not have twice.
+ */
+export function formatLine(level: LogLevel, record: LogFields): string {
+  return JSON.stringify({ level, ...record });
+}
+
 const consoleSink: Sink = (level, record) => {
-  if (level === "error") console.error(record);
-  else if (level === "warn") console.warn(record);
-  else console.log(record);
+  // `stderr` for warn and error so Lambda tags the line ERROR, which makes the
+  // stream itself a coarse but working backstop if a filter ever stops
+  // matching.
+  const line = formatLine(level, record);
+  if (level === "info") console.log(line);
+  else console.error(line);
 };
 
 let sink: Sink = consoleSink;

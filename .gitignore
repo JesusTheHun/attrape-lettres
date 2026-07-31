@@ -52,3 +52,6 @@ apps/game-web/src/dev/proposals/
 .claude/*
 !.claude/skills/
 .claude/skills/*-workspace/
+# The Lambda bundle. Rebuilt by `pnpm bundle` on every deploy; the artefact
+# that ships is the one CloudFormation uploaded, never one committed here.
+dist-lambda/

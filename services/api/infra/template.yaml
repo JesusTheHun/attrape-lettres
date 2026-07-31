@@ -1,0 +1,647 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+# ---------------------------------------------------------------------------
+# The whole deployment: a table, a bucket, one Lambda behind an HTTP API, and
+# the alarms that exist because this service cannot report its own failures.
+#
+# THE SHAPE OF THE PROBLEM. Both clients swallow every response that is not a
+# 200, a 404 or a 412 and keep playing offline. Nothing that breaks here
+# reaches a user, a support inbox or a crash reporter — it surfaces months
+# later as two phones quietly disagreeing about a child's stars. So more than
+# half of this file is detection, and the detection is not decoration.
+#
+# WHY AN HTTP API AND NOT A LAMBDA FUNCTION URL. A Function URL is free and one
+# resource simpler, and it is the wrong choice twice over:
+#
+#   * The endpoint is compiled into a native binary that changes only through
+#     store review, so it must outlive the stack. A Function URL dies with its
+#     function; recreate the stack and every installed app points at nothing,
+#     permanently, with no fix that does not require a release.
+#   * Putting a custom domain on a Function URL means CloudFront, which
+#     forwards no request headers by default. `If-Match` would vanish, every
+#     push would become a create, every create would conflict, and sync would
+#     stop for everyone — silently, because a 412 is ordinary traffic. That is
+#     the single easiest way to break this service, and it is not going to be
+#     introduced by its own deployment.
+#
+# An HTTP API passes `If-Match` and `ETag` through untouched, has no cache and
+# no compression layer, and costs about $1 per million requests once the free
+# year is up. At a few requests per family per day that is not a number worth
+# optimising against correctness.
+#
+# Deploy with `scripts/deploy.sh`, which bundles first — `Code` below is a
+# local directory that `aws cloudformation package` rewrites to S3.
+# ---------------------------------------------------------------------------
+
+Description: Attrape-Lettres — household sync and first-party telemetry
+
+Parameters:
+  TelemetryEnabled:
+    Type: String
+    Default: "1"
+    AllowedValues: ["1", "0"]
+    Description: >-
+      "0" deploys sync without analytics. The endpoints still answer 204 —
+      the clients treat any non-2xx as a reason to retry.
+
+  AlarmEmail:
+    Type: String
+    Default: ""
+    Description: >-
+      Where alarms go. Leave empty and the topic is still created, with nobody
+      subscribed — which is the same as having no alarms at all, so fill it in.
+
+  LogRetentionDays:
+    Type: Number
+    Default: 30
+    Description: >-
+      The log group is created here rather than left to Lambda, which would
+      create one that never expires and bills for it forever.
+
+  DomainName:
+    Type: String
+    Default: ""
+    Description: >-
+      The hostname the apps are built against, e.g. api.attrape-lettres.fr.
+      OPTIONAL HERE AND MANDATORY IN PRACTICE — see the warning in the README.
+      Requires HostedZoneId.
+
+  HostedZoneId:
+    Type: String
+    Default: ""
+    Description: Route 53 zone for DomainName. Both or neither.
+
+  EnableQuietSyncAlarm:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: >-
+      Alarm when a whole day passes with no successful push. This is the alarm
+      that catches the failures nothing else can see — a stripped ETag header,
+      a DNS change, an expired certificate — because all of them look like
+      "traffic stopped" and nothing else looks like that. It is OFF by default
+      because a product with no users yet would fire it every single night.
+      Turn it on the day there is a baseline to fall below.
+
+Conditions:
+  TelemetryOn: !Equals [!Ref TelemetryEnabled, "1"]
+  HasAlarmEmail: !Not [!Equals [!Ref AlarmEmail, ""]]
+  HasCustomDomain: !And
+    - !Not [!Equals [!Ref DomainName, ""]]
+    - !Not [!Equals [!Ref HostedZoneId, ""]]
+  QuietAlarmOn: !Equals [!Ref EnableQuietSyncAlarm, "true"]
+
+Resources:
+  # -------------------------------------------------------------------------
+  # Storage
+  # -------------------------------------------------------------------------
+
+  # RETAINED ON PURPOSE, both policies. This table is every star every child in
+  # every family has earned, and `cloudformation delete-stack` is one command.
+  # Losing it is not recoverable from anywhere: the devices hold the same data,
+  # but a device that pulls a 404 creates a fresh household and the join code
+  # linking a family's phones is gone.
+  #
+  # Nothing is ever queried across households — the join code IS the household
+  # id — so there is no secondary index, no stream and no TTL. Encryption is
+  # left at the default AWS-owned key, which is on, free, and not the same as
+  # SSEEnabled: true, which switches to a KMS key that bills per request.
+  HouseholdTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: !Sub "${AWS::StackName}-households"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+      # Cheap at this size, and the only defence against a bad deploy writing
+      # over real rosters. Restores to any second in the last 35 days.
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+
+  # Telemetry rows carry no device id, no household id and no session id, so
+  # nothing here can be tied to a family — which is why this needs no retention
+  # policy for privacy. The lifecycle rule below is a cost rule, nothing more.
+  TelemetryBucket:
+    Type: AWS::S3::Bucket
+    Condition: TelemetryOn
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub "${AWS::StackName}-telemetry-${AWS::AccountId}"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      LifecycleConfiguration:
+        Rules:
+          - Id: expire-old-telemetry
+            Status: Enabled
+            ExpirationInDays: 400
+          - Id: tidy-failed-uploads
+            Status: Enabled
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 7
+
+  # -------------------------------------------------------------------------
+  # The service
+  # -------------------------------------------------------------------------
+
+  ApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    # Kept when the stack goes, because the log is the only record of what the
+    # service was doing when someone decided to delete it.
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-api"
+      RetentionInDays: !Ref LogRetentionDays
+
+  # Least privilege, and the omissions are the point: no DeleteItem, no
+  # UpdateItem, no Scan, no BatchWriteItem, and no s3:GetObject or
+  # s3:DeleteObject. A compromised function can overwrite one household at a
+  # time under a condition it must first satisfy, and it can append telemetry.
+  # It cannot enumerate families, delete a child's progress, or read back a
+  # single analytics row.
+  ApiRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: logs
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              # No CreateLogGroup: the group is declared above, and granting it
+              # is how a function quietly starts logging to a second group that
+              # nobody set a retention on.
+              - Effect: Allow
+                Action: [logs:CreateLogStream, logs:PutLogEvents]
+                Resource: !Sub "${ApiLogGroup.Arn}:*"
+        - PolicyName: households
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              # PutItem covers the Put entries inside TransactWriteItems; there
+              # is no separate transaction action. Add ConditionCheckItem only
+              # if a bare ConditionCheck is ever put in the transaction.
+              - Effect: Allow
+                Action: [dynamodb:Query, dynamodb:PutItem]
+                Resource: !GetAtt HouseholdTable.Arn
+        - !If
+          - TelemetryOn
+          - PolicyName: telemetry
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action: s3:PutObject
+                  Resource: !Sub "${TelemetryBucket.Arn}/*"
+          - !Ref AWS::NoValue
+
+  ApiFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-api"
+      Description: Household sync and first-party telemetry
+      Runtime: nodejs22.x
+      # Cheaper per millisecond than x86, and nothing here is native.
+      Architectures: [arm64]
+      Handler: index.handler
+      # `aws cloudformation package` uploads this directory and rewrites the
+      # property. Run `pnpm bundle` first — see scripts/deploy.sh.
+      Code: ../dist-lambda
+      # Not for the memory. CPU on Lambda scales with it, and the whole
+      # workload is JSON parsing and one round trip, so a larger size finishes
+      # sooner and costs about the same GB-seconds while cutting cold starts.
+      MemorySize: 512
+      # A device that times out retries on the next resume and loses nothing.
+      Timeout: 10
+      Role: !GetAtt ApiRole.Arn
+      LoggingConfig:
+        LogGroup: !Ref ApiLogGroup
+        # TEXT, DELIBERATELY, even though every line this service writes is
+        # already JSON. Under JSON format Lambda nests the line as a string
+        # inside `message` and escapes every quote in it, at which point the
+        # literal filter patterns below stop matching — silently. Text format
+        # prefixes the line and leaves it otherwise alone.
+        LogFormat: Text
+      Environment:
+        Variables:
+          HOUSEHOLD_TABLE: !Ref HouseholdTable
+          TELEMETRY: !Ref TelemetryEnabled
+          TELEMETRY_BUCKET: !If [TelemetryOn, !Ref TelemetryBucket, ""]
+          # Trim the SDK's own logging; ours is the log that matters.
+          AWS_NODEJS_CONNECTION_REUSE_ENABLED: "1"
+
+  # No CorsConfiguration. The clients are native apps and a self-hosted PWA on
+  # one origin; a permissive default would hand any page on the internet a
+  # write endpoint against a store whose only credential travels in the URL.
+  HttpApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: !Sub "${AWS::StackName}-api"
+      ProtocolType: HTTP
+
+  ApiIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref HttpApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !GetAtt ApiFunction.Arn
+      PayloadFormatVersion: "2.0"
+
+  # One catch-all route: Hono owns the routing table, and duplicating it here
+  # would be a second place for it to be wrong.
+  DefaultRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: $default
+      Target: !Sub "integrations/${ApiIntegration}"
+
+  DefaultStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref HttpApi
+      StageName: $default
+      AutoDeploy: true
+      # No access log. The function already logs one structured line per
+      # request, and a second copy would double the log bill to say less.
+
+  InvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt ApiFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${HttpApi}/*"
+
+  # -------------------------------------------------------------------------
+  # The name the apps are built against
+  # -------------------------------------------------------------------------
+
+  ApiCertificate:
+    Type: AWS::CertificateManager::Certificate
+    Condition: HasCustomDomain
+    Properties:
+      DomainName: !Ref DomainName
+      ValidationMethod: DNS
+      DomainValidationOptions:
+        - DomainName: !Ref DomainName
+          HostedZoneId: !Ref HostedZoneId
+
+  ApiDomain:
+    Type: AWS::ApiGatewayV2::DomainName
+    Condition: HasCustomDomain
+    Properties:
+      DomainName: !Ref DomainName
+      DomainNameConfigurations:
+        - CertificateArn: !Ref ApiCertificate
+          EndpointType: REGIONAL
+          SecurityPolicy: TLS_1_2
+
+  ApiMapping:
+    Type: AWS::ApiGatewayV2::ApiMapping
+    Condition: HasCustomDomain
+    Properties:
+      ApiId: !Ref HttpApi
+      DomainName: !Ref ApiDomain
+      Stage: !Ref DefaultStage
+
+  ApiDnsRecord:
+    Type: AWS::Route53::RecordSet
+    Condition: HasCustomDomain
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref DomainName
+      Type: A
+      AliasTarget:
+        DNSName: !GetAtt ApiDomain.RegionalDomainName
+        HostedZoneId: !GetAtt ApiDomain.RegionalHostedZoneId
+
+  # -------------------------------------------------------------------------
+  # Detection
+  #
+  # Every filter below matches LITERAL SUBSTRINGS of the JSON line the service
+  # writes, and several terms in one pattern mean "all of these appear". That
+  # is not the prettiest way to express it — a JSON filter would be — but a
+  # JSON filter needs the whole log event to be JSON, and Lambda prefixes every
+  # line with a timestamp and a request id.
+  #
+  # These strings are a contract with `src/log.ts`, and `test/alarms.test.ts`
+  # reads this file and asserts every pattern still matches a line the running
+  # app produces. Rename an event without that test and the alarms keep
+  # reporting healthy forever.
+  # -------------------------------------------------------------------------
+
+  AlarmTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: Attrape-Lettres API
+
+  AlarmEmailSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: HasAlarmEmail
+    Properties:
+      TopicArn: !Ref AlarmTopic
+      Protocol: email
+      Endpoint: !Ref AlarmEmail
+
+  # A 500 the clients threw away. Note that Lambda's own Errors metric does NOT
+  # see these: `app.onError` catches the throw and answers 500, so as far as
+  # Lambda is concerned the invocation succeeded. Without this filter the most
+  # important failure in the system is invisible on every built-in dashboard.
+  ServerErrorFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref ApiLogGroup
+      FilterPattern: '"\"event\":\"request.failed\""'
+      MetricTransformations:
+        - MetricNamespace: AttrapeLettres/Api
+          MetricName: ServerErrors
+          MetricValue: "1"
+          DefaultValue: 0
+
+  # The store refused a write for a reason that is not a conflict — an
+  # oversized item, a throttle it could not retry through, a table that is not
+  # there. One family or all of them; the log line carries a household hash.
+  WriteFailedFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref ApiLogGroup
+      FilterPattern: '"\"event\":\"household.write_failed\""'
+      MetricTransformations:
+        - MetricNamespace: AttrapeLettres/Api
+          MetricName: HouseholdWriteFailures
+          MetricValue: "1"
+          DefaultValue: 0
+
+  # A child outgrew what the store can hold. This is the one failure that is
+  # permanent: that family's sync stops and never resumes on its own, with
+  # nothing on their phones to say so.
+  OversizedFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref ApiLogGroup
+      FilterPattern: '"\"event\":\"household.oversized\""'
+      MetricTransformations:
+        - MetricNamespace: AttrapeLettres/Api
+          MetricName: OversizedChildren
+          MetricValue: "1"
+          DefaultValue: 0
+
+  PushAttemptFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref ApiLogGroup
+      FilterPattern: '"\"event\":\"request\"" "\"method\":\"PUT\"" "\"route\":\"/household/:id\""'
+      MetricTransformations:
+        - MetricNamespace: AttrapeLettres/Api
+          MetricName: PushAttempts
+          MetricValue: "1"
+          DefaultValue: 0
+
+  PushConflictFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref ApiLogGroup
+      FilterPattern: '"\"event\":\"request\"" "\"method\":\"PUT\"" "\"status\":412"'
+      MetricTransformations:
+        - MetricNamespace: AttrapeLettres/Api
+          MetricName: PushConflicts
+          MetricValue: "1"
+          DefaultValue: 0
+
+  PushSuccessFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref ApiLogGroup
+      FilterPattern: '"\"event\":\"request\"" "\"method\":\"PUT\"" "\"status\":200"'
+      MetricTransformations:
+        - MetricNamespace: AttrapeLettres/Api
+          MetricName: PushSuccesses
+          MetricValue: "1"
+          DefaultValue: 0
+
+  ServerErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-server-errors"
+      AlarmDescription: >-
+        The service answered 500 and both clients threw it away. Nobody else
+        will report this.
+      Namespace: AttrapeLettres/Api
+      MetricName: ServerErrors
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref AlarmTopic]
+
+  WriteFailureAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-write-failures"
+      AlarmDescription: A household push reached the store and did not land.
+      Namespace: AttrapeLettres/Api
+      MetricName: HouseholdWriteFailures
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref AlarmTopic]
+
+  OversizedChildAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-oversized-child"
+      AlarmDescription: >-
+        A child no longer fits in one item. That family's sync has stopped for
+        good and their phones will not tell them.
+      Namespace: AttrapeLettres/Api
+      MetricName: OversizedChildren
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref AlarmTopic]
+
+  # THE ETag ALARM. A 412 is ordinary traffic — it is how two phones take turns
+  # — so its absolute count says nothing. Its RATIO says everything: strip or
+  # weaken the ETag header anywhere in front of this service and both clients
+  # start sending no `If-Match` at all, every push becomes a create, and every
+  # create conflicts. The conflict rate goes to ~100% and stays there while the
+  # apps keep playing offline as though nothing happened.
+  #
+  # Guarded on volume so a quiet hour with three pushes and two conflicts does
+  # not page anybody.
+  ConflictStormAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-conflict-storm"
+      AlarmDescription: >-
+        Most pushes are conflicting. Suspect anything in front of this service
+        that touches ETag or If-Match.
+      Metrics:
+        - Id: conflicts
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: AttrapeLettres/Api
+              MetricName: PushConflicts
+            Period: 900
+            Stat: Sum
+        - Id: attempts
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: AttrapeLettres/Api
+              MetricName: PushAttempts
+            Period: 900
+            Stat: Sum
+        - Id: rate
+          ReturnData: true
+          Label: conflicts as a percentage of pushes
+          Expression: IF(attempts > 20, 100 * conflicts / attempts, 0)
+      EvaluationPeriods: 2
+      Threshold: 60
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref AlarmTopic]
+
+  # Init failures and timeouts. Runtime faults do NOT appear here — `onError`
+  # turns those into a handled 500 — which is exactly why ServerErrorAlarm
+  # exists alongside it.
+  LambdaErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-lambda-errors"
+      AlarmDescription: The function failed to start or failed to return.
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref ApiFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref AlarmTopic]
+
+  LambdaThrottleAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-lambda-throttles"
+      AlarmDescription: >-
+        Concurrency ran out. Every throttled invocation is a device that gave
+        up and went back to playing offline.
+      Namespace: AWS/Lambda
+      MetricName: Throttles
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref ApiFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref AlarmTopic]
+
+  TableErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-table-errors"
+      AlarmDescription: DynamoDB failed a request on its own side.
+      Namespace: AWS/DynamoDB
+      MetricName: SystemErrors
+      Dimensions:
+        - Name: TableName
+          Value: !Ref HouseholdTable
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref AlarmTopic]
+
+  # THE ONE THAT CATCHES WHAT NOTHING ELSE CAN. Expired certificate, changed
+  # DNS, a client shipped with the wrong hostname, an API that stopped routing:
+  # none of them produce an error here, because none of them reach here. They
+  # all look identical from inside the service — traffic simply stops — and
+  # nothing else in this file looks for absence.
+  #
+  # `breaching` on missing data is the whole point: no data IS the alarm.
+  QuietSyncAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: QuietAlarmOn
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-sync-went-quiet"
+      AlarmDescription: >-
+        A full day with no successful push. The service is not failing; it is
+        not being reached.
+      Namespace: AttrapeLettres/Api
+      MetricName: PushSuccesses
+      Statistic: Sum
+      Period: 86400
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: breaching
+      AlarmActions: [!Ref AlarmTopic]
+
+Outputs:
+  ApiEndpoint:
+    Description: >-
+      The generated endpoint. Fine for curl. Do NOT build an app against it —
+      it dies with the stack, and a shipped binary cannot be repointed.
+    Value: !GetAtt HttpApi.ApiEndpoint
+
+  PublicEndpoint:
+    Condition: HasCustomDomain
+    Description: The hostname the apps are built against.
+    Value: !Sub "https://${DomainName}"
+
+  HouseholdTableName:
+    Value: !Ref HouseholdTable
+
+  TelemetryBucketName:
+    Condition: TelemetryOn
+    Value: !Ref TelemetryBucket
+
+  AlarmTopicArn:
+    Description: Subscribe more than one person to this.
+    Value: !Ref AlarmTopic
