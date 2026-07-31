@@ -43,22 +43,41 @@ Two properties of that shape are load-bearing:
   is the difference between a one-paragraph privacy policy and a compliance
   project. **The database must not become the place where PII starts.**
 
-## tRPC and the thing it cannot do
+## Where tRPC stops, and why
 
-tRPC is a TypeScript-to-TypeScript protocol. The iOS app is Swift and speaks the
-plain REST above through `URLSessionSyncTransport`; a Kotlin Android app will be
-the same. Neither can consume a tRPC router, ever.
+Not "Swift cannot call tRPC" — it can. The HTTP adapter has a documented,
+language-agnostic shape (`GET /trpc/<proc>?input=`, `POST` for mutations, a
+`{"result":{"data":…}}` envelope, `?batch=1`), `URLSession` speaks it fine, and
+there is codegen that emits Swift clients as well as adapters that expose REST
+routes off the same procedures. Two real reasons, neither of them that:
 
-So the surface is expected to split:
+**1. The sync protocol is conditional-request-shaped; RPC is not.** The etag is a
+response header, the precondition is a request header, and the conflict is a
+status code. The whole concurrency design rests on that: the merge happens on the
+device *between* the pull and the push, and 412 is what stops one parent's phone
+clobbering the other's. Expressing it as a procedure means moving the etag into
+the payload and the conflict into an application-level error — reimplementing
+conditional requests inside a body, against a spec that already does it.
 
-- **Device-facing: plain REST, unchanged.** It is a frozen wire contract with
-  shipped clients, ETag concurrency is HTTP's own mechanism rather than something
-  layered on top, and it keeps native clients first-class.
-- **Backoffice-facing: tRPC.** Both ends are TypeScript, so end-to-end types are
-  free and worth having.
+**2. The type inference does not cross the language boundary, and it is the whole
+point.** tRPC's safety comes from TypeScript inferring over the `AppRouter` type;
+that inference exists in `tsc` and nowhere else. A Swift or Kotlin client
+re-declares those types by hand or generates them — which is the codegen pipeline
+tRPC exists to remove. The device door would pay tRPC's costs (the envelope, the
+batching format, coupling to a wire its authors treat as internal across major
+versions) and collect none of its benefit.
 
-One service, two doors. Don't reach for a tRPC-to-REST bridge to make the phones
-fit — the REST shape came first and the phones are already built against it.
+Third, smaller, but true: the REST contract is already frozen in two shipped
+clients. Changing it is a migration, not a design choice.
+
+So the surface splits:
+
+- **Device-facing: plain REST, unchanged.** HTTP's own concurrency mechanism,
+  native clients first-class.
+- **Backoffice-facing: tRPC.** Both ends are TypeScript, so the inference is real
+  and worth having.
+
+One service, two doors.
 
 ## Postgres
 

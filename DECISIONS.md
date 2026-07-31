@@ -102,15 +102,28 @@ because it would have held exactly this one file.
 
 ## R5 — Backend: tRPC and Postgres, with REST kept for the devices
 
-tRPC is TypeScript-to-TypeScript. The iOS app is Swift and already speaks plain
-REST — `GET`/`PUT /household/{id}` with ETag optimistic concurrency — and a
-Kotlin Android app will be the same. Neither can ever consume a tRPC router.
+The service gets two doors: **REST for devices**, unchanged; **tRPC for the
+backoffice**, where both ends are TypeScript.
 
-So the service gets two doors: **REST for devices**, unchanged, because it is a
-frozen wire contract with shipped clients and ETag concurrency is HTTP's own
-mechanism; **tRPC for the backoffice**, where both ends are TypeScript and
-end-to-end types are free. Not a tRPC-to-REST bridge to make the phones fit —
-the REST shape came first and the phones are built against it.
+The reason is not that a Swift client cannot consume tRPC. It can — the HTTP
+adapter has a documented, language-agnostic shape, and codegen for non-TS
+clients exists. Two better reasons:
+
+**The sync protocol is conditional-request-shaped and RPC is not.** The etag is a
+response header, the precondition (`If-Match`) is a request header, and the
+conflict is a status code (412). That is the entire concurrency design, because
+the merge happens on the device *between* pull and push. Modelling it as a
+procedure means putting the etag in the payload and the conflict in an
+application-level error — reimplementing conditional requests inside a body.
+
+**tRPC's type inference does not cross a language boundary, and it is the whole
+point of tRPC.** The safety comes from TypeScript inferring over the `AppRouter`
+type. A Swift or Kotlin client re-declares or generates those types, which is the
+codegen pipeline tRPC exists to remove — so the device door would pay tRPC's
+costs and collect none of its benefit.
+
+Third, smaller: the REST contract is already frozen in two shipped clients, so
+changing it is a migration rather than a design choice.
 
 The merge stays on the device. The server never merges; it only refuses a write
 built on a superseded read (412), and the client re-pulls and retries. Full
