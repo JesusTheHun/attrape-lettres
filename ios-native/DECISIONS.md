@@ -1281,5 +1281,65 @@ Three assertions, because the first draft only checked the bookkeeping variable
 and would have passed a graph that recorded mono and wired stereo:
 buffers-match-engine, node-is-mono, and bookkeeping-matches-engine.
 
-**Bug 2 (shop scroll) is still open** and is NOT this: shop tiles play no sound
-on press, so nothing on that path reaches `play`. Awaiting its own log.
+> **CORRECTION (D48).** This section closed by asserting that bug 2 (the shop
+> scroll crash) was "NOT this", on the grounds that "shop tiles play no sound on
+> press, so nothing on that path reaches `play`". That was **wrong**, and it was
+> guessed rather than checked: `ShopModel.tapItem` calls `audio.pop()` on the
+> owned branch and `tryOn` calls it on the unowned one — every shop tile plays a
+> pop. The second crash log has the same abort, from `tryOn`. See D48.
+
+---
+
+## D48 — Bug 2 was bug 3 all along, and the claim that it wasn't was a guess
+
+The second device crash log is byte-for-byte the same abort as D47, from a
+different caller:
+
+```
+-[AVAudioPlayerNode scheduleBuffer:atTime:options:completionHandler:]
+  → +[NSException raise:format:] → objc_exception_throw → abort()
+← GameAudioGraph.play(_:) ← LiveAudioEngine.pop() ← ShopModel.tryOn(_:)
+← ShopModel.tapItem(_:) ← ShopView.tile ← TouchDownCore.ended(at:in:)
+```
+
+Same exception, same frame, same binary — the report is timestamped 01:52, and
+the fix landed at 02:26. Both reported bugs were one bug. Nothing else needs
+fixing for it; the build that carries `ensureSfxFormat` carries the fix for both.
+
+**The claim in D47 that they were different was wrong, and wrongly arrived at.**
+I wrote that shop tiles "play no sound on press" without opening `ShopModel`.
+`tapItem` calls `audio.pop()` on the owned branch, and `tryOn` calls it on the
+unowned one. Every shop tile pops. Had I read the file instead of reasoning from
+a recollection of the shop's feel, the second log would not have been needed —
+the first stack plus one `grep` for `pop()` was already enough to close both.
+
+The lesson is the one this port keeps re-teaching: **a claim about the code is
+worth nothing until it is read.** It cost the user a second crash-report round
+trip.
+
+### The open question the log raises but cannot answer
+
+The crashing frame is `TouchDownCore.ended(at:in:)` — a lift, and `onUp(inside:)`
+reported `true`, so the tile's action ran. The bug was reported as *"when I
+scroll down the shop"*. Two readings fit:
+
+1. it was an ordinary tap and the "scroll" in the report is incidental; or
+2. **a scroll drag that lifts on a tile fires that tile's action** — the child
+   flicks the shop and lands in a try-on dialog.
+
+Reading 2 would be a genuine deviation. On the web a scroll fires `pointercancel`
+and no `click` follows; `TouchDown.swift`'s header asserts the same happens here,
+"when the scroll view takes the touch (cancelling content touches) the recogniser
+transitions to `.cancelled`". **That assertion is unverified**, and there is a
+concrete reason to doubt it: `Coordinator` returns `true` from
+`shouldRecognizeSimultaneouslyWith`, which is exactly what stops the pan from
+forcing our recogniser to fail. If the pan cannot fail it, `.ended` arrives
+normally at lift and the tap runs.
+
+It is not fixed here, because it cannot be *observed* here: the host suite has no
+scroll view and no finger, `simctl` has no tap or swipe input, and the crash log
+says only that `.ended` fired — not whether a pan was in flight. Guessing at UIKit
+interop is what produced the sentence being corrected at the top of this entry.
+Settling it is the XCUITest tier's first job (see the open item in D46): a swipe
+across a shop tile either opens a dialog or does not, and that is a one-assertion
+test on a real simulator.
