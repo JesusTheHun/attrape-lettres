@@ -1,62 +1,58 @@
 # Attrape-Lettres
 
-A small French early-reading game for young children (~6yo). Two skills, four
-games, every level unlocked at all times.
+A French early-reading game for young children (~6yo). Seventeen exercises across
+two skills — letters and syllables — every level unlocked at all times, no fail
+state, and nothing to buy in front of a child.
 
-- **La première lettre** — hear a word, tap its first letter. 5 levels; each level
-  widens the letter catalog (Level 1 is tiny on purpose so words recur and stick).
-- **Complète le mot** / **Range les syllabes** / **Trouve l'intrus** — build a word
-  from syllable tiles. Same engine, three seedings; 4 difficulty levels each.
+## The repo
 
-## Stack
+```
+apps/
+  game-web/       the PWA — Vite · React 18 · TypeScript (strict) · Tailwind
+  game-ios/       the native app — SwiftPM package + a thin Xcode wrapper
+  game-android/   not built yet
+  backoffice/     not built yet
+services/
+  api/            household sync + telemetry — Hono · Zod · Postgres
+packages/         shared TypeScript — empty on purpose
+```
 
-Vite · React 18 · TypeScript (strict) · TailwindCSS. No runtime dependencies beyond
-React — audio is generated (Web Audio), speech is `speechSynthesis`, confetti is a
-canvas `requestAnimationFrame` loop.
+`apps/game-web` and `apps/game-ios` are two independent implementations of the
+same game. They are not a shared core with two shells: the port was written
+against the web app line by line, and ~1450 host tests are what hold the two in
+agreement. What they genuinely share is the baked voice-over — 855 clips that
+live once, in `apps/game-web/src/vo/clips/`, hard-linked into the iOS bundle at
+build time and never committed twice.
+
+Each app carries its own docs. `apps/game-ios/` in particular has its own
+`CLAUDE.md`, an `ARCHITECTURE.md` and a `DECISIONS.md` recording every decision
+the port made and why.
 
 ## Run
 
 ```bash
 pnpm install
-pnpm dev
+pnpm dev                          # the web app
+
+cd apps/game-ios && swift test    # the iOS suite, on the host, no simulator
+open apps/game-ios/App/AttrapeLettres.xcodeproj
 ```
 
-`pnpm build` type-checks (`tsc -b`) then bundles. `pnpm typecheck` runs the
-type-checker alone.
+From the root, `pnpm build`, `pnpm typecheck` and `pnpm test` run across every
+JS/TS package; each also works from inside a package.
 
-## Project shape
+## Three design decisions worth knowing
 
-```
-src/
-  types.ts                 domain types (exercises, tiers, rounds, view)
-  content.ts               datasets: letter words, pre-split syllable words, syllable bank
-  levels.ts                letter-level table, syllable tier ladder, round builders, hub catalog
-  hooks/
-    useAudio.ts            gesture-unlocked Web Audio SFX + quality-picked French TTS
-    useConfetti.ts         canvas rAF burst, decoupled from React renders
-  components/
-    Ollie.tsx              mascot
-    Tile.tsx               one tappable tile: WAAPI press + forgiving shake
-    GameFrame.tsx          gradient stage, confetti mount, back button, progress
-  exercises/
-    FirstLetterExercise.tsx
-    AssembleExercise.tsx   shared engine for all three syllable modes
-  App.tsx                  hub (all levels unlocked) + view router
-  main.tsx, index.css
-```
+1. **Content is authored, not computed.** French syllabification is a rabbit
+   hole. Syllables live in `content.ts` as data (`{ word, syllables, emoji }`),
+   pre-split by a human who checked how the fragment actually sounds.
+2. **Nothing identifying leaves the device.** A child's first name never goes on
+   the wire, telemetry has a closed property allowlist with no free-text escape
+   hatch, and the device id — which exists only so two phones can merge one
+   child's stars — is never sent anywhere. Tests assert all of it.
+3. **Money never fails closed.** An unreachable store, a timed-out receipt check
+   or a flat network may not lock a child out. We would rather give the game away
+   than show one paying six-year-old a paywall because StoreKit blinked.
 
-## Two design decisions worth knowing
-
-1. **Syllabification is authored, not computed.** French segmentation is a rabbit
-   hole; syllables live in `content.ts` as data (`{ word, syllables, emoji }`).
-2. **Difficulty is the only axis for syllable games.** The three mechanics share
-   one 4-tier ladder (`SYLLABLE_TIERS`) and one engine; a level *is* a tier. Adding a
-   mechanic that fits "fill slots from a tray" is one seeder branch + one catalog row.
-
-See `CLAUDE.md` for the invariants that keep the app feeling responsive to a child.
-
-## Not built yet (clean extension points)
-
-- `useProgress` mastery hook, keyed by `(exerciseId, level)`.
-- Adaptive distractors (letter confusability `b/d/p/q`, `m/n`).
-- Recorded voice-over sprite to replace `speechSynthesis` (consistent, lower latency).
+`CLAUDE.md` has the full invariant list — the rules that keep the game feeling
+alive to a child, and the ones you cannot break quietly.

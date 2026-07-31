@@ -1,0 +1,93 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Page shell: centre the app card, phone-width on desktop. */
+html,
+body,
+#root {
+  height: 100%;
+}
+body {
+  margin: 0;
+  background: #efe6da;
+  -webkit-font-smoothing: antialiased;
+}
+/* Native-app feel when installed to the home screen: no rubber-band scroll, no
+   long-press text selection / callout menu, no tap highlight, and taps resolve
+   without the legacy 300ms delay. Inputs opt back into selection so a child's
+   name stays editable. */
+html,
+body {
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+input,
+textarea {
+  -webkit-user-select: auto;
+  user-select: auto;
+}
+#root {
+  display: grid;
+  place-items: start center;
+  /* Safe-area aware for a notched phone in standalone/installed PWA mode, where
+     the page really does run under the notch; falls back to 16px in a tab. */
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+    max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+}
+#root > * {
+  width: 100%;
+  max-width: 480px;
+}
+
+/* Mascot motion — referenced by Ollie via Tailwind arbitrary animation utils. */
+@keyframes ollieBob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(2deg);
+  }
+}
+@keyframes olliePop {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.25) rotate(6deg);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Premium "Arc-en-ciel magique" accessory (RainbowSheen): a rainbow prism band
+   sweeping diagonally across the pet. Masked to the mascot silhouette (see
+   Mascot.tsx), so the band just translates edge to edge — the wrap happens off
+   the pet where the mask hides it, no fade needed. Pure CSS so it stays OFF the
+   React render path (invariant #2). Frozen under prefers-reduced-motion — the
+   band parks at centre (base transform), a static rainbow remains (invariant #6). */
+@keyframes alSheen {
+  from {
+    transform: translateX(var(--al-from, -150px));
+  }
+  to {
+    transform: translateX(var(--al-to, 150px));
+  }
+}
+/* Bind the keyframe. */
+.al-sheen {
+  animation: alSheen 3.6s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ollie-anim,
+  .al-sheen {
+    animation: none !important;
+  }
+}

@@ -1,2 +1,10 @@
+# The JS/TS half of the repo. `apps/game-ios` and `apps/game-android` are native
+# and carry no package.json, so pnpm skips them — they are absent from this list
+# on purpose, not by omission.
+packages:
+  - apps/*
+  - services/*
+  - packages/*
+
 allowBuilds:
   esbuild: true

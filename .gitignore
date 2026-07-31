@@ -9,21 +9,8 @@ dist-ssr
 
 # typescript composite build artifacts (from `tsc -b`)
 *.tsbuildinfo
-/vite.config.js
-/vite.config.d.ts
-
-# capacitor native shells: `ios/` and `android/` ARE committed (they hold
-# signing config, icons and Info.plist), but everything generated inside them
-# is not — `cap sync` rebuilds all of it from dist/.
-/ios/App/Pods/
-/ios/App/App/public/
-/ios/App/build/
-/ios/App/Podfile.lock
-/android/app/src/main/assets/public/
-/android/app/build/
-/android/build/
-/android/.gradle/
-/android/local.properties
+/apps/game-web/vite.config.js
+/apps/game-web/vite.config.d.ts
 
 # editor / os
 .DS_Store
@@ -41,7 +28,7 @@ dist-ssr
 google-tts-service-account.json
 
 # vo:build batch job state (transient; resumes polling if a run is stopped)
-src/vo/clips/.vo-batch.json
+apps/game-web/src/vo/clips/.vo-batch.json
 
 # logs
 npm-debug.log*
@@ -50,7 +37,7 @@ yarn-error.log*
 pnpm-debug.log*
 
 # vo:build takes thrown out by the length gate (kept for listening, never shipped)
-src/vo/clips/.rejects/
+apps/game-web/src/vo/clips/.rejects/
 
 # AI
 .claude/*

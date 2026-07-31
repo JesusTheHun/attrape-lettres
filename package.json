@@ -1,57 +1,18 @@
 {
   "name": "attrape-lettres",
   "private": true,
-  "version": "0.1.0",
   "type": "module",
-  "description": "French early-reading game for young children (first letter + syllable building).",
+  "description": "French early-reading game for young children — web, iOS, Android, backoffice and the API behind them.",
   "packageManager": "pnpm@11.9.0+sha512.bd682d5d03fe525ef7c9fd6780c6884d1e756ac4c9c9fe00c538782824310dcf90e3ddc4f53835f06dfaebd5085e41855e0bcbb3b60de2ac5bbab89e5036f03b",
   "engines": {
     "node": ">=24"
   },
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build && node scripts/gen-sw.mjs",
-    "preview": "vite preview",
-    "typecheck": "tsc -b --noEmit",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "vo:build": "node scripts/generate-vo.mjs",
-    "cap:sync": "pnpm build && cap sync",
-    "ios": "pnpm build && cap sync ios && cap open ios",
-    "android": "pnpm build && cap sync android && cap open android",
-    "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
-  },
-  "dependencies": {
-    "@capacitor/app": "^8.1.1",
-    "@capacitor/core": "^8.4.2",
-    "@capacitor/preferences": "^8.0.1",
-    "@capacitor/splash-screen": "^8.0.2",
-    "@capacitor/status-bar": "^8.0.3",
-    "@capgo/capacitor-updater": "^8.51.2",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
-  },
-  "devDependencies": {
-    "@capacitor/android": "^8.4.2",
-    "@capacitor/cli": "^8.4.2",
-    "@capacitor/ios": "^8.4.2",
-    "@storybook/addon-essentials": "^8.6.14",
-    "@storybook/react": "^8.6.18",
-    "@storybook/react-vite": "^8.6.18",
-    "@testing-library/jest-dom": "^6.9.1",
-    "@testing-library/react": "^16.3.2",
-    "@testing-library/user-event": "^14.6.1",
-    "@types/react": "^18.3.12",
-    "@types/react-dom": "^18.3.1",
-    "@vitejs/plugin-react": "^4.7.0",
-    "autoprefixer": "^10.4.20",
-    "happy-dom": "^20.10.6",
-    "postcss": "^8.4.49",
-    "storybook": "^8.6.18",
-    "tailwindcss": "^3.4.15",
-    "typescript": "^5.6.3",
-    "vite": "^5.4.11",
-    "vitest": "^3.2.6"
+    "dev": "pnpm --filter @attrape/game-web dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "vo:build": "pnpm --filter @attrape/game-web vo:build",
+    "storybook": "pnpm --filter @attrape/game-web storybook"
   }
 }

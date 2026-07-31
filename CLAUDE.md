@@ -4,20 +4,41 @@ Guidance for Claude Code (and any agent) working in this repo. Read before editi
 
 ## What this is
 
-A French early-reading game for ~6yo children. Vite + React 18 + TypeScript (strict) + TailwindCSS.
+A French early-reading game for ~6yo children, as a monorepo.
+
+```
+apps/game-web/       the PWA. Vite + React 18 + TypeScript (strict) + Tailwind.
+                     Also the home of the VO clip bank and its generator.
+apps/game-ios/       the native app. SwiftPM package + a thin Xcode wrapper.
+                     Has its OWN CLAUDE.md, ARCHITECTURE.md and DECISIONS.md.
+apps/game-android/   not built. Two candidate routes, see its README.
+apps/backoffice/     not built.
+services/api/        Hono + Zod + Postgres. Household sync (ETag/412) and
+                     first-party telemetry. Built; see its README.
+packages/            shared TS. Empty on purpose — see its README.
+```
+
+The two game apps are **independent implementations of the same game**, not a
+shared core with two shells. They agree because the port was written against the
+web app line by line and its tests say so, not because they share code. The one
+thing they do share is the baked voice-over: 855 clips that live once, in
+`apps/game-web/src/vo/clips/`, staged into the iOS bundle by
+`apps/game-ios/scripts/stage-vo.sh` and never committed twice.
 
 ## Commands
 
 ```bash
-pnpm dev            # local dev server
-pnpm build          # tsc -b && vite build && gen-sw
-pnpm typecheck      # types only
-pnpm test           # vitest
+pnpm dev            # web dev server
+pnpm build          # every JS/TS package
+pnpm typecheck      # every JS/TS package
+pnpm test           # every JS/TS package
+pnpm vo:build       # bake the VO clip bank (needs GEMINI_API_KEY)
 
-pnpm cap:sync       # build + push dist/ into both native shells
-pnpm ios            # build + sync + open Xcode
-pnpm android        # build + sync + open Android Studio
+cd apps/game-ios && swift test    # 1454 host tests, no simulator needed
 ```
+
+Anything scoped to one package also works from inside it (`cd apps/game-web &&
+pnpm test`), and `pnpm --filter @attrape/game-web <script>` from the root.
 
 Do **not** add `pnpm add <pkg>` commands to answers unless explicitly asked.
 Prefer solving with what's here; this app deliberately avoids animation/audio
@@ -31,7 +52,10 @@ libraries.
   `style`, everything else via Tailwind.
 - French copy is user-facing; keep it kid-simple and in `fr`.
 
-## Architecture map
+## Architecture map — `apps/game-web/src/`
+
+Paths below are relative to `apps/game-web/src/`. The iOS app has its own map,
+in `apps/game-ios/CLAUDE.md`.
 
 - `types.ts` — domain types. `ExerciseId` is the nav/routing key; `SyllableMode`
   selects seeding; `SyllableTier` is difficulty.
@@ -50,10 +74,9 @@ libraries.
 - `components/ExerciseIcon.tsx` — the hub's original per-exercise icons (tinted
   badge + in-house white pictogram, NO emoji). Keyed by `ExerciseId`, so a new
   exercise fails to compile until it has an icon.
-- `kv.ts` — the key/value primitive. localStorage on web; on native, an in-memory
-  cache hydrated once at boot from `@capacitor/preferences` so every read stays
-  synchronous (invariant 1 has nowhere to await). `main.tsx` awaits `hydrateKv()`
-  before mounting.
+- `kv.ts` — the key/value primitive: localStorage, wrapped so every access is
+  inside a try/catch. Synchronous by contract (invariant 1 has nowhere to
+  await), so there is no boot gate to hydrate.
 - `storage.ts` — the ONLY module that reads or writes profiles. Schema history +
   the forward-migration rule live in its header. Currently `roster:v4`.
 - `hooks/useProfile.tsx` — the roster, the economy writes, and the v1/v2/v3 → v4
@@ -69,11 +92,10 @@ libraries.
   a write (gameplay stays offline-first).
 - `licensing/` — `entitlement.ts` (pure: trial clock, offline grace, fail-open),
   `store.ts` (the vendor-free IAP seam — StoreKit 2 / Play Billing and nobody
-  else; native adapter still a stub), `useEntitlement.tsx` (provider),
-  `persist.ts`.
+  else; this build has no store behind it, so the seam always answers "web"),
+  `useEntitlement.tsx` (provider), `persist.ts`.
 - `telemetry.ts` — first-party analytics + JS error reporting. Closed event list,
   closed property allowlist, no identifier of any kind.
-- `updates.ts` — self-hosted live updates + the native-version guard.
 - `components/Onboarding.tsx`, `Paywall.tsx`, `ParentalGate.tsx` — the only
   screens written for the adult in the room. Deliberately not kid-styled.
 
@@ -132,15 +154,13 @@ These are why the game feels alive to a child. Changing them silently will regre
 
 ## Native, store and money
 
-- **What may ship over the air, and what may not.** A Capacitor app runs its web
-  layer in WKWebView, and the DPLA §3.3.1(B) carve-out permits downloaded
-  *interpreted* code run by WebKit — so JS, CSS, content, levels and VO are
-  fair game, same-day, no review. Never OTA the paywall logic, the price,
-  anything under `licensing/`, a feature hidden at submission, or a bundle
-  needing a native capability the installed binary lacks. That last one is what
-  `minNative` in the update manifest guards; when it trips, the fix is a store
-  release. Guidelines 2.3.1 (hidden features) and 2.5.2 are what get accounts
-  pulled — not shipping a bug fix.
+- **The phones are native apps; nothing ships over the air.** This was once a
+  Capacitor shell around this same web bundle, which bought same-day JS updates
+  under the DPLA §3.3.1(B) interpreted-code carve-out. That whole mechanism is
+  gone with it — a native binary changes only through store review, so every
+  fix, including a one-character content fix, waits for a release. Budget for
+  it. (The carve-out never covered the paywall, the price or anything under
+  `licensing/` anyway; guidelines 2.3.1 and 2.5.2 are what get accounts pulled.)
 - **Kids Category (guideline 1.3) shapes the UI, not just the paperwork.** No
   purchase may sit in front of a child: the expired-trial screen shows a
   kid-legible "ask a grown-up", and the price only exists behind
@@ -159,13 +179,10 @@ These are why the game feels alive to a child. Changing them silently will regre
   on for the €9.99 non-consumable in App Store Connect — six people, free, no
   code. Google Play Family Library explicitly does not share in-app purchases,
   ever; Android restores per Google account only. Any copy promising "toute la
-  famille" must be platform-conditional (`Onboarding.tsx` does this). The fix,
-  when it is wanted, is entitlement on the sync backend keyed by `familyId` —
-  cheap now that the household record exists.
-- **`ios/` and `android/` are not scaffolded yet.** `npx cap add ios` needs
-  CocoaPods; `cap add android` needs the Android SDK. Both directories get
-  committed once created (they hold signing config, icons, Info.plist); the
-  generated contents inside them are gitignored.
+  famille" belongs to the app that can keep the promise — it lives in the iOS
+  app's `Copy.swift`, and the web build, which has no store, says "sur vos
+  appareils". The fix, when it is wanted, is entitlement on the sync backend
+  keyed by `familyId` — cheap now that the household record exists.
 
 ## Recipes
 
@@ -181,7 +198,7 @@ Two rules on the split, both learned the hard way:
   true. PAPI-LLON needed « ll » to say /j/, which is false — it's « ill » that
   does, and it straddles the split. That word had to go.
 
-**Fix a pronunciation:** add a row to `IPA` in `scripts/generate-vo.mjs` — the
+**Fix a pronunciation:** add a row to `IPA` in `apps/game-web/scripts/generate-vo.mjs` — the
 phonetic target, keyed by lowercase token, matched in the same four utterance
 shapes as `SOUND_SAY`. It rides the *instruction*, so the model still receives
 real French and the prosody survives; a row here suppresses the older homophone
@@ -201,7 +218,7 @@ the 30-second « Nid ». Do not rewrite the instruction to fix it. `generate-vo.
 has a **length gate**: a take running ≥ `VO_GATE_RATIO` (2.2) × the expected
 duration for its shape is thrown out and re-rolled, `VO_GATE_RETRIES` (2) times.
 Calibrated at 0 false positives over 831 clips, worst legitimate ratio 1.77×.
-`--no-gate` disables it. Rejected takes are KEPT in `src/vo/clips/.rejects/`
+`--no-gate` disables it. Rejected takes are KEPT in `apps/game-web/src/vo/clips/.rejects/`
 (gitignored) — listen to them, because duration alone cannot tell "recited the
 instruction" from "read the text four times", and those need opposite fixes.
 
