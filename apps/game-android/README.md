@@ -67,7 +67,11 @@ clip") runs on a machine that has never staged the audio.
 | Layer | State |
 |-------|-------|
 | Toolchain, Gradle module graph, debug APK | done — builds |
-| `:core` `ExerciseId` + rewards | done — 14 tests, ported line-for-line from `rewards.test.ts` |
-| `:core` content, levels, persistence, merge, licensing, telemetry | next |
-| `:platform` audio, storage, billing | after `:core` |
-| `:art` mascots and icons, `:ui` screens | last |
+| `:core` — domain, content, levels, rewards, persistence, sync, licensing, telemetry, VO | done — **551 tests**, 83 classes, none skipped |
+| `:platform` audio, storage, billing | next |
+| `:art` mascots and icons, `:ui` screens | after `:platform` |
+
+`:core` is complete except for the sync client's ETag/412 retry loop and household
+identity, which wait on the API contract (A7). Everything the game computes — every
+ladder, every round builder, the economy, the migrations, the merge, the entitlement
+state machine — is ported and tested on the host.
