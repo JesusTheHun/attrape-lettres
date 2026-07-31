@@ -1343,3 +1343,98 @@ interop is what produced the sentence being corrected at the top of this entry.
 Settling it is the XCUITest tier's first job (see the open item in D46): a swipe
 across a shop tile either opens a dialog or does not, and that is a one-assertion
 test on a real simulator.
+
+---
+
+## D49 — A scroll is not a tap: the flick that bought things
+
+Reported from the device, and unambiguous:
+
+> "if you don't start to swipe immediately after touching the screen, it counts
+> as a tap and triggers whatever action"
+
+This is the question D48 raised and could not answer from a crash log. It is
+reading 2: a flick that lifts on a shop tile fires that tile.
+
+**`TouchDown.swift` claimed the opposite, and the claim was wrong.** Its header
+said that "when the scroll view takes the touch (cancelling content touches) the
+recogniser transitions to `.cancelled`". It does not, and the reason is three
+lines further down in the same file: `shouldRecognizeSimultaneouslyWith` returns
+`true`. That permission exists so a zero-duration press cannot block scrolling —
+and it is exactly what stops the pan from failing our recogniser. The press
+survives the drag, reaches `.ended` at the lift, and `ended(at:in:)` reports
+`inside: true` because the finger is over the tile.
+
+The web never behaved that way: once the page starts scrolling the browser fires
+`pointercancel` and no `click` follows.
+
+### The fix, and why it asks the scroll view instead of measuring the finger
+
+`Coordinator` now asks the enclosing `UIScrollView` directly: while it
+`isDragging` (the pan won) or `isDecelerating` (momentum, where iOS-wide the
+first touch stops the scroll and activates nothing), the touch is a scroll and
+the core is `cancelled()`. `cancelled()` clears `isTracking`, so the `.ended`
+UIKit still delivers is dropped.
+
+The obvious alternative — cancel once the finger has travelled more than N points
+— was rejected. It would also swallow a six-year-old's wobbly press on a
+*non-scrolling* button, which the web delivers as a click. Asking the scroll view
+is the same question the browser asks, and it changes nothing anywhere else:
+`grep` says only two surfaces in the app act on touch-UP at all (`ShopItem`'s
+tile and `Picker`'s species card) and both live inside a `ScrollView`. Every
+exercise tile acts at touch-DOWN (invariant 1) and is unaffected by construction
+— asserted, not assumed, by `noScrollViewMeansNoCancel`.
+
+`handle(_:)` is now a two-line adapter over `apply(state:view:location:)`,
+because a `UILongPressGestureRecognizer`'s `state` cannot be set outside a live
+touch sequence — so a test of `handle` would have had to be a re-typed copy of
+it. Same lesson as `canSchedule` in D47: test the rule, not a paraphrase.
+
+### The test that caught the fix not working
+
+The whole fix rests on one assumption — that SwiftUI's `ScrollView` is backed by
+a `UIScrollView` reachable through `superview`. Nothing documents that. So the
+suite hosts a real `ScrollView` containing a real `.touchDown`, finds the catcher
+UIKit actually built, and walks up from it.
+
+It failed. `enclosingScrollView` returned `nil`.
+
+The cause was the test, not the fix: its catcher-finder matched on
+`as? UILongPressGestureRecognizer` with `minimumPressDuration == 0`, and
+`ScrollView`'s own indicator knob carries a
+`UIScrollViewKnobLongPressGestureRecognizer` — a subclass, also zero-duration.
+It matched the scroll view itself, which of course has no scroll view above it.
+With an exact class match the real chain appears:
+
+```
+UIView (ours, UILongPressGestureRecognizer)
+  → UIKitPlatformViewHost<PlatformViewRepresentableAdaptor<TouchDownSurface>>
+    → PlatformGroupContainer
+      → HostingScrollView            ← isUIScrollView = true
+```
+
+Worth stating plainly: a false-failing test is what proved the fix works, and for
+half an hour the evidence pointed at a no-op fix. The assumption was worth
+asserting either way — if a future SwiftUI stops using a `UIScrollView` there,
+this fix silently dies and a flick starts buying things again. That test now
+fails the day it happens.
+
+### Mutation
+
+Removing the cancel makes the regression test fail with the reported symptom
+exactly: `(insides → [true]) == [false]` — the flick taps.
+
+### Two things this exposed
+
+- **UIKit-level tests already run.** `xcodebuild test -scheme
+  AttrapeLettres-Package -destination 'platform=iOS Simulator,…'` runs the whole
+  package on a simulator, `UIKit` and `UIHostingController` included. The
+  `#if canImport(UIKit)` suites in `TouchDownTests` were written as "compile on
+  the host, run on a device" and had, as far as this port knew, never run. They
+  do now, in 0.6 s. XCUITest is still the missing tier for real fingers, but a
+  large slice of what was assumed device-only is reachable today.
+- **`delaysContentTouches` is real** (D46 flagged it as unverified):
+  `HostingScrollView` carries a `UIScrollViewDelayedTouchesBeganGestureRecognizer`.
+  It delays `touchesBegan` to content VIEWS, not to gesture recognisers attached
+  to them, so the touch-down path should be unaffected — but "should" is what
+  this entry is about. Still unmeasured.

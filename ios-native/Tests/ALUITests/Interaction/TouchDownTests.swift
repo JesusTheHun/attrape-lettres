@@ -1,4 +1,5 @@
 import CoreGraphics
+import SwiftUI
 import Testing
 
 @testable import ALUI
@@ -97,6 +98,32 @@ struct TouchDownCoreTests {
         #expect(ups == 1)
     }
 
+    /// The shape the scroll fix relies on: once a drag has been ruled a scroll,
+    /// the lift that follows must not become a tap. `cancelled()` clears
+    /// `isTracking`, so the `.ended` UIKit still delivers is dropped — and the
+    /// caller sees exactly ONE `onUp`, reporting `false`.
+    ///
+    /// Without this, `Picker`'s card would leave `active` toggled and `ShopItem`
+    /// would open a try-on dialog at the end of a flick (D49).
+    @Test("a cancel mid-touch swallows the lift that follows it")
+    func cancelThenLiftIsOneOutsideUp() {
+        var insides: [Bool] = []
+        let bounds = CGRect(x: 0, y: 0, width: 100, height: 100)
+        let core = TouchDownCore(onDown: {}, onUp: { insides.append($0) })
+
+        core.began()
+        core.cancelled() // the pan won: this touch is a scroll
+        // UIKit still delivers `.ended` at the lift, and the finger IS inside.
+        core.ended(at: CGPoint(x: 50, y: 50), in: bounds)
+
+        #expect(insides == [false], Comment(rawValue: "a scrolled touch must never report inside: true"))
+
+        // …and the surface still works for the NEXT, genuine tap.
+        core.began()
+        core.ended(at: CGPoint(x: 50, y: 50), in: bounds)
+        #expect(insides == [false, true])
+    }
+
     @Test("the core tracks a full down-up cycle and is reusable for the next tap")
     func reusableAcrossTaps() {
         var downs = 0
@@ -144,6 +171,201 @@ struct TouchDownRecognizerTests {
             recognizer,
             shouldRecognizeSimultaneouslyWith: UIPanGestureRecognizer()
         ))
+    }
+
+    // MARK: - Scroll versus tap (D49)
+
+    /// `isDragging` and `isDecelerating` are read-only on `UIScrollView` and
+    /// driven by its pan; a unit test cannot pan. Overriding them is the honest
+    /// way to assert the RULE — that a scrolling ancestor means "not a tap" —
+    /// without pretending to have simulated a finger. Whether a real SwiftUI
+    /// `ScrollView` puts a `UIScrollView` on this path is a separate question,
+    /// and it is `ShopScrollUITests` that answers it.
+    private final class ScrollingStub: UIScrollView {
+        // NB `stub`-prefixed: `isDragging`'s ObjC property name is `dragging`,
+        // so a stored `var dragging` reads as an override attempt and will not
+        // compile.
+        var stubDragging = false
+        var stubDecelerating = false
+        override var isDragging: Bool { stubDragging }
+        override var isDecelerating: Bool { stubDecelerating }
+    }
+
+    private func nest(_ leaf: UIView, under root: UIView, depth: Int) {
+        var parent = root
+        for _ in 0..<depth {
+            let mid = UIView()
+            parent.addSubview(mid)
+            parent = mid
+        }
+        parent.addSubview(leaf)
+    }
+
+    @Test("the enclosing scroll view is found through intermediate views")
+    func findsScrollViewAncestor() {
+        let scroll = ScrollingStub()
+        let catcher = UIView()
+        nest(catcher, under: scroll, depth: 3)
+
+        #expect(TouchDownSurface.Coordinator.enclosingScrollView(of: catcher) === scroll)
+    }
+
+    @Test("no scroll view above ⇒ nothing to ask, and never a cancel")
+    func noScrollViewMeansNoCancel() {
+        let catcher = UIView()
+        UIView().addSubview(catcher)
+
+        #expect(TouchDownSurface.Coordinator.enclosingScrollView(of: catcher) == nil)
+        // Every exercise screen is this case: invariant 1 forbids a scroll view
+        // over a tile grid, so the tap path must not gain a single behaviour
+        // change from this fix.
+        #expect(!TouchDownSurface.Coordinator.isScrolling(around: catcher))
+        #expect(!TouchDownSurface.Coordinator.isScrolling(around: nil))
+    }
+
+    @Test("an idle scroll view is not scrolling — a tap in a shop that is standing still still taps")
+    func idleScrollViewIsATap() {
+        let scroll = ScrollingStub()
+        let catcher = UIView()
+        nest(catcher, under: scroll, depth: 2)
+
+        #expect(!TouchDownSurface.Coordinator.isScrolling(around: catcher))
+    }
+
+    @Test("dragging or coasting ⇒ this touch is a scroll, not a tap")
+    func draggingOrDeceleratingIsAScroll() {
+        let scroll = ScrollingStub()
+        let catcher = UIView()
+        nest(catcher, under: scroll, depth: 2)
+
+        scroll.stubDragging = true
+        #expect(TouchDownSurface.Coordinator.isScrolling(around: catcher))
+
+        // Momentum: iOS-wide, the first touch on a coasting scroll view stops it
+        // and activates nothing underneath.
+        scroll.stubDragging = false
+        scroll.stubDecelerating = true
+        #expect(TouchDownSurface.Coordinator.isScrolling(around: catcher))
+    }
+
+    /// End to end through the coordinator, which is what actually runs: a
+    /// `.changed` phase while the page is scrolling must cancel, so the `.ended`
+    /// that follows cannot fire the action.
+    @Test("a .changed during a drag cancels, and the lift after it is swallowed")
+    func changedDuringDragCancels() {
+        var downs = 0
+        var insides: [Bool] = []
+        let coordinator = TouchDownSurface.Coordinator(
+            core: TouchDownCore(onDown: { downs += 1 }, onUp: { insides.append($0) })
+        )
+        let scroll = ScrollingStub()
+        let catcher = UIView(frame: CGRect(x: 0, y: 0, width: 100, height: 100))
+        nest(catcher, under: scroll, depth: 1)
+        catcher.addGestureRecognizer(
+            TouchDownSurface.configuredRecognizer(coordinator: coordinator))
+
+        let inside = CGPoint(x: 50, y: 50)
+        coordinator.apply(state: .began, view: catcher, location: inside)
+        #expect(downs == 1, Comment(rawValue: "the press feedback still fires at touch-down"))
+
+        scroll.stubDragging = true
+        coordinator.apply(state: .changed, view: catcher, location: inside)
+        // UIKit delivers the lift regardless, and the finger IS on the tile.
+        coordinator.apply(state: .ended, view: catcher, location: inside)
+
+        #expect(insides == [false], Comment(rawValue: "a flick that lifts on a tile must not tap it"))
+    }
+
+    /// The other half, and the reason the fix is not simply "never tap": the
+    /// identical phase sequence over a scroll view standing still MUST tap, or
+    /// the shop and the species picker become unusable.
+    @Test("the same down-move-up over a still scroll view is a tap")
+    func changedWithoutDragStillTaps() {
+        var insides: [Bool] = []
+        let coordinator = TouchDownSurface.Coordinator(
+            core: TouchDownCore(onDown: {}, onUp: { insides.append($0) })
+        )
+        let scroll = ScrollingStub()
+        let catcher = UIView(frame: CGRect(x: 0, y: 0, width: 100, height: 100))
+        nest(catcher, under: scroll, depth: 1)
+
+        let inside = CGPoint(x: 50, y: 50)
+        coordinator.apply(state: .began, view: catcher, location: inside)
+        coordinator.apply(state: .changed, view: catcher, location: inside)
+        coordinator.apply(state: .ended, view: catcher, location: inside)
+
+        #expect(insides == [true])
+    }
+
+    /// The load-bearing assumption of the whole fix, asserted rather than
+    /// assumed: `enclosingScrollView` walks UIKit superviews, and nothing
+    /// documents that SwiftUI's `ScrollView` is backed by a `UIScrollView`. If a
+    /// future SwiftUI stops using one, the fix silently stops working and a
+    /// flick starts buying things again — so this test hosts a real `ScrollView`
+    /// containing a real `.touchDown`, finds the catcher UIKit actually built,
+    /// and looks up from it.
+    @Test("a real SwiftUI ScrollView puts a UIScrollView above the catcher")
+    func swiftUIScrollViewIsOnThePath() throws {
+        struct Probe: View {
+            var body: some View {
+                ScrollView(.vertical) {
+                    Color.clear
+                        .frame(width: 200, height: 2_000)
+                        .touchDown({}, onUp: { _ in })
+                }
+            }
+        }
+
+        let frame = CGRect(x: 0, y: 0, width: 390, height: 844)
+        let host = UIHostingController(rootView: Probe())
+        let window = UIWindow(frame: frame)
+        window.rootViewController = host
+        window.makeKeyAndVisible()
+        host.view.frame = frame
+        host.view.layoutIfNeeded()
+
+        let catcher = try #require(
+            Self.findCatcher(in: host.view),
+            Comment(rawValue: "no touch-down catcher in the hosted hierarchy"))
+        #expect(
+            TouchDownSurface.Coordinator.enclosingScrollView(of: catcher) != nil,
+            Comment(rawValue: "SwiftUI's ScrollView is no longer a UIScrollView — the scroll-vs-tap fix is dead"))
+    }
+
+    /// The catcher is `TouchDownSurface`'s plain `UIView`, identified by the one
+    /// thing that makes it ours: a zero-duration long-press recogniser.
+    ///
+    /// The class match must be EXACT. `ScrollView`'s own indicator knob carries
+    /// a `UIScrollViewKnobLongPressGestureRecognizer` — a
+    /// `UILongPressGestureRecognizer` subclass, also with
+    /// `minimumPressDuration == 0` — so an `as?` cast finds the scroll view
+    /// itself, whose superview chain has no scroll view above it. That false
+    /// positive is what made this test fail against a working fix.
+    private static func findCatcher(in view: UIView) -> UIView? {
+        let isCatcher = view.gestureRecognizers?.contains {
+            type(of: $0) == UILongPressGestureRecognizer.self
+                && ($0 as? UILongPressGestureRecognizer)?.minimumPressDuration == 0
+        }
+        if isCatcher == true { return view }
+        for child in view.subviews {
+            if let found = findCatcher(in: child) { return found }
+        }
+        return nil
+    }
+
+    @Test("a lift outside the bounds is still not a tap, scroll view or no")
+    func liftOutsideIsNotATap() {
+        var insides: [Bool] = []
+        let coordinator = TouchDownSurface.Coordinator(
+            core: TouchDownCore(onDown: {}, onUp: { insides.append($0) })
+        )
+        let catcher = UIView(frame: CGRect(x: 0, y: 0, width: 100, height: 100))
+        UIView().addSubview(catcher)
+
+        coordinator.apply(state: .began, view: catcher, location: CGPoint(x: 50, y: 50))
+        coordinator.apply(state: .ended, view: catcher, location: CGPoint(x: 400, y: 50))
+
+        #expect(insides == [false])
     }
 }
 

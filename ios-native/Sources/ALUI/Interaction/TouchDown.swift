@@ -32,11 +32,32 @@ import AppKit
 //     touch immediately.
 //
 // Scrolling: the recogniser must lose to a scroll view's pan. Because it begins
-// the instant the finger lands, it must not *prevent* the pan either — the
-// delegate allows simultaneous recognition, and when the scroll view takes the
-// touch (cancelling content touches) the recogniser transitions to `.cancelled`,
-// which reports `onUp(false)`. This mirrors the web, where a scroll fires
-// `pointercancel` and no click follows the `pointerdown`.
+// the instant the finger lands, it must not *prevent* the pan either — hence
+// `shouldRecognizeSimultaneouslyWith → true`.
+//
+// That permission has a consequence this file originally got WRONG. It claimed
+// that "when the scroll view takes the touch (cancelling content touches) the
+// recogniser transitions to `.cancelled`". It does not. Allowing simultaneous
+// recognition is precisely what stops the pan from failing our recogniser, so
+// the press survives the whole drag and reaches `.ended` normally at the lift —
+// and `ended(at:in:)` reports `inside: true` if the finger happens to be over
+// the element. Confirmed on the device: "if you don't start to swipe
+// immediately after touching the screen, it counts as a tap and triggers
+// whatever action". A child flicking the shop landed in a try-on dialog.
+//
+// The web does not behave that way: once the page starts scrolling the browser
+// fires `pointercancel`, and no `click` follows. `Coordinator.handle` restores
+// that by asking the enclosing `UIScrollView` directly — while it `isDragging`
+// (the pan won) or `isDecelerating` (momentum still running, where iOS-wide the
+// first tap stops the scroll and activates nothing), the touch is a scroll, not
+// a tap, and the core is `cancelled()`.
+//
+// Asking the scroll view, rather than measuring finger travel, is deliberate: a
+// distance threshold would also swallow a six-year-old's wobbly press on a
+// *non*-scrolling button, which the web would deliver as a click. Only two
+// surfaces in the app act on touch-UP at all (`ShopItem`'s tile and `Picker`'s
+// species card) and both live inside a `ScrollView`, so this is exactly the
+// scroll-versus-tap question and nothing else.
 //
 // Accessibility (invariant 6): the catcher view is NOT an accessibility element,
 // so the wrapped SwiftUI content keeps its label and traits untouched. VoiceOver
@@ -137,20 +158,70 @@ struct TouchDownSurface: UIViewRepresentable {
         }
 
         @objc func handle(_ recognizer: UILongPressGestureRecognizer) {
-            switch recognizer.state {
+            let view = recognizer.view
+            apply(
+                state: recognizer.state,
+                view: view,
+                location: view.map { recognizer.location(in: $0) })
+        }
+
+        /// Every phase decision, reachable without a live gesture cycle.
+        ///
+        /// Split out of `handle(_:)` so a test drives the REAL rule rather than
+        /// a re-typed copy of it: a `UILongPressGestureRecognizer`'s `state` is
+        /// only settable from inside a touch sequence, which a unit test cannot
+        /// stage. `handle(_:)` is now a two-line adapter with nothing to get
+        /// wrong.
+        func apply(state: UIGestureRecognizer.State, view: UIView?, location: CGPoint?) {
+            switch state {
             case .began:
                 core.began()
+            case .changed:
+                // The finger moved. If that movement is a scroll, this touch
+                // stopped being a tap — the web's `pointercancel`. `cancelled()`
+                // clears `isTracking`, so the `.ended` that follows at the lift
+                // is dropped and no action runs.
+                if Self.isScrolling(around: view) { core.cancelled() }
             case .ended:
-                guard let view = recognizer.view else {
+                guard let view, let location else {
                     core.cancelled()
                     return
                 }
-                core.ended(at: recognizer.location(in: view), in: view.bounds)
+                // Belt to the `.changed` braces: a lift while the scroll view is
+                // still dragging or coasting is never a tap, whatever sequence
+                // of phases got us here.
+                guard !Self.isScrolling(around: view) else {
+                    core.cancelled()
+                    return
+                }
+                core.ended(at: location, in: view.bounds)
             case .cancelled, .failed:
                 core.cancelled()
             default:
                 break
             }
+        }
+
+        /// The nearest `UIScrollView` above the catcher, or `nil` when this
+        /// surface is not inside one (every exercise screen, by invariant 1).
+        ///
+        /// Starts at `superview`: the catcher itself is never a scroll view.
+        static func enclosingScrollView(of view: UIView?) -> UIScrollView? {
+            var node = view?.superview
+            while let current = node {
+                if let scroll = current as? UIScrollView { return scroll }
+                node = current.superview
+            }
+            return nil
+        }
+
+        /// Is this touch part of a scroll? `isDragging` covers the pan in
+        /// progress; `isDecelerating` covers the momentum phase, where every
+        /// other iOS app treats the first touch as "stop the scroll" and
+        /// activates nothing under the finger.
+        static func isScrolling(around view: UIView?) -> Bool {
+            guard let scroll = enclosingScrollView(of: view) else { return false }
+            return scroll.isDragging || scroll.isDecelerating
         }
 
         /// Never prevent another recogniser: the zero-duration press begins
