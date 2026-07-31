@@ -45,13 +45,15 @@ public enum LetterStageMetrics {
     public static let tileGap: CGFloat = 16
     /// `mb-6` on the 🔊 pill.
     public static let listenBottomMargin: CGFloat = 24
-    /// `px-5` / `py-2` on the 🔊 pill.
-    public static let listenPaddingX: CGFloat = 20
-    public static let listenPaddingY: CGFloat = 8
+    /// `px-5` / `py-2` on the 🔊 pill. One source of truth (`ListenPill`, D55);
+    /// re-exported here because the TSX authors the class list per engine and
+    /// the audit reads engine by engine.
+    public static let listenPaddingX = ListenPillMetrics.paddingX
+    public static let listenPaddingY = ListenPillMetrics.paddingY
     /// Tailwind `shadow` on the 🔊 pill:
     /// `0 1px 3px rgba(0,0,0,0.1), 0 1px 2px -1px rgba(0,0,0,0.1)`.
-    public static let listenShadow = CSSShadow(y: 1, blur: 3, opacity: 0.1)
-    public static let listenShadowTight = CSSShadow(y: 1, blur: 2, opacity: 0.1)
+    public static let listenShadow = ListenPillMetrics.shadow
+    public static let listenShadowTight = ListenPillMetrics.shadowTight
     /// `style={{ margin: "6px 0" }}` around FirstLetter's picture and
     /// LetterMatch's prompt glyph.
     public static let promptMargin: CGFloat = 6
@@ -142,10 +144,11 @@ struct LettersTileRow<Content: View>: View {
     }
 }
 
-/// The big 🔊 pill under the mascot. Speaks on **pointerdown** (`touchDown`,
-/// D5) and is `locked`-guarded inside the model, so it can never cut a success
-/// line mid-celebration. No press animation: the TSX button has none (only
-/// `Tile` animates), and feedback here is the voice itself.
+/// The big 🔊 pill under the mascot, with the letter family's `mb-6`.
+///
+/// `ListenPill` (D55) is the button; this adds the margin and nothing else. The
+/// margin is applied OUTSIDE the pill, because `mb-6` sits outside the button's
+/// box on the web and must not become part of the tap target.
 @MainActor
 struct LettersListenPill: View {
     let text: String
@@ -153,32 +156,7 @@ struct LettersListenPill: View {
     let action: () -> Void
 
     var body: some View {
-        Text(verbatim: text)
-            .font(Typography.rounded(Typography.Size.lg, Typography.Weight.bold))
-            .foregroundStyle(Palette.ink.color)
-            .padding(.horizontal, LetterStageMetrics.listenPaddingX)
-            .padding(.vertical, LetterStageMetrics.listenPaddingY)
-            .background {
-                Capsule()
-                    .fill(.white.opacity(Palette.White.o70))
-                    .shadow(
-                        color: .black.opacity(LetterStageMetrics.listenShadow.opacity),
-                        radius: LetterStageMetrics.listenShadow.swiftUIRadius,
-                        y: LetterStageMetrics.listenShadow.y
-                    )
-                    .shadow(
-                        color: .black.opacity(LetterStageMetrics.listenShadowTight.opacity),
-                        radius: LetterStageMetrics.listenShadowTight.swiftUIRadius,
-                        y: LetterStageMetrics.listenShadowTight.y
-                    )
-            }
-            .contentShape(Capsule())
-            // `touchDown` BEFORE the margin: `mb-6` is margin, outside the
-            // button's box, so it must not become part of the tap target.
-            .touchDown { action() }
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(accessibilityLabel)
-            .accessibilityAddTraits(.isButton)
+        ListenPill(text: text, accessibilityLabel: accessibilityLabel, action: action)
             .padding(.bottom, LetterStageMetrics.listenBottomMargin)
     }
 }

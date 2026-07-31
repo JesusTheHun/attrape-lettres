@@ -216,6 +216,83 @@ public final class MissCooldown {
     }
 }
 
+// MARK: - The tile's face (what it draws, separated from what it answers)
+
+/// Everything a pick tile PAINTS: the fill, the glyph, the highlight ring and
+/// the two box shadows. No gesture, no layer, no state.
+///
+/// Split out of `Tile` for two reasons, and the second is the load-bearing one:
+///
+///  1. the paint is the part that is worth reading on its own; and
+///  2. `Tile` carries a `touchDown`, which is a `UIViewRepresentable` /
+///     `NSViewRepresentable`, and `ImageRenderer` hands back a placeholder for
+///     any tree that contains one. So a raster test cannot look at a `Tile` —
+///     it renders a red rectangle — but it can look at this. That is how D54's
+///     « no letter casts a shadow onto its own tile » is asserted in pixels
+///     rather than in prose (`BoxShadowRasterTests`).
+struct TileFace<Content: View>: View {
+    let bg: HexColor
+    let ink: HexColor
+    let highlight: Bool
+    /// The resolved `dim` — `clamp(92px, 27vw, 150px)` by default.
+    let side: CGFloat
+    let fontSize: CGFloat
+    let horizontalPadding: CGFloat
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        content
+            .font(Typography.rounded(fontSize, Typography.Weight.black))
+            .foregroundStyle(ink.color)
+            .padding(.horizontal, horizontalPadding)
+            .frame(minWidth: side)
+            .frame(height: side)
+            .background(bg.color, in: RoundedRectangle(cornerRadius: TileMetrics.cornerRadius))
+            // `0 0 0 6px #66BB6A` — the spread ring, drawn OUTSIDE the border
+            // box (radius 28 + 6 = 34). Present always, faded by opacity so
+            // `transition: box-shadow 0.15s` has something to animate.
+            .overlay {
+                RoundedRectangle(cornerRadius: TileMetrics.highlightRingRadius)
+                    .stroke(Palette.green.color, lineWidth: TileMetrics.highlightRingWidth)
+                    .padding(-TileMetrics.highlightRingWidth / 2)
+                    .opacity(highlight ? 1 : 0)
+            }
+            // D54 — FLATTEN FIRST, then cast the shadow.
+            //
+            // SwiftUI's `.shadow` is a per-LAYER effect, like `.opacity` and the
+            // blend modes: applied to a composed view it runs on every drawing
+            // primitive inside it separately. So the glyph cast its own drop
+            // shadow, and — being drawn above the tile's fill — that shadow
+            // landed ON THE TILE FACE, a dark smear trailing every letter.
+            // Reported as « the shadow under the letters, the letters
+            // themselves, not the tile ».
+            //
+            // CSS `box-shadow` is cast by the BORDER BOX and by nothing else,
+            // which is what `.compositingGroup()` restores: it flattens the
+            // fill, the glyph and the ring into one layer, so there is one
+            // alpha to cast from. Measured, not reasoned — rendering a
+            // white-ink tile at 100 pt gives 460 darkened pixels inside the
+            // face without it and exactly 0 with it.
+            //
+            // The rule everywhere in ALUI: a `.shadow` applied to a view that
+            // contains CONTENT needs this; a `.shadow` on a bare shape inside a
+            // `.background { … }` (`liftedCapsule`, `ListenPill`, the twins and
+            // grid slots) does not — one shape is already one layer. Both
+            // spellings are in use, deliberately, and `BoxShadowScanTests`
+            // knows the difference.
+            .compositingGroup()
+            // normal:    0 8px 0 rgba(0,0,0,0.12), 0 12px 20px rgba(0,0,0,0.14)
+            // highlight: 0 10px 22px rgba(0,0,0,0.18)
+            .shadow(
+                color: .black.opacity(highlight ? 0.18 : 0.12),
+                radius: highlight ? 11 : 0,
+                y: highlight ? 10 : 8
+            )
+            .shadow(color: .black.opacity(highlight ? 0 : 0.14), radius: 10, y: 12)
+            .animation(.easeInOut(duration: TileMetrics.highlightTransition), value: highlight)
+    }
+}
+
 // MARK: - The Tile view
 
 public struct Tile<Content: View>: View {
@@ -322,32 +399,16 @@ public struct Tile<Content: View>: View {
 
     private func tileButton(dim: CGFloat) -> some View {
         LayerHost(handle: tileHandle) {
-            content
-                .font(Typography.rounded(fontSize.resolve(viewport: viewport), Typography.Weight.black))
-                .foregroundStyle(ink.color)
-                .padding(.horizontal, TileMetrics.horizontalPadding.resolve(viewport: viewport))
-                .frame(minWidth: dim)
-                .frame(height: dim)
-                .background(bg.color, in: RoundedRectangle(cornerRadius: TileMetrics.cornerRadius))
-                // `0 0 0 6px #66BB6A` — the spread ring, drawn OUTSIDE the
-                // border box (radius 28 + 6 = 34). Present always, faded by
-                // opacity so `transition: box-shadow 0.15s` has something to
-                // animate.
-                .overlay {
-                    RoundedRectangle(cornerRadius: TileMetrics.highlightRingRadius)
-                        .stroke(Palette.green.color, lineWidth: TileMetrics.highlightRingWidth)
-                        .padding(-TileMetrics.highlightRingWidth / 2)
-                        .opacity(highlight ? 1 : 0)
-                }
-                // normal:    0 8px 0 rgba(0,0,0,0.12), 0 12px 20px rgba(0,0,0,0.14)
-                // highlight: 0 10px 22px rgba(0,0,0,0.18)
-                .shadow(
-                    color: .black.opacity(highlight ? 0.18 : 0.12),
-                    radius: highlight ? 11 : 0,
-                    y: highlight ? 10 : 8
-                )
-                .shadow(color: .black.opacity(highlight ? 0 : 0.14), radius: 10, y: 12)
-                .animation(.easeInOut(duration: TileMetrics.highlightTransition), value: highlight)
+            TileFace(
+                bg: bg,
+                ink: ink,
+                highlight: highlight,
+                side: dim,
+                fontSize: fontSize.resolve(viewport: viewport),
+                horizontalPadding: TileMetrics.horizontalPadding.resolve(viewport: viewport)
+            ) {
+                content
+            }
         }
         .opacity(disabled ? TileMetrics.disabledOpacity : 1)
         .background(
@@ -387,6 +448,7 @@ public struct Tile<Content: View>: View {
                 .frame(width: max(tileWidth, dim))
                 .frame(height: TileMetrics.previewHeight.resolve(viewport: viewport))
                 .background(Color.white, in: Capsule())
+                .compositingGroup()  // D54 — the box casts, not the 🔊 glyph
                 // 0 3px 0 rgba(0,0,0,0.10), 0 5px 12px rgba(0,0,0,0.12)
                 .shadow(color: .black.opacity(0.10), radius: 0, y: 3)
                 .shadow(color: .black.opacity(0.12), radius: 6, y: 5)

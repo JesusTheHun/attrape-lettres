@@ -290,6 +290,7 @@ public struct ShopItemView: View {
             .foregroundStyle(filled ? Color.white : Palette.equippedInk.color)
             .frame(width: ShopTileMetrics.stickerSide, height: ShopTileMetrics.stickerSide)
             .background(filled ? Palette.green.color : Color.white, in: Circle())
+            .compositingGroup()  // D54 — the box casts the shadow, not the glyphs inside it
             .shadow(
                 color: .black.opacity(ShopTileMetrics.stickerShadow.opacity),
                 radius: ShopTileMetrics.stickerShadow.swiftUIRadius,
@@ -321,6 +322,7 @@ public struct ShopItemView: View {
                 .padding(.horizontal, ShopTileMetrics.chipPaddingX)
                 .padding(.vertical, ShopTileMetrics.chipPaddingY)
                 .background(Palette.wallet.color, in: Capsule())
+                .compositingGroup()  // D54 — the box casts the shadow, not the glyphs inside it
                 .shadow(
                     color: .black.opacity(ShopTileMetrics.stickerShadow.opacity),
                     radius: ShopTileMetrics.stickerShadow.swiftUIRadius,

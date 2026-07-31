@@ -486,6 +486,7 @@ public struct DashboardView: View {
                     .padding(.horizontal, DashboardMetrics.backPaddingX)
                     .padding(.vertical, DashboardMetrics.backPaddingY)
                     .background(Color.white.opacity(Palette.White.o80), in: Capsule())
+                    .compositingGroup()  // D54 — the box casts the shadow, not the glyphs inside it
                     .shadow(
                         color: .black.opacity(DashboardMetrics.cardShadow.opacity),
                         radius: DashboardMetrics.cardShadow.swiftUIRadius,

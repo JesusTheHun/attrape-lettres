@@ -91,9 +91,9 @@ public enum AssembleMetrics {
     /// `mb-5`.
     public static let listenSpacing: CGFloat = 20
     /// `px-5`.
-    public static let listenPaddingX: CGFloat = 20
+    public static let listenPaddingX = ListenPillMetrics.paddingX
     /// `py-2`.
-    public static let listenPaddingY: CGFloat = 8
+    public static let listenPaddingY = ListenPillMetrics.paddingY
     /// `text-lg`.
     public static let listenFontSize: CGFloat = Typography.Size.lg
 
@@ -412,20 +412,10 @@ public struct AssembleView: View {
     /// The locked guard (« don't cut the success line mid-celebration ») lives
     /// in `model.replayPrompt()`.
     private func listenButton(_ model: AssembleModel) -> some View {
-        Text(verbatim: Copy.Exercise.listen)
-            .font(Typography.rounded(AssembleMetrics.listenFontSize, Typography.Weight.bold))
-            .foregroundStyle(Palette.ink.color)
-            .padding(.horizontal, AssembleMetrics.listenPaddingX)
-            .padding(.vertical, AssembleMetrics.listenPaddingY)
-            .background(Color.white.opacity(Palette.White.o70), in: Capsule())
-            // Tailwind `shadow`: 0 1px 3px rgba(0,0,0,0.1),
-            //                    0 1px 2px -1px rgba(0,0,0,0.1)
-            .shadow(color: .black.opacity(0.1), radius: 1.5, y: 1)
-            .shadow(color: .black.opacity(0.1), radius: 1, y: 1)
-            .touchDown { model.replayPrompt() }
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(model.listenAccessibilityLabel)
-            .accessibilityAddTraits(.isButton)
+        ListenPill(
+            text: Copy.Exercise.listen,
+            accessibilityLabel: model.listenAccessibilityLabel,
+            action: { model.replayPrompt() })
     }
 
     // MARK: a slot
@@ -479,6 +469,7 @@ public struct AssembleView: View {
                         )
                 }
             }
+            .compositingGroup()  // D54 — the box casts the shadow, not the glyphs inside it
             .shadow(
                 color: .black.opacity(slot.isFilled ? AssembleMetrics.slotShadowOpacity : 0),
                 radius: AssembleMetrics.slotShadowRadius,

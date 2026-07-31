@@ -353,6 +353,7 @@ struct HubStage: View {
                 .padding(.horizontal, HubMetrics.chipPaddingX)
                 .padding(.vertical, HubMetrics.chipPaddingY)
                 .background(Color.white.opacity(Palette.White.o80), in: Capsule())
+                .compositingGroup()  // D54 — the box casts the shadow, not the glyphs inside it
                 .shadow(
                     color: .black.opacity(HubMetrics.shadow.opacity),
                     radius: HubMetrics.shadow.swiftUIRadius,
@@ -375,6 +376,7 @@ struct HubStage: View {
                 .padding(.horizontal, HubMetrics.listenPaddingX)
                 .padding(.vertical, HubMetrics.chipPaddingY)
                 .background(Color.white.opacity(Palette.White.o80), in: Capsule())
+                .compositingGroup()  // D54 — the box casts the shadow, not the glyphs inside it
                 .shadow(
                     color: .black.opacity(HubMetrics.shadow.opacity),
                     radius: HubMetrics.shadow.swiftUIRadius,
@@ -394,6 +396,7 @@ struct HubStage: View {
                 .padding(.horizontal, HubMetrics.chipPaddingX)
                 .padding(.vertical, HubMetrics.chipPaddingY)
                 .background(Color.white.opacity(Palette.White.o80), in: Capsule())
+                .compositingGroup()  // D54 — the box casts the shadow, not the glyphs inside it
                 .shadow(
                     color: .black.opacity(HubMetrics.shadow.opacity),
                     radius: HubMetrics.shadow.swiftUIRadius,
@@ -449,6 +452,7 @@ struct HubStage: View {
                     .padding(.horizontal, HubMetrics.trialPaddingX)
                     .padding(.vertical, HubMetrics.trialPaddingY)
                     .background(Color.white.opacity(Palette.White.o70), in: Capsule())
+                    .compositingGroup()  // D54 — the box casts the shadow, not the glyphs inside it
                     .shadow(
                         color: .black.opacity(HubMetrics.shadowSm.opacity),
                         radius: HubMetrics.shadowSm.swiftUIRadius,
@@ -528,6 +532,7 @@ struct HubStage: View {
                     Color.white.opacity(Palette.White.o80),
                     in: RoundedRectangle(cornerRadius: HubMetrics.levelCornerRadius)
                 )
+                .compositingGroup()  // D54 — the box casts the shadow, not the glyphs inside it
                 .shadow(
                     color: .black.opacity(HubMetrics.shadow.opacity),
                     radius: HubMetrics.shadow.swiftUIRadius,
@@ -573,6 +578,7 @@ struct HubStage: View {
                 reward.jackpot ? Color.white : Palette.coinRing.color,
                 lineWidth: reward.jackpot ? HubMetrics.jackpotRing : HubMetrics.coinRing)
         )
+        .compositingGroup()  // D54 — the box casts the shadow, not the glyphs inside it
         .shadow(
             color: .black.opacity(HubMetrics.shadow.opacity),
             radius: HubMetrics.shadow.swiftUIRadius,

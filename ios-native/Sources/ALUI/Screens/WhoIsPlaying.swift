@@ -319,6 +319,7 @@ public struct WhoIsPlayingView: View {
                     .padding(.horizontal, 16)  // px-4
                     .padding(.vertical, 8)  // py-2
                     .background(Color.white.opacity(Palette.White.o80), in: Capsule())
+                    .compositingGroup()  // D54 — the box casts the shadow, not the glyphs inside it
                     .shadow(
                         color: .black.opacity(WhoIsPlayingMetrics.plainShadow.opacity),
                         radius: WhoIsPlayingMetrics.plainShadow.swiftUIRadius,
@@ -539,6 +540,7 @@ struct ChildCard: View {
                                 .strokeBorder(
                                     border, lineWidth: WhoIsPlayingMetrics.cornerButtonBorder)
                         }
+                        .compositingGroup()  // D54 — the box casts the shadow, not the glyphs inside it
                         .shadow(
                             color: .black.opacity(WhoIsPlayingMetrics.plainShadow.opacity),
                             radius: WhoIsPlayingMetrics.plainShadow.swiftUIRadius,

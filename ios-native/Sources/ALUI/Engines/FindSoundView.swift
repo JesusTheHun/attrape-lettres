@@ -64,34 +64,21 @@ enum SoundEngineChrome {
         shadow [touch-action:none]` with `onPointerDown`.                     */
 
     /// `px-5`.
-    static let listenPaddingX: CGFloat = 20
+    static let listenPaddingX = ListenPillMetrics.paddingX
     /// `py-2`.
-    static let listenPaddingY: CGFloat = 8
+    static let listenPaddingY = ListenPillMetrics.paddingY
 
     /// The « 🔊 Écouter » button under the mascot. It speaks on POINTERDOWN
     /// (D5's `touchDown`, not a `Button`), and the model's `replayPrompt()`
     /// carries the `locked` guard that stops it cutting a success line.
     ///
-    /// No press animation: `Tile` animates, these buttons never did.
+    /// `ListenPill` (D55) — one button for all eight engines, and it presses.
     static func listenButton(
         text: String,
         accessibilityLabel: String,
         action: @escaping () -> Void
     ) -> some View {
-        Text(verbatim: text)
-            .font(Typography.rounded(Typography.Size.lg, Typography.Weight.bold))
-            .foregroundStyle(Palette.ink.color)
-            .padding(.horizontal, listenPaddingX)
-            .padding(.vertical, listenPaddingY)
-            .background(Color.white.opacity(Palette.White.o70), in: Capsule())
-            // Tailwind `shadow`: 0 1px 3px rgba(0,0,0,0.1),
-            //                    0 1px 2px -1px rgba(0,0,0,0.1)
-            .shadow(color: .black.opacity(0.1), radius: 1.5, y: 1)
-            .shadow(color: .black.opacity(0.1), radius: 1, y: 1)
-            .touchDown(action)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(accessibilityLabel)
-            .accessibilityAddTraits(.isButton)
+        ListenPill(text: text, accessibilityLabel: accessibilityLabel, action: action)
     }
 
     /* ---- CSS `dashed` ------------------------------------------------------ */

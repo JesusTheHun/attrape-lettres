@@ -522,6 +522,11 @@ public struct ShopView: View {
                     size: ShopMetrics.headerMascotSize,
                     reduceMotion: reduceMotion)
             }
+            // D54. The web writes `drop-shadow-lg`, a CSS FILTER, which casts
+            // from the element's whole alpha silhouette. SwiftUI's `.shadow`
+            // casts per layer, so every ear, eye and limb was dropping its own
+            // onto the mascot's body. Flatten first and the friend casts one.
+            .compositingGroup()
             .shadow(
                 color: .black.opacity(ShopMetrics.mascotShadow.opacity),
                 radius: ShopMetrics.mascotShadow.swiftUIRadius,
@@ -646,6 +651,7 @@ public struct ShopView: View {
                     .background(
                         .white.opacity(Palette.White.o85),
                         in: RoundedRectangle(cornerRadius: ShopMetrics.zoneChipRadius))
+                    .compositingGroup()  // D54 — the box casts the shadow, not the glyphs inside it
                     .shadow(
                         color: .black.opacity(ShopMetrics.chipShadow.opacity),
                         radius: ShopMetrics.chipShadow.swiftUIRadius,
@@ -669,6 +675,7 @@ public struct ShopView: View {
         .background(
             tint.gradient,
             in: RoundedRectangle(cornerRadius: ShopMetrics.cornerRadius))
+        .compositingGroup()  // D54 — the box casts the shadow, not the glyphs inside it
         .shadow(
             color: .black.opacity(ShopMetrics.zoneShadow.opacity),
             radius: ShopMetrics.zoneShadow.swiftUIRadius,
@@ -758,6 +765,7 @@ struct TryOnDialogView: View {
                         size: ShopMetrics.cardMascotSize,
                         reduceMotion: reduceMotion
                     )
+                    .compositingGroup()  // D54 — one silhouette, as `drop-shadow-lg`
                     .shadow(
                         color: .black.opacity(ShopMetrics.mascotShadow.opacity),
                         radius: ShopMetrics.mascotShadow.swiftUIRadius,

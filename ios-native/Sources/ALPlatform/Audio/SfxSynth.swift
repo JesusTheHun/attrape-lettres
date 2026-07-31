@@ -37,6 +37,9 @@ public struct SfxBlip: Sendable {
 }
 
 /// The four sounds `AudioEngine` exposes.
+///
+/// Three are the web's oscillator recipes verbatim. `nudge` is not — see the
+/// note on its blips: the authored one is inaudible through a phone's speaker.
 public enum Sfx: String, CaseIterable, Sendable {
     case pop
     case success
@@ -69,8 +72,33 @@ public enum SfxSynth {
                 SfxBlip(freq: freq, dur: 0.16, wave: .sine, gain: 0.16, at: Double(index) * 0.075)
             }
         case .nudge:
-            // blip(196, 0.14, "sine", 0.1) — soft, non-punishing (invariant 3).
-            return [SfxBlip(freq: 196, dur: 0.14, wave: .sine, gain: 0.10, at: 0)]
+            // [DEVIATION, reported] The web is `blip(196, 0.14, "sine", 0.1)`,
+            // fired in the SAME instant as `pop()` — and on a phone a child
+            // hears nothing of it. Two mechanisms, both absent on the desktop
+            // this was authored against:
+            //
+            //   * a phone's loudspeaker has no low end. It rolls off hard below
+            //     roughly half a kilohertz, so a 196 Hz fundamental arrives tens
+            //     of dB down — and the ear is least sensitive there too, so the
+            //     two losses compound.
+            //   * `pick()` plays `pop()` (660 Hz, gain 0.16) on the same frame.
+            //     Whatever survives the speaker is then masked by a tone that is
+            //     louder, brighter, and right in the band the speaker likes.
+            //
+            // So the cue is redesigned rather than transposed: a soft falling
+            // pair, C5 → G4, both safely inside the band a phone reproduces,
+            // and starting 60 ms in so the pop's decay is out of the way first.
+            // Still the quietest sound in the game — invariant 3 says a wrong
+            // tap is not a failure, and « doucement, non » is the whole message.
+            //
+            // Sibling `oops` is deliberately NOT changed: it is lower still, but
+            // it plays alone and « Oh non ! On recommence. » speaks over it a
+            // beat later, so the assembly engines never rely on the tone to
+            // carry the meaning. This one had nothing else.
+            return [
+                SfxBlip(freq: 523.25, dur: 0.12, wave: .sine, gain: 0.09, at: 0.06),
+                SfxBlip(freq: 392.00, dur: 0.22, wave: .sine, gain: 0.09, at: 0.16),
+            ]
         case .oops:
             // The two-note falling "wah-wah" that pairs with « Oh non ! On recommence. »
             return [

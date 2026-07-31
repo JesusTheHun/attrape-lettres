@@ -1728,11 +1728,20 @@ look, plus assertions on the two pixels that carry a claim.
 `GrowthBarRasterTests` (3) and `Shop — paint order` (2) pass on the host and
 fail under `xcodebuild test -destination 'platform=iOS Simulator'`. **Verified
 pre-existing** — a baseline worktree at `f46efdd` fails the same five — so they
-are not a regression from D51/D52. Both suites rasterise through
-`ImageRenderer`, which composites `CAGradientLayer` and layered fills
-differently on iOS than on macOS (the growth bar's green reads back
-`(255, 56, 60)`). The tests are calibrated to the host tier they were written
-for; they need re-calibrating per destination, not deleting.
+are not a regression from D51/D52.
+
+**Root cause, found later (D54):** not a compositing difference. `ImageRenderer`
+renders any tree containing a platform-view representable as a solid **red
+placeholder**, `(255, 56, 60)` — which is exactly the "green" those tests read
+back. `LayerHost` is a no-op on macOS and a `UIViewRepresentable` on iOS, so a
+view that hosts one rasterises fine on the host tier and returns a red rectangle
+on the simulator. The tests are not mis-calibrated; on that destination they are
+looking at nothing.
+
+The fix is the one D54 applied to `Tile`: split the paint into a view that hosts
+no layer and no gesture (`TileFace`), and point the raster test at that. Not done
+for these five — they are green where CI runs them and the reported work came
+first — but the diagnosis is no longer open.
 
 ---
 
@@ -1782,3 +1791,167 @@ carries the app's privacy promise. Nobody reported it because reaching that
 screen takes two deliberate taps and an adult. It was found the first time
 anything rendered the screen and looked at it — which is the argument for the
 gallery, and the reason it writes its PNGs unconditionally.
+
+---
+
+## D54 — The shadow under the letters
+
+Reported from the device: « the shadow under the letters (the letters
+themselves, not the tile) should not be there ».
+
+It is a SwiftUI semantic that CSS has no equivalent of. `.shadow` is a
+**per-layer** effect, like `.opacity` and the blend modes: applied to a composed
+view it runs on every drawing primitive inside it, separately. So a tile's glyph
+cast its own drop shadow — and, being painted above the tile's fill, that shadow
+landed **on the tile face**, a dark smear trailing every letter.
+
+CSS never does this. `box-shadow` is cast by the border box and by nothing else;
+`filter: drop-shadow` by the element's flattened alpha. `.compositingGroup()`
+restores either one, by flattening the subtree so there is a single alpha to cast
+from.
+
+```swift
+content
+    .background(bg.color, in: RoundedRectangle(cornerRadius: 28))
+    .overlay { highlightRing }
+    .compositingGroup()          // ← the whole fix
+    .shadow(color: …, radius: …, y: 8)
+    .shadow(color: …, radius: 10, y: 12)
+```
+
+Measured before writing any of it, on a 100 pt tile with white ink over
+`#4FC3F7`: **460 face pixels darker than the fill without the line, 0 with it**,
+the darkest `(62, 154, 195)`. White ink is what makes that a clean test — a
+glyph's antialiasing can only blend the face *towards* white, so anything darker
+than the fill is a shadow and nothing else.
+
+### It was twenty call sites, not one
+
+The same spelling — `.background(_, in: shape)` then `.shadow` — was live at
+twenty places: every hub chip and the level buttons, the reward pill, the
+`GameFrame` and dashboard back buttons, the roster's edit button, the shop's zone
+cards, sticker chips and price badges, the picker and growth cards, the assembly
+and spelling slots, and both tile shadows. It is not a per-site slip; it is what
+a careful port of a `box-shadow` looks like.
+
+Two spellings are now in use, deliberately:
+
+* `.compositingGroup()` then `.shadow` — where content sits inside the box;
+* `.background { Shape().fill(…).shadow(…) }` — where the shadow is cast by a
+  bare shape, which is already one layer. `liftedCapsule`, `ListenPill` and the
+  twins/grid slots were already written this way and needed nothing.
+
+The two shop mascots are the third case and the reason the rule is worth stating
+in terms of CSS rather than of SwiftUI: the web writes `drop-shadow-lg` there, a
+FILTER, cast from the whole silhouette. Per-layer, every ear and limb was
+dropping a shadow onto the friend's own body.
+
+### Two tests, because the defect has two halves
+
+`BoxShadowRasterTests` renders a tile face and counts pixels darker than the
+fill — the reported symptom, in pixels. `BoxShadowScanTests` walks every
+`.shadow(` in ALUI and requires one of `.compositingGroup()`, `.fill(`,
+`.stroke(`, `.strokeBorder(` or a preceding `.shadow(` within six lines above it.
+The scan exists for the same reason `ConsentCopyTests` does: what went wrong is a
+**missing modifier**, and no screenshot tells a reviewer which line to add. Both
+mutation-checked — dropping the tile's `.compositingGroup()` fails the raster
+test with 471 smudged pixels and the scan with `Tile.swift:285`.
+
+### The vacuous test the guard caught
+
+The raster test was first written against `Tile` and passed — against a raster
+containing **nothing**. `ImageRenderer` renders any tree holding a
+`UIViewRepresentable` / `NSViewRepresentable` as a red placeholder, and `Tile`
+carries one: its `touchDown` surface. `theProbeIsNotLookingAtNothing` — assert
+the probe can see fill pixels and glyph pixels before trusting what it says about
+shadow pixels — is what caught it, and is why `TileFace` exists: the paint, with
+no layer host and no gesture, so it can be looked at.
+
+That is the third vacuous test this port has produced (after `playForTesting` and
+D51's safe-area assertion), and the first one a deliberately-written guard caught
+rather than a re-read. It also explains the five long-standing simulator raster
+failures — see the note in D52.
+
+---
+
+## D55 — The 🔊 button had no answer for a finger
+
+Reported from the device: « when I tap on the exercise sound button, it should
+have a tap feedback, like the tiles do ».
+
+Faithful, and wrong on a phone. `Tile.tsx` is the only file in the PWA that calls
+`el.animate`, so the big « Écouter » pill is visually inert on the web and the
+only acknowledgement of a tap is the voice that follows. In a browser on a laptop
+that voice is immediate. On a phone the clip may still be decoding, and a child
+who gets nothing back taps again — which cuts the line they just asked for.
+
+**[DEVIATION, reported]** It now runs the same 130 ms squish a tile does, through
+the same path: `TilePress.previewDown` — press first, then speak, and never a
+shake, because asking to hear something has no verdict (invariant 3).
+
+### And it was four buttons
+
+`LettersListenPill`, `SpellListenPill`, `SoundEngineChrome.listenButton` and
+`AssembleView`'s private one: four copies of the same eight lines of JSX
+(`rounded-full bg-white/70 px-5 py-2 text-lg font-bold text-[#5A3A1E] shadow`),
+all identical down to the shadow. Exactly the divergence CLAUDE.md warns about —
+a fix lands in one and nobody sees the other three. There is one `ListenPill`
+now; the four names survive as wrappers that differ only in the margin they
+carry, and each engine's metric namespace re-exports `ListenPillMetrics` so the
+per-engine audit still reads engine by engine.
+
+`ListenPillTests` guards both halves: the pill must reach `TilePress.previewDown`,
+and no file in `Engines/` may paint its own `bg-white/70` again.
+
+---
+
+## D56 — A wrong tap made no sound
+
+Reported from the device: « when I press the wrong answer, it wiggles but doesn't
+play the failure sound ».
+
+The port is exact. `SinglePickModel.pick` calls `deps.audio.nudge()` on a miss,
+`nudge` is `blip(196, 0.14, "sine", 0.10)`, and that is `useAudio.ts` to the
+digit. The sound was being scheduled. It was not being **heard**, for two reasons
+that compound and neither of which exists on the desktop it was authored against:
+
+* **A phone's loudspeaker has no low end.** It rolls off hard below roughly half
+  a kilohertz, so a 196 Hz fundamental arrives tens of dB down — and the ear is
+  least sensitive in that band too, so the two losses stack.
+* **The pop masks whatever survives.** `pick()` fires `pop()` (660 Hz, gain 0.16)
+  in the same instant, right in the band the speaker likes, half again as loud.
+
+So the cue is redesigned rather than transposed — an octave up is still in the
+rolloff, two is a chirp:
+
+```swift
+case .nudge:
+    return [
+        SfxBlip(freq: 523.25, dur: 0.12, wave: .sine, gain: 0.09, at: 0.06),  // C5
+        SfxBlip(freq: 392.00, dur: 0.22, wave: .sine, gain: 0.09, at: 0.16),  // G4
+    ]
+```
+
+A soft falling fourth, both notes safely in band, starting 60 ms in — by which
+point the pop's exponential decay has it at 0.0015 against the nudge's 0.09,
+about 35 dB down. And still the quietest sound in the game: invariant 3 says a
+wrong tap is not a failure, and « doucement, non » is the whole message.
+
+Four assertions, each naming its reason rather than its number: softest of the
+four sounds, falling, no note below 350 Hz, and the pop measurably out of the way
+(computed through `SfxSynth.envelope`, not hard-coded) at the moment the nudge
+starts.
+
+### `oops` is deliberately left alone
+
+The assembly engines' wrong-row sound is lower still (392 → 311 Hz) and the same
+argument would apply — except that it plays alone, unmasked, and « Oh non ! On
+recommence. » speaks over it a beat later. Those engines never relied on the tone
+to carry the meaning. This one had nothing else.
+
+### What is not claimed
+
+That the fix was heard. The reasoning is about the signal and the speaker, and
+both halves are argued rather than measured on hardware — no phone-speaker
+response curve was taken. The device listen is the verification, and it is the
+one step this tier cannot do.

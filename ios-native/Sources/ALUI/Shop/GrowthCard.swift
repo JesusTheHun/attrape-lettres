@@ -186,6 +186,7 @@ public struct GrowthCardView: View {
         .background(
             Palette.growthCard.gradient,
             in: RoundedRectangle(cornerRadius: GrowthCardMetrics.cornerRadius))
+        .compositingGroup()  // D54 — the box casts the shadow, not the glyphs inside it
         .shadow(
             color: .black.opacity(GrowthCardMetrics.shadow.opacity),
             radius: GrowthCardMetrics.shadow.swiftUIRadius,

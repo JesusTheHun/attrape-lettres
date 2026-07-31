@@ -203,6 +203,7 @@ public struct GameFrame<Overlay: View, Content: View>: View {
                     .padding(.horizontal, 16) // px-4
                     .padding(.vertical, 8) // py-2
                     .background(Color.white.opacity(Palette.White.o70), in: Capsule())
+                    .compositingGroup()  // D54 — the box casts, not the label
                     // Tailwind `shadow`: 0 1px 3px rgba(0,0,0,0.1),
                     //                    0 1px 2px -1px rgba(0,0,0,0.1)
                     .shadow(color: .black.opacity(0.1), radius: 1.5, y: 1)

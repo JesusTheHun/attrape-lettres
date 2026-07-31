@@ -341,6 +341,7 @@ private struct ChoiceRow: View {
                         card.isCurrent ? Palette.green.color : Color.clear,
                         lineWidth: PickerMetrics.cardBorderWidth)
             }
+            .compositingGroup()  // D54 — the box casts the shadow, not the glyphs inside it
             .shadow(
                 color: .black.opacity(PickerMetrics.cardShadow.opacity),
                 radius: PickerMetrics.cardShadow.swiftUIRadius,

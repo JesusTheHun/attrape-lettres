@@ -108,6 +108,7 @@ struct SpellSlotBox<Content: View>: View {
             .frame(height: metrics.height)
             .background(fill)
             .overlay { dashedBorder }
+            .compositingGroup()  // D54 — the box casts the shadow, not the glyphs inside it
             .shadow(
                 color: .black.opacity(face == .filled ? SpellSlot.filledShadowOpacity : 0),
                 radius: SpellSlot.filledShadowRadius,
@@ -138,26 +139,18 @@ struct SpellSlotBox<Content: View>: View {
 /// The big « 🔊 Écouter » pill under the mascot, shared by both spelling
 /// engines (they differ only in the label and the margin below).
 ///
-/// `onPointerDown`, so `touchDown` — and no press animation: the TSX calls
-/// `el.animate` on tiles only, never on this button.
+/// `onPointerDown`, so `touchDown`. The button itself is `ListenPill` (D55);
+/// the spelling engines differ from the rest only in showing the bare
+/// « 🔊 Écouter » rather than the prompt.
 struct SpellListenPill: View {
     let accessibilityLabel: String
     let action: () -> Void
 
     var body: some View {
-        Text(verbatim: Copy.Exercise.listen)
-            .font(Typography.rounded(Typography.Size.lg, Typography.Weight.bold))
-            .foregroundStyle(Palette.ink.color)
-            .padding(.horizontal, 20)  // px-5
-            .padding(.vertical, 8)  // py-2
-            .background(Color.white.opacity(Palette.White.o70), in: Capsule())
-            // Tailwind `shadow`.
-            .shadow(color: .black.opacity(0.1), radius: 1.5, y: 1)
-            .shadow(color: .black.opacity(0.1), radius: 1, y: 1)
-            .touchDown(action)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(accessibilityLabel)
-            .accessibilityAddTraits(.isButton)
+        ListenPill(
+            text: Copy.Exercise.listen,
+            accessibilityLabel: accessibilityLabel,
+            action: action)
     }
 }
 
