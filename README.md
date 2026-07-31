@@ -13,7 +13,7 @@ apps/
   game-android/   not built yet
   backoffice/     not built yet
 services/
-  api/            household sync + telemetry — Hono · Zod · Postgres
+  api/            household sync + telemetry — Hono · Zod · DynamoDB · S3
 packages/         shared TypeScript — empty on purpose
 ```
 

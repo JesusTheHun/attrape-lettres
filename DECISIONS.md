@@ -186,8 +186,8 @@ ids. The database must not become the place where PII starts — see invariant 1
 
 ## R9 — Households go to DynamoDB, telemetry to S3, and no relational database
 
-**Decided, not yet implemented.** `postgres.ts` is what runs today; this records
-where it is going and why, before the reason is forgotten.
+Built. `postgres.ts`, the telemetry table and `001_init.sql` are gone; the
+service has no database and no pool.
 
 Nothing in this service uses a database. No join, no aggregate, no second index —
 the join code *is* the household id, so there is no code-to-id lookup to serve —
@@ -216,16 +216,58 @@ under a date prefix in S3 costs cents, keeps everything, and is read with Athena
 or by downloading a day. It also keeps family data and analytics physically
 apart, which is the isolation the split was asked for in the first place.
 
-**The one number that could reverse this: DynamoDB caps an item at 400 KB.** The
-household document is the only unbounded thing here — children × five mascots ×
-hundreds of accessories × per-device clear counters, for years. Crossing that
-line fails the push, and both clients swallow it, so the family just stops
-syncing. It needs a size alarm well below the ceiling. S3 has no such limit.
-
 Being wrong costs one file. `HouseholdStore` is `read(id)` and
-`write(id, roster, ifMatch)`; the routes never see the store, and three
-implementations already coexist behind it. A change of mind is a fourth
-implementation, not a migration.
+`write(id, roster, ifMatch)`; the routes never see the store. A change of mind
+is another implementation, not a migration.
+
+### The 400 KB ceiling, and what it made us build
+
+DynamoDB caps one item at 400 KB, and the household document is the only
+unbounded thing here — children × five mascots × up to five hundred owned
+accessories × a per-device clear counter for every exercise and level,
+accumulating for years. Crossing that line fails the push, and both clients
+swallow it, so a family would simply stop syncing with nobody told.
+
+So a household is **not one item**. It is a root plus one sidecar per child, all
+in one partition:
+
+```
+pk = <householdId>   sk = "#root"        rev, removed, order
+pk = <householdId>   sk = "child#<id>"   touchedAt, profile
+```
+
+The ceiling becomes per child rather than per family, and a pull is still one
+round trip — one `Query` on the partition returns everything, root first because
+`#` sorts before `c`. **None of this is visible on the wire**; the frozen
+contract is still one document and one ETag.
+
+Three things the implementation forced, each of which would have been a silent
+data-loss bug:
+
+- **The write must be one transaction.** Writing children first and the root
+  last looks equivalent and loses stars: a push whose root condition fails has
+  already overwritten a sidecar with a merge built on an older revision, so the
+  winning revision points at a child missing the other device's newest play.
+  `TransactWriteItems` puts the root's precondition in charge of every sidecar.
+- **Tombstoned children must still be returned.** `mergeRoster` resurrects a
+  child whose `touchedAt` is later than the tombstone — deliberately, so a
+  parent tidying the roster on one phone cannot erase a week of play from the
+  other. Filtering them server-side would have been a merge rule on the server
+  and would have made that resurrection impossible. It is also why nothing
+  sweeps a removed child's sidecar.
+- **The root has to store the child order.** A `Query` returns sort-key order,
+  which would have silently re-alphabetised every family's roster on first sync.
+  Order is observable in the merge, so it is stored, and a pull returns exactly
+  the array that was pushed.
+
+And one coupling worth knowing before it bites: a transaction takes at most 100
+items and a push writes one root plus one per child, so `wireRoster`'s cap of 64
+children is load-bearing. Raising it past 99 would start rejecting valid rosters
+at the store rather than at the schema.
+
+All four are mutation-checked: alphabetising the children, filtering tombstones,
+dropping the root's precondition, or treating every cancelled transaction as a
+412 each fail a test that names the consequence.
 
 ## R6 — Android is native, and unbuilt
 

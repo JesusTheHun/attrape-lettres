@@ -3,12 +3,14 @@ import type { ErrorReport, EventBatch } from "./schema.js";
 /* -------------------------------------------------------------------------- */
 /* Where accepted telemetry goes.                                              */
 /*                                                                             */
-/* Separate port from the household store even though both land in the same    */
-/* Postgres and the same deploy, because they have opposite requirements:      */
-/* household sync has to be CORRECT (a lost write is a child's stars), and     */
-/* telemetry has to be CHEAP (it must never make the app wait). Keeping them   */
-/* apart in the code is what makes splitting the deploy later a config change  */
-/* rather than a rewrite.                                                       */
+/* A separate port from the household store, because the two have opposite     */
+/* requirements: household sync has to be CORRECT (a lost write is a child's   */
+/* stars), and telemetry has to be CHEAP (it must never make the app wait).    */
+/* They now also have separate stores — DynamoDB and S3 — for the same reason: */
+/* a key-value store is the wrong shape for data whose only reads are          */
+/* aggregations. Keeping them apart in the code is what made that a config     */
+/* change rather than a rewrite, and it is what would make splitting the deploy */
+/* one too.                                                                     */
 /* -------------------------------------------------------------------------- */
 
 export interface TelemetrySink {

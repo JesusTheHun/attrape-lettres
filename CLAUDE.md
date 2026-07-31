@@ -13,8 +13,8 @@ apps/game-ios/       the native app. SwiftPM package + a thin Xcode wrapper.
                      Has its OWN CLAUDE.md, ARCHITECTURE.md and DECISIONS.md.
 apps/game-android/   not built. Two candidate routes, see its README.
 apps/backoffice/     not built.
-services/api/        Hono + Zod + Postgres. Household sync (ETag/412) and
-                     first-party telemetry. Built; see its README.
+services/api/        Hono + Zod. Household sync (ETag/412) on DynamoDB and
+                     telemetry on S3. Built; see its README.
 packages/            shared TS. Empty on purpose — see its README.
 ```
 

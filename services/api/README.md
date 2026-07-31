@@ -1,14 +1,14 @@
 # services/api
 
-Household sync + first-party telemetry. Hono · Zod · Postgres. The only server
-this product has.
+Household sync + first-party telemetry. Hono · Zod · DynamoDB · S3. The only
+server this product has, and it has no database.
 
 ```bash
-DATABASE_URL=postgres://…  pnpm dev     # tsx watch
-pnpm test                               # 31 tests, no database needed
+HOUSEHOLD_TABLE=… TELEMETRY_BUCKET=… pnpm dev   # tsx watch
+pnpm test                                       # 46 tests, no AWS needed
 ```
 
-`src/server.ts` is the only file that reads env, opens a pool or listens.
+`src/server.ts` is the only file that reads env, opens a client or listens.
 Everything else is a pure function of its dependencies, which is why the tests
 run against real routing and real validation with an in-memory store, in
 milliseconds.
@@ -33,14 +33,76 @@ The server never merges and has no domain knowledge of a roster. Its entire
 contribution is a revision counter that lets it refuse a write built on a read
 that has since been superseded, so one parent's phone cannot clobber the other's.
 
-Concurrency control is the `WHERE` clause, not a lock:
+Concurrency control is a condition on a write, not a lock: the root item's
+`rev` must still be the one the pull returned. A failed condition *is* the 412.
+Nothing is ever held while a phone thinks.
 
-```sql
-UPDATE household SET doc = $1, revision = revision + 1
- WHERE id = $2 AND revision = $3
+## How a household is stored
+
+One partition per household. A root item, and one sidecar item per child:
+
+```
+pk = <householdId>   sk = "#root"        rev, removed, order
+pk = <householdId>   sk = "child#<id>"   touchedAt, profile
 ```
 
-Zero rows affected *is* the 412. No row is ever held while a phone thinks.
+**The sharding is invisible on the wire.** The clients pull one document with
+one ETag and push it back with one `If-Match`; that contract is frozen and none
+of this leaks into it. A pull is still one round trip, because everything lives
+in one partition and a single `Query` returns it all — `#` sorts before `c`, so
+the root arrives first.
+
+**Why shard.** DynamoDB caps one item at 400 KB, and the household document is
+the only unbounded thing here: children × five mascots × up to five hundred
+owned accessories × a per-device clear counter for every exercise and level,
+accumulating for years. As one blob, a large family approaches that ceiling; per
+child, each item would have to reach 400 KB on its own. Crossing it fails the
+push — and both clients swallow the failure, so the family would simply stop
+syncing and nobody would be told.
+
+**Why the write is a transaction.** Writing children first and the root last
+looks equivalent and silently loses stars: a push whose root condition fails has
+already overwritten a sidecar with a merge built on an older revision, so the
+winning revision now points at a child document missing the other device's
+newest play. `TransactWriteItems` makes the root's precondition govern every
+sidecar in the same push. It costs double write units — a rounding error on a
+rounding error at this volume.
+
+**Two numbers that are coupled.** A transaction takes at most 100 items and a
+push writes one root plus one item per child, which is what makes `wireRoster`'s
+cap of 64 children load-bearing rather than polite. Raising it above 99 would
+start rejecting valid rosters at the store instead of at the schema.
+
+**Tombstoned children are still returned.** A tombstone does not delete: the
+device-side merge resurrects a child whose `touchedAt` is later than the
+tombstone, because a parent tidying the roster on one phone must not erase a
+week of play that happened on the other. Filtering them here would be a merge
+rule living on the server — the one thing this design does not do — and it would
+make that resurrection impossible.
+
+**The root stores the child order.** A `Query` returns sort-key order, which
+would quietly re-alphabetise a family's roster on its first sync. Order is
+observable in the merge, so it is stored rather than recomputed, and a pull
+returns exactly the array that was pushed.
+
+### The table
+
+One table, no secondary index, no stream. Nothing is ever queried across
+households — there is no code-to-id lookup, because the join code *is* the
+household id.
+
+```bash
+aws dynamodb create-table \
+  --table-name attrape-households \
+  --attribute-definitions AttributeName=pk,AttributeType=S AttributeName=sk,AttributeType=S \
+  --key-schema AttributeName=pk,KeyType=HASH AttributeName=sk,KeyType=RANGE \
+  --billing-mode PAY_PER_REQUEST
+```
+
+The service will not create it. A process that can create its own store will
+happily create a second, empty one after a typo in `HOUSEHOLD_TABLE` — at which
+point every family looks brand new and nothing errors. It calls `DescribeTable`
+on boot and refuses to start instead.
 
 **`If-Match` absent means "I believe this household does not exist"** — which is
 exactly what a client says after a 404. So it creates, and conflicts if
@@ -67,7 +129,7 @@ updated device.
 
 The clients already strip a child's first name before upload and already have a
 closed telemetry allowlist. That proves *our clients* are well-behaved. It says
-nothing about this database: the endpoints are public and unauthenticated.
+nothing about this store: the endpoints are public and unauthenticated.
 
 So the same closed lists live here, and this copy is the one that decides what
 gets stored. Every schema is `.strict()`: an unrecognised key is a 400, not a
@@ -78,7 +140,15 @@ logging some.
 
 Telemetry rows carry no device id, no household id and no session id. There is
 deliberately nothing to group them by, which is what makes them anonymous rather
-than pseudonymous — and why the table needs no retention policy.
+than pseudonymous — and why the data needs no retention policy. The object key
+is random rather than derived from anything in the payload, so it cannot quietly
+become a grouping handle either.
+
+Telemetry lands in S3, not in the households table. Newline-delimited JSON under
+`events/dt=YYYY-MM-DD/` and `errors/dt=YYYY-MM-DD/`, one object per accepted
+batch — one request to write, readable with Athena or by downloading a day, and
+nothing running in between. It is a different store from family data for the
+same reason it is a different port in the code.
 
 `message` and `stack` on `/errors` are the only free-form strings this service
 accepts anywhere. Both ends truncate.
@@ -98,5 +168,10 @@ cannot appear in a payload. Never widen one side by reflex.
 - **No CORS.** The clients are native apps and a self-hosted PWA on one origin.
   A permissive default would hand any page on the internet a write endpoint. Add
   the one origin explicitly when the backoffice lands.
-- **No migration runner.** `001_init.sql` is idempotent and runs on boot. Write
-  the runner when there is a second migration, not before.
+- **No cleanup of tombstoned sidecars.** A deleted child's item is kept, because
+  a tombstone does not delete — a later `touchedAt` resurrects the child, and a
+  swept sidecar would make that unrecoverable. The cost is one small item per
+  removed child, read on that family's pulls and nobody else's.
+- **No secondary index, no stream, no TTL.** Nothing is queried across
+  households, so there is nothing to index. "How many families are there" is a
+  scan or an S3 inventory report, run when someone actually asks.

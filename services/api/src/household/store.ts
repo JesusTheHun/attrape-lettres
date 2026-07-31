@@ -59,7 +59,7 @@ export function revisionOf(etag: string): number | null {
 }
 
 /**
- * Test and local-dev double. Same semantics as Postgres, including the
+ * Test and local-dev double. Same semantics as DynamoDB, including the
  * create-only rule, so the route tests exercise real behaviour rather than a
  * simplified stand-in.
  */
@@ -85,7 +85,9 @@ export class InMemoryHouseholdStore implements HouseholdStore {
     // somebody's whole roster.
     if (ifMatch === null) return { ok: false, conflict: true };
     // Parsed, not string-compared, so this double behaves exactly as the
-    // Postgres store does — including on a whitespace-padded or malformed etag.
+    // DynamoDB store does — including on a whitespace-padded or malformed etag.
+    // Keeping the etag an integer revision, rather than a hash of the content,
+    // is what lets this double stay faithful. See R9.
     if (revisionOf(ifMatch) !== row.revision) return { ok: false, conflict: true };
     const revision = row.revision + 1;
     this.rows.set(id, { roster, revision });

@@ -90,12 +90,20 @@ export const wireChild = z
 
 export const wireRoster = z
   .object({
+    /**
+     * Capped at 64, and the number is load-bearing beyond politeness: a push is
+     * written as one DynamoDB transaction of one root item plus one item per
+     * child, and a transaction takes at most 100 items. Raising this above 99
+     * would start rejecting valid rosters at the store rather than at the
+     * schema. See `MAX_TRANSACT_ITEMS` in `dynamo.ts`.
+     */
     children: z.array(wireChild).max(64),
     /** childId → when it was deleted. A tombstone is a timestamp, nothing more. */
     removed: z.record(z.string().min(1).max(128), millis),
   })
   .strict();
 
+export type WireChild = z.infer<typeof wireChild>;
 export type WireRoster = z.infer<typeof wireRoster>;
 
 /**
