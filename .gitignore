@@ -9,8 +9,8 @@ dist-ssr
 
 # typescript composite build artifacts (from `tsc -b`)
 *.tsbuildinfo
-/vite.config.js
-/vite.config.d.ts
+/apps/game-web/vite.config.js
+/apps/game-web/vite.config.d.ts
 
 # editor / os
 .DS_Store
@@ -28,7 +28,7 @@ dist-ssr
 google-tts-service-account.json
 
 # vo:build batch job state (transient; resumes polling if a run is stopped)
-src/vo/clips/.vo-batch.json
+apps/game-web/src/vo/clips/.vo-batch.json
 
 # logs
 npm-debug.log*
@@ -37,7 +37,7 @@ yarn-error.log*
 pnpm-debug.log*
 
 # vo:build takes thrown out by the length gate (kept for listening, never shipped)
-src/vo/clips/.rejects/
+apps/game-web/src/vo/clips/.rejects/
 
 # AI
 .claude/*

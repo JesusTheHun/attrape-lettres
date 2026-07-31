@@ -6,13 +6,14 @@ import Testing
 // Port of `src/vo/preview.test.ts` (4 cases), plus the same bake-coverage oracle
 // `UtterancesTests` uses.
 
+// Same sibling walk as `UtterancesTests` — up to `apps/`, down into the web app.
 private let previewClipsDirectory: URL =
     URL(fileURLWithPath: #filePath)  // …/Tests/ALCoreTests/PreviewUtterancesTests.swift
-    .deletingLastPathComponent()
-    .deletingLastPathComponent()
-    .deletingLastPathComponent()
-    .deletingLastPathComponent()
-    .appendingPathComponent("src/vo/clips")
+    .deletingLastPathComponent()  // …/Tests/ALCoreTests
+    .deletingLastPathComponent()  // …/Tests
+    .deletingLastPathComponent()  // …/apps/game-ios
+    .deletingLastPathComponent()  // …/apps
+    .appendingPathComponent("game-web/src/vo/clips")
 
 private let previewBakedKeys: Set<String> = {
     let names = (try? FileManager.default.contentsOfDirectory(atPath: previewClipsDirectory.path)) ?? []

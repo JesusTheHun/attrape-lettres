@@ -6,7 +6,8 @@ xcuserdata/
 DerivedData/
 .pixeldiff/
 
-# Baked voice-over, STAGED by scripts/stage-vo.sh from src/vo/clips/. The 845
+# Baked voice-over, STAGED by scripts/stage-vo.sh from the web app's clip
+# bank (apps/game-web/src/vo/clips/). The 845
 # clips already live once in this repo; a second 17 MB copy in git buys nothing.
 # The clip manifest beside this folder IS committed, so the coverage test runs
 # whether or not the audio has been staged.

@@ -12,7 +12,7 @@ Decisions with a `D` number are recorded in `DECISIONS.md`.
 ## 1. Targets
 
 ```
-ios-native/
+apps/game-ios/
   Sources/
     ALCore        pure Swift. No SwiftUI, no UIKit, no StoreKit, no network.
     ALArt         SwiftUI drawing: the SVG runtime, mascots, exercise icons.

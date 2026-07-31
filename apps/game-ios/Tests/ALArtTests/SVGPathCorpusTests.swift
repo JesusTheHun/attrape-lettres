@@ -10,8 +10,8 @@ import Testing
 // values are synthetic.
 //
 // Regenerate after touching any mascot:
-//   node ios-native/scripts/extract-svg-corpus.mjs \
-//        ios-native/Tests/ALArtTests/Resources/svg-corpus.json
+//   node apps/game-ios/scripts/extract-svg-corpus.mjs \
+//        apps/game-ios/Tests/ALArtTests/Resources/svg-corpus.json
 
 struct CorpusEntry: Decodable {
     let file: String

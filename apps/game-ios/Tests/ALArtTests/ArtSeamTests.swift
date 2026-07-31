@@ -28,7 +28,7 @@ private let alArtRoot: URL =
     URL(fileURLWithPath: #filePath)  // …/Tests/ALArtTests/ArtSeamTests.swift
     .deletingLastPathComponent()  // …/Tests/ALArtTests
     .deletingLastPathComponent()  // …/Tests
-    .deletingLastPathComponent()  // …/ios-native
+    .deletingLastPathComponent()  // …/apps/game-ios
     .appendingPathComponent("Sources")
     .appendingPathComponent("ALArt")
 

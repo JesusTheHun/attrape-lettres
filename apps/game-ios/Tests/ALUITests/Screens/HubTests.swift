@@ -301,7 +301,7 @@ struct HubSourceScanTests {
         .deletingLastPathComponent()  // …/Tests/ALUITests/Screens
         .deletingLastPathComponent()  // …/Tests/ALUITests
         .deletingLastPathComponent()  // …/Tests
-        .deletingLastPathComponent()  // …/ios-native
+        .deletingLastPathComponent()  // …/apps/game-ios
         .appendingPathComponent("Sources/ALUI/Screens/HubView.swift")
 
     private func code() throws -> String {

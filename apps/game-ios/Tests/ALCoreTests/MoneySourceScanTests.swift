@@ -23,7 +23,7 @@ private let alCoreRoot: URL =
     URL(fileURLWithPath: #filePath)  // …/Tests/ALCoreTests/MoneySourceScanTests.swift
     .deletingLastPathComponent()  // …/Tests/ALCoreTests
     .deletingLastPathComponent()  // …/Tests
-    .deletingLastPathComponent()  // …/ios-native
+    .deletingLastPathComponent()  // …/apps/game-ios
     .appendingPathComponent("Sources")
     .appendingPathComponent("ALCore")
 

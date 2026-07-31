@@ -132,7 +132,7 @@ private let uiRoot: URL =
     .deletingLastPathComponent()  // …/Tests/ALUITests/Components
     .deletingLastPathComponent()  // …/Tests/ALUITests
     .deletingLastPathComponent()  // …/Tests
-    .deletingLastPathComponent()  // …/ios-native
+    .deletingLastPathComponent()  // …/apps/game-ios
     .appendingPathComponent("Sources")
     .appendingPathComponent("ALUI")
 

@@ -294,7 +294,7 @@ struct ParentalGateSourceScanTests {
         .deletingLastPathComponent()  // …/Tests/ALUITests/Screens
         .deletingLastPathComponent()  // …/Tests/ALUITests
         .deletingLastPathComponent()  // …/Tests
-        .deletingLastPathComponent()  // …/ios-native
+        .deletingLastPathComponent()  // …/apps/game-ios
         .appendingPathComponent("Sources/ALUI/Screens/ParentalGate.swift")
 
     @Test("the scan can find the file it is meant to scan")

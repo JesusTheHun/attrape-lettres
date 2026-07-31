@@ -22,13 +22,16 @@ import Testing
 // speaks in the robot text-to-speech voice mid-narration. This is the test that
 // notices.
 
+// The bank lives in the web app, which is this app's SIBLING under `apps/` —
+// hence walking up to `apps/` and back down, rather than out to the repo root.
+// One bank, two readers: see `scripts/stage-vo.sh`.
 private let clipsDirectory: URL =
     URL(fileURLWithPath: #filePath)  // …/Tests/ALCoreTests/UtterancesTests.swift
     .deletingLastPathComponent()  // …/Tests/ALCoreTests
     .deletingLastPathComponent()  // …/Tests
-    .deletingLastPathComponent()  // …/ios-native
-    .deletingLastPathComponent()  // …/<repo root>
-    .appendingPathComponent("src/vo/clips")
+    .deletingLastPathComponent()  // …/apps/game-ios
+    .deletingLastPathComponent()  // …/apps
+    .appendingPathComponent("game-web/src/vo/clips")
 
 /// `<key>` for every baked clip, preferring nothing — presence is all that matters.
 private let bakedKeys: Set<String> = {

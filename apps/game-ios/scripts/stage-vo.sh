@@ -2,11 +2,11 @@
 #
 # stage-vo.sh — put the baked voice-over where SwiftPM can bundle it.
 #
-# The 845 baked clips live ONCE in this repo, in the PWA tree at
-# `src/vo/clips/`. They are the shared source of truth: the generator
-# (`pnpm vo:build`, still a web-repo job — see spec/audio-feedback.md §2.4)
+# The 845 baked clips live ONCE in this repo, in the web app at
+# `apps/game-web/src/vo/clips/`. They are the shared source of truth: the
+# generator (`pnpm vo:build`, a web-app job — see spec/audio-feedback.md §2.4)
 # writes them there and both apps read them from there. Committing a second
-# 13.7 MiB copy under `ios-native/` would double the git weight and hand us a
+# 13.7 MiB copy under `apps/game-ios/` would double the git weight and hand us a
 # drift bug for free, so `Sources/ALPlatform/Resources/vo/` is STAGED, never
 # committed.
 #
@@ -32,16 +32,19 @@
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-pkg="$(cd "$here/.." && pwd)"          # ios-native/
+pkg="$(cd "$here/.." && pwd)"          # apps/game-ios/
 dest="$pkg/Sources/ALPlatform/Resources/vo"
 manifest="$pkg/Sources/ALPlatform/Resources/vo-manifest.txt"
 
-# The bank lives in the PWA tree, and it has exactly ONE home: the repository's
-# MAIN working tree. That matters because the port is developed in a linked git
-# worktree, which carries its own `src/vo/clips/` at whatever HEAD it was
-# created from — staging from there silently bakes a stale bank into the app.
-# So: ask git for the main working tree first, and only then fall back to the
-# obvious relative guesses (for a plain, worktree-free checkout).
+# The bank lives in the web app — `apps/game-web/src/vo/clips`, our sibling —
+# and it has exactly ONE home: the repository's MAIN working tree. That matters
+# because this app is developed in a linked git worktree, which carries its own
+# copy of the bank at whatever HEAD it was created from; staging from there
+# silently bakes a stale bank into the app. So: ask git for the main working
+# tree first, and only then fall back to the obvious relative guesses (for a
+# plain, worktree-free checkout).
+bank_rel="apps/game-web/src/vo/clips"
+
 find_bank() {
   if [ -n "${VO_CLIPS_DIR:-}" ]; then
     printf '%s\n' "$VO_CLIPS_DIR"
@@ -49,13 +52,13 @@ find_bank() {
   fi
   local main
   main="$(git -C "$pkg" worktree list --porcelain 2>/dev/null | awk '/^worktree /{print $2; exit}')" || true
-  if [ -n "$main" ] && [ -d "$main/src/vo/clips" ]; then
-    printf '%s\n' "$main/src/vo/clips"
+  if [ -n "$main" ] && [ -d "$main/$bank_rel" ]; then
+    printf '%s\n' "$main/$bank_rel"
     return 0
   fi
   local candidates=(
-    "$pkg/../src/vo/clips"                       # ios-native/ at the repo root
-    "$pkg/../../../../src/vo/clips"              # .claude/worktrees/<name>/ios-native
+    "$pkg/../game-web/src/vo/clips"              # the sibling app, same checkout
+    "$pkg/../../$bank_rel"                       # equivalently, from the repo root
   )
   local c
   for c in "${candidates[@]}"; do
@@ -99,7 +102,7 @@ if [ "$mode" = "check" ]; then
 fi
 
 bank="$(find_bank)" || {
-  echo "stage-vo: cannot find src/vo/clips — set VO_CLIPS_DIR=/path/to/src/vo/clips" >&2
+  echo "stage-vo: cannot find $bank_rel — set VO_CLIPS_DIR=/path/to/clips" >&2
   exit 1
 }
 

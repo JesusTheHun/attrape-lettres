@@ -31,7 +31,7 @@ shipping while this exists in parallel.
 ## D1 — Layering: one SwiftPM package, three targets, host-testable
 
 ```
-ios-native/
+apps/game-ios/
   Package.swift
   Sources/ALCore    pure logic  — no SwiftUI, no UIKit
   Sources/ALArt     SwiftUI     — SVG path runtime, mascots, exercise icons
@@ -573,11 +573,11 @@ overflow, which is why D15 forbids the canvas from clipping at the viewBox.
 ## D28 — The baked voice-over is staged, not committed twice
 
 845 `.m4a` clips, 17 MB, already live once in this repo under `src/vo/clips/`,
-keyed by `voKey(text)`. Copying them into `ios-native/Sources/ALPlatform/Resources/`
+keyed by `voKey(text)`. Copying them into `apps/game-ios/Sources/ALPlatform/Resources/`
 would put a second 17 MB in git that is byte-identical to the first and would
 drift the moment `pnpm vo:build` re-bakes a clip.
 
-So the audio resource is **staged**: `ios-native/scripts/stage-vo.sh` links the
+So the audio resource is **staged**: `apps/game-ios/scripts/stage-vo.sh` links the
 clips into `Sources/ALPlatform/Resources/vo/` before a build, and that folder is
 gitignored. What *is* committed is the clip **manifest** — the list of keys.
 

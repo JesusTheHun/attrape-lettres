@@ -4,7 +4,7 @@ import Foundation
 //
 // `src/vo/clips.ts` builds its map at BUILD time from a Vite glob. There is no
 // glob in SwiftPM, and — more importantly — the 845 clips are not committed
-// under `ios-native/`: they live once, in the PWA tree, and are staged into
+// under `apps/game-ios/`: they live once, in the web app, and are staged into
 // `Sources/ALPlatform/Resources/vo/` by `scripts/stage-vo.sh` before a build.
 //
 // So the *manifest* is committed instead: one `<voKey>.<ext>` per line, exactly

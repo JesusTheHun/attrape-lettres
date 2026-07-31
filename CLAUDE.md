@@ -4,20 +4,41 @@ Guidance for Claude Code (and any agent) working in this repo. Read before editi
 
 ## What this is
 
-A French early-reading game for ~6yo children. Vite + React 18 + TypeScript (strict) + TailwindCSS.
+A French early-reading game for ~6yo children, as a monorepo.
+
+```
+apps/game-web/       the PWA. Vite + React 18 + TypeScript (strict) + Tailwind.
+                     Also the home of the VO clip bank and its generator.
+apps/game-ios/       the native app. SwiftPM package + a thin Xcode wrapper.
+                     Has its OWN CLAUDE.md, ARCHITECTURE.md and DECISIONS.md.
+apps/game-android/   not built. Two candidate routes, see its README.
+apps/backoffice/     not built.
+services/api/        not built. Household sync + telemetry + whatever the
+                     backoffice needs. tRPC over Postgres; see its README.
+packages/            shared TS. Empty on purpose — see its README.
+```
+
+The two game apps are **independent implementations of the same game**, not a
+shared core with two shells. They agree because the port was written against the
+web app line by line and its tests say so, not because they share code. The one
+thing they do share is the baked voice-over: 855 clips that live once, in
+`apps/game-web/src/vo/clips/`, staged into the iOS bundle by
+`apps/game-ios/scripts/stage-vo.sh` and never committed twice.
 
 ## Commands
 
 ```bash
-pnpm dev            # local dev server
-pnpm build          # tsc -b && vite build && gen-sw
-pnpm typecheck      # types only
-pnpm test           # vitest
+pnpm dev            # web dev server
+pnpm build          # every JS/TS package
+pnpm typecheck      # every JS/TS package
+pnpm test           # every JS/TS package
+pnpm vo:build       # bake the VO clip bank (needs GEMINI_API_KEY)
 
-pnpm cap:sync       # build + push dist/ into both native shells
-pnpm ios            # build + sync + open Xcode
-pnpm android        # build + sync + open Android Studio
+cd apps/game-ios && swift test    # 1454 host tests, no simulator needed
 ```
+
+Anything scoped to one package also works from inside it (`cd apps/game-web &&
+pnpm test`), and `pnpm --filter @attrape/game-web <script>` from the root.
 
 Do **not** add `pnpm add <pkg>` commands to answers unless explicitly asked.
 Prefer solving with what's here; this app deliberately avoids animation/audio
@@ -31,7 +52,10 @@ libraries.
   `style`, everything else via Tailwind.
 - French copy is user-facing; keep it kid-simple and in `fr`.
 
-## Architecture map
+## Architecture map — `apps/game-web/src/`
+
+Paths below are relative to `apps/game-web/src/`. The iOS app has its own map,
+in `apps/game-ios/CLAUDE.md`.
 
 - `types.ts` — domain types. `ExerciseId` is the nav/routing key; `SyllableMode`
   selects seeding; `SyllableTier` is difficulty.
@@ -174,7 +198,7 @@ Two rules on the split, both learned the hard way:
   true. PAPI-LLON needed « ll » to say /j/, which is false — it's « ill » that
   does, and it straddles the split. That word had to go.
 
-**Fix a pronunciation:** add a row to `IPA` in `scripts/generate-vo.mjs` — the
+**Fix a pronunciation:** add a row to `IPA` in `apps/game-web/scripts/generate-vo.mjs` — the
 phonetic target, keyed by lowercase token, matched in the same four utterance
 shapes as `SOUND_SAY`. It rides the *instruction*, so the model still receives
 real French and the prosody survives; a row here suppresses the older homophone
@@ -194,7 +218,7 @@ the 30-second « Nid ». Do not rewrite the instruction to fix it. `generate-vo.
 has a **length gate**: a take running ≥ `VO_GATE_RATIO` (2.2) × the expected
 duration for its shape is thrown out and re-rolled, `VO_GATE_RETRIES` (2) times.
 Calibrated at 0 false positives over 831 clips, worst legitimate ratio 1.77×.
-`--no-gate` disables it. Rejected takes are KEPT in `src/vo/clips/.rejects/`
+`--no-gate` disables it. Rejected takes are KEPT in `apps/game-web/src/vo/clips/.rejects/`
 (gitignored) — listen to them, because duration alone cannot tell "recited the
 instruction" from "read the text four times", and those need opposite fixes.
 
