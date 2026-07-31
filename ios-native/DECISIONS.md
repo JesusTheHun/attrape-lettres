@@ -1217,3 +1217,69 @@ pick), which is a hypothesis and not a finding.
 **The missing tier is UI testing.** There is no XCUITest target, so nothing in
 this repo can tap. That is why three device bugs arrived by hand and why two of
 them cannot be reproduced here.
+
+## D47 — The first-tap crash: a mono buffer scheduled into a stereo connection
+
+A device crash log named it exactly, and it is the worst possible location for a
+bug in this app:
+
+```
+-[AVAudioPlayerNode scheduleBuffer:atTime:options:completionHandler:]
+  → +[NSException raise:format:] → objc_exception_throw → abort()
+← GameAudioGraph.play(_:) ← LiveAudioEngine.pop() ← SinglePickModel.pick(_:)
+← TilePress.pointerDown ← TouchDownCore.began()
+```
+
+`build()` connected the SFX player nodes with `format: nil`. That does **not**
+mean "adapt to whatever arrives" — it means "use the source node's current output
+format", and for an `AVAudioPlayerNode` that has never held a buffer that is the
+engine's standard format: **stereo, at the hardware rate** (2 ch, 44 100 Hz as
+measured). `renderBuffers` renders **mono** (1 ch, 48 000 Hz). Scheduling a
+1-channel buffer into a 2-channel connection raises an ObjC exception, and an
+ObjC exception in Swift is an uncatchable `abort()`.
+
+So the app died on the first tap of any tile — on `pop()`, which fires on EVERY
+pick, correct or wrong. (The bug was reported as "when I give the correct
+answer"; the stack shows it was simply the first tap.) Invariant 1 puts that call
+before everything else on the feedback path, which is exactly why it took the
+whole app down.
+
+**The file already contained its own fix, for the other node.**
+`ensureVoiceFormat` disconnects and reconnects the voice node with the clip's
+real format before scheduling, and `ClipPlayer` calls it immediately before every
+`scheduleBuffer`. The SFX half never got the same treatment. `ensureSfxFormat` is
+now its sibling, and the SFX nodes are attached in `build()` but connected only
+once the buffer format is known.
+
+The mixer converts, so this format need not match the hardware at all — only the
+buffers. That is also why a route change cannot resurrect it: the connection
+stays consistent with what is scheduled into it, whatever the hardware does.
+
+**`play` now asks the NODE, not our bookkeeping.** `outputFormat(forBus:)` is the
+value `scheduleBuffer` validates against, so a future graph that records one
+format and wires another goes quiet instead of aborting. One property read on the
+tap path is a fair price for never again turning a six-year-old's tap into a
+crash — audio may fail, it may never take the game down (invariant 3).
+
+### Why 1434 tests missed it, and what now catches it
+
+Nothing ever constructed the real graph. `AVAudio*` sat behind the `SfxPlaying`
+protocol and every test used a double; `AudioSfxTests` checks the SAMPLES, which
+were always right; and `isReady` is false on a Mac with no audio device, so even
+a test that called `play` would have returned at the first guard.
+
+The assertion that catches it needs no device and no running engine — it compares
+the format the ENGINE reports for the node's output bus against the format the
+buffers carry. Verified by mutation: restoring `connect(…, format: nil)` fails it
+with the true failure mode rather than a proxy —
+
+```
+buffer.format → 1 ch, 48000 Hz  ==  actual → 2 ch, 44100 Hz, deinterleaved
+```
+
+Three assertions, because the first draft only checked the bookkeeping variable
+and would have passed a graph that recorded mono and wired stereo:
+buffers-match-engine, node-is-mono, and bookkeeping-matches-engine.
+
+**Bug 2 (shop scroll) is still open** and is NOT this: shop tiles play no sound
+on press, so nothing on that path reaches `play`. Awaiting its own log.

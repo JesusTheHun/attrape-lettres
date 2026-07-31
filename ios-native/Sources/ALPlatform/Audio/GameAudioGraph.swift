@@ -57,6 +57,10 @@ public final class GameAudioGraph: SfxPlaying {
     private var built = false
     private var voiceFormat: AVAudioFormat?
 
+    /// The format the SFX nodes are CONNECTED with, which must equal the format
+    /// every rendered buffer carries. See `ensureSfxFormat`.
+    private var sfxFormat: AVAudioFormat?
+
     public private(set) var isReady = false
 
     public init(sfxVoices: Int = 6) {
@@ -74,6 +78,8 @@ public final class GameAudioGraph: SfxPlaying {
         if renderedAt != rate {
             renderBuffers(sampleRate: rate)
         }
+        // BEFORE `engine.start()`, and before any tap can reach `play`.
+        if let format = sfxFormat { ensureSfxFormat(format) }
 
         do {
             try engine.start()
@@ -102,9 +108,11 @@ public final class GameAudioGraph: SfxPlaying {
     private func build() {
         guard !built else { return }
         built = true
+        // Attached, NOT connected: the connection format is not known until the
+        // buffers have been rendered, and connecting with `nil` here is what
+        // crashed the app on the very first tap. See `ensureSfxFormat`.
         for node in sfxNodes {
             engine.attach(node)
-            engine.connect(node, to: engine.mainMixerNode, format: nil)
         }
         engine.attach(voiceNode)
         engine.attach(voiceMixer)
@@ -140,19 +148,99 @@ public final class GameAudioGraph: SfxPlaying {
         }
         sfxBuffers = built
         renderedAt = sampleRate
+        sfxFormat = format
     }
 
     // MARK: - The tap path
 
     public func play(_ sfx: Sfx) {
         guard isReady, let buffer = sfxBuffers[sfx] else { return }
+        // `scheduleBuffer` does not fail politely: handed a buffer whose format
+        // differs from the one its node was CONNECTED with, it raises an ObjC
+        // exception, which in Swift is an uncatchable abort. From a child's tap.
+        // Never schedule into a format we did not connect (invariant 3: audio
+        // may go quiet, it may never take the game down).
         let node = sfxNodes[nextSfxSlot]
+        // Asked of the NODE, not of our own bookkeeping: `outputFormat(forBus:)`
+        // is the value `scheduleBuffer` validates against, so a graph that
+        // recorded one format and wired another still goes quiet instead of
+        // aborting. One property read on the tap path, against an abort.
+        guard Self.canSchedule(connected: node.outputFormat(forBus: 0), buffer: buffer) else {
+            return
+        }
         nextSfxSlot = (nextSfxSlot + 1) % sfxNodes.count
         // `.interrupts` rather than queueing: round-robin means the slot we are
         // reusing is the oldest, and a child who spam-taps must not build a
         // backlog of pops that keeps sounding after they stop.
         node.scheduleBuffer(buffer, at: nil, options: [.interrupts], completionHandler: nil)
         if !node.isPlaying { node.play() }
+    }
+
+    /// Connect every SFX node with the EXACT format its buffers carry.
+    ///
+    /// The sibling of `ensureVoiceFormat`, and its absence is what crashed the
+    /// app on the first tap of any tile:
+    ///
+    ///     -[AVAudioPlayerNode scheduleBuffer:atTime:options:completionHandler:]
+    ///     → +[NSException raise:format:] → abort()
+    ///
+    /// `build()` used to connect with `format: nil`, which does NOT mean "adapt
+    /// to whatever arrives" — it means "use the source node's current output
+    /// format", and for a player node that has never been given a buffer that is
+    /// the engine's standard format: **stereo**, at the hardware rate.
+    /// `renderBuffers` produces **mono**. Scheduling a 1-channel buffer into a
+    /// 2-channel connection raises, and an ObjC exception in Swift is an abort,
+    /// not an error — so the game died on a six-year-old's first tap, on the one
+    /// code path invariant 1 puts in front of everything else.
+    ///
+    /// The mixer converts, so this format need not match the hardware at all —
+    /// only the buffers. That is also why a route change cannot resurrect the
+    /// bug: the connection stays consistent with what we schedule into it.
+    ///
+    /// Nothing on the host suite could see this. `AVAudioEngine` never runs
+    /// there, `swift test` has no audio device, and the whole graph is behind
+    /// `isReady`, which is false on a Mac. Only a real tap on a real device
+    /// reaches line one of it.
+    func ensureSfxFormat(_ format: AVAudioFormat) {
+        guard built else { return }
+        if let current = connectedSfxFormat, current == format { return }
+        connectedSfxFormat = format
+        for node in sfxNodes {
+            engine.disconnectNodeOutput(node)
+            engine.connect(node, to: engine.mainMixerNode, format: format)
+        }
+        if isReady {
+            for node in sfxNodes where !node.isPlaying { node.play() }
+        }
+    }
+
+    /// What `ensureSfxFormat` last wired up. Distinct from `sfxFormat`, which is
+    /// what the BUFFERS carry: `play` refuses to schedule unless they agree.
+    private var connectedSfxFormat: AVAudioFormat?
+
+    /// Test seam: our bookkeeping — what `ensureSfxFormat` believes it wired.
+    var connectedSfxFormatForTesting: AVAudioFormat? { connectedSfxFormat }
+
+    /// Test seam: what the ENGINE actually reports for a node's output bus.
+    ///
+    /// This, not `connectedSfxFormat`, is what `scheduleBuffer` is checked
+    /// against at runtime. Asserting on the bookkeeping alone would pass a graph
+    /// that records one format and connects another — which is a restatement of
+    /// the original bug, not a guard against it.
+    var actualSfxNodeFormatForTesting: AVAudioFormat? {
+        sfxNodes.first?.outputFormat(forBus: 0)
+    }
+
+    /// Test seam: a rendered buffer, to compare against the connection.
+    func bufferForTesting(_ sfx: Sfx) -> AVAudioPCMBuffer? { sfxBuffers[sfx] }
+
+    /// The decision `play` makes before it schedules — the ONE thing standing
+    /// between a format drift and an abort. A static predicate rather than a
+    /// duplicated `guard` so a test exercises the real rule and not a copy of
+    /// it: an audio device is needed to call `play`, none is needed for this.
+    static func canSchedule(connected: AVAudioFormat?, buffer: AVAudioPCMBuffer) -> Bool {
+        guard let connected else { return false }
+        return connected == buffer.format
     }
 
     // MARK: - Voice plumbing (used by ClipPlayer)
