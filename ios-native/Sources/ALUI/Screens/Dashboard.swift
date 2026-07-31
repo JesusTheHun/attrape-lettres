@@ -470,8 +470,8 @@ public struct DashboardView: View {
         .padding(.horizontal, DashboardMetrics.stagePaddingX)
         .padding(.top, DashboardMetrics.stagePaddingTop)
         .padding(.bottom, DashboardMetrics.stagePaddingBottom)
-        .background(Palette.stage.gradient)
         .clipShape(RoundedRectangle(cornerRadius: DashboardMetrics.cornerRadius))
+        .stageWash(Palette.stage)
         .fontDesign(.rounded)  // fontFamily: ui-rounded,'SF Pro Rounded',…
     }
 

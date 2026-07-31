@@ -248,7 +248,7 @@ public struct OnboardingView: View {
         .frame(maxWidth: Self.maxWidth)
         .padding(Self.stagePadding)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-        .background(Palette.stageAdult.gradient)
+        .stageWash(Palette.stageAdult)
         .fontDesign(.rounded)  // fontFamily: ui-rounded,'SF Pro Rounded',…
     }
 

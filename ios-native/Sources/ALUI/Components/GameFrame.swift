@@ -185,8 +185,8 @@ public struct GameFrame<Overlay: View, Content: View>: View {
         .onPreferenceChange(HeaderHeightKey.self) { headerHeight = $0 }
         .onPreferenceChange(FlowHeightKey.self) { flowHeight = $0 }
         .frame(maxWidth: .infinity, minHeight: GameFrameMetrics.minHeight, alignment: .top)
-        .background(Palette.stage.gradient)
         .clipShape(RoundedRectangle(cornerRadius: GameFrameMetrics.cornerRadius))
+        .stageWash(Palette.stage)
         .fontDesign(.rounded) // fontFamily: ui-rounded,'SF Pro Rounded',…
     }
 

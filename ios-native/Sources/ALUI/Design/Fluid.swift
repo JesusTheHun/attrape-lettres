@@ -150,3 +150,35 @@ public enum Shell {
         Swift.min(cardMaxWidth, viewport - 2 * minimumInset)
     }
 }
+
+extension View {
+    /// The screen wash, painted EDGE TO EDGE — D51.
+    ///
+    /// Every screen root ends in one of these. The wash is `Palette.stage` (the
+    /// play surfaces) or `Palette.stageAdult` (the adult/roster/shop ones); the
+    /// only difference is where the cream stops, and both are authored in
+    /// `Palette`.
+    ///
+    /// Why a modifier rather than `.background(g.gradient)` at each root: the
+    /// gradient has to escape the shell's gutter, and that only works if it is
+    /// spelled `ignoresSafeArea()` on the BACKGROUND view — not on the composed
+    /// view, which would drag the content under the status bar with it. Doing
+    /// that at eight call sites is eight chances to write the wrong one.
+    ///
+    /// The web draws the gutter as `#root { padding: max(16px,
+    /// env(safe-area-inset-*)) }` over `body { background: #efe6da }`, so the
+    /// cream frames the card on every screen. On a 390 pt phone that reads as a
+    /// grey band under the status bar and a second one over the home indicator,
+    /// which is not what a native app looks like. `RootView` therefore spends
+    /// that 16 pt as SAFE-AREA padding instead of layout padding: the content
+    /// keeps exactly the same insets, and a background that ignores the safe
+    /// area now reaches the window's edge. `Palette.page` still shows where it
+    /// has a job — beside the 480 pt card on an iPad, which is what
+    /// `max-width: 480px` was for.
+    ///
+    /// Call it AFTER any `clipShape` (the web's `overflow-hidden`): the clip is
+    /// for the content, the wash is behind it and deliberately unclipped.
+    func stageWash(_ wash: HexGradient) -> some View {
+        background { wash.gradient.ignoresSafeArea() }
+    }
+}

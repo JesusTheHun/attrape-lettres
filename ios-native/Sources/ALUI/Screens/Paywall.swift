@@ -347,7 +347,7 @@ public struct PaywallView: View {
         .multilineTextAlignment(.center)
         .padding(PaywallMetrics.stagePadding)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Palette.stageAdult.gradient)
+        .stageWash(Palette.stageAdult)
         .fontDesign(.rounded)
     }
 
@@ -378,6 +378,9 @@ public struct PaywallView: View {
                     Task { await model.buy(entitlement: entitlement, telemetry: telemetry) }
                 }
                 .disabled(model.busy)
+                // `disabled:opacity-50` — as a GROUP. See WhoIsPlaying's note:
+                // without this the lip shows through the face of the pill.
+                .compositingGroup()
                 .opacity(model.busy ? PaywallMetrics.disabledOpacity : 1)
 
                 // Apple requires a restore control to exist for non-consumables.
@@ -404,7 +407,7 @@ public struct PaywallView: View {
         .frame(maxWidth: PaywallMetrics.parentMaxWidth, alignment: .leading)
         .padding(PaywallMetrics.stagePadding)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Palette.stageAdult.gradient)
+        .stageWash(Palette.stageAdult)
         .fontDesign(.rounded)
         // VoiceOver hears the outcome without hunting for it.
         .onChange(of: model.note) { _, next in
@@ -427,6 +430,7 @@ public struct PaywallView: View {
         }
         .buttonStyle(.plain)
         .disabled(model.busy)
+        .compositingGroup()
         .opacity(model.busy ? PaywallMetrics.disabledOpacity : 1)
     }
 

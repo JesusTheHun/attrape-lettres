@@ -1522,3 +1522,215 @@ leaves the graph suspended (`LiveAudioEngine.handle`) until something taps.
 **This is not verified to silence those two lines**, and it is not offered as
 their fix. It is right on its own terms; the diagnosis stays a hypothesis until
 a device says otherwise.
+
+---
+
+## D51 — The wash fills the screen (bug 1 of three more, reported from the device)
+
+> « The background gradient should fill all the screen, shouldn't it? I mean
+> throughout the entire app »
+
+Yes. The port was faithful and the result was wrong, which is the interesting
+part.
+
+`index.css` frames the app card on a cream mat:
+
+```css
+body { background: #efe6da; }
+#root {
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+           max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+}
+#root > * { width: 100%; max-width: 480px; }
+```
+
+That is a WEB PAGE's device: centre a phone-shaped card on a desktop, and use
+the safe-area env vars so a notched phone does not clip it. `RootView` ported it
+literally — `Palette.page.color` behind, `.frame(maxWidth: 480)`, `.padding(16)`
+— and on a 402 pt iPhone the cream stopped being a mat and became a grey band
+under the Dynamic Island and a second one over the home indicator. Native apps
+do not look like that, and the mat had nothing left to do: iOS gives the safe
+area for free, so painting it a different colour is pure loss.
+
+### The fix is two lines and one of them is subtle
+
+The gutter became SAFE-AREA padding instead of layout padding:
+
+```swift
+gatedScreen
+    .frame(maxWidth: Shell.cardMaxWidth)
+    .safeAreaPadding(Shell.minimumInset)   // was .padding(Shell.minimumInset)
+```
+
+Content keeps exactly the same insets either way. The difference is what a
+background can escape: `.ignoresSafeArea()` consumes safe-area insets and can do
+nothing about a `.padding`. With the gutter expressed as safe area, one modifier
+does the rest, at nine screen roots:
+
+```swift
+func stageWash(_ wash: HexGradient) -> some View {
+    background { wash.gradient.ignoresSafeArea() }
+}
+```
+
+`ignoresSafeArea()` on the BACKGROUND, never on the composed view — the latter
+would drag the content under the status bar with it. Spelling that nine times is
+nine chances to write the wrong one, hence the modifier.
+
+`Palette.page` still exists and still shows where it has a job: beside the 480 pt
+card on an iPad, which is what `max-width: 480px` was for.
+
+### The half of it that took three builds: a wash inside a scroll view
+
+`HubStage` and the species picker paint their stage and are then wrapped in a
+`ScrollView` (D46 for the picker, always for the hub). A background applied
+INSIDE the scroll is part of the scroll CONTENT: pinned to the content rather
+than the window, so the top of the screen stayed cream and the wash slid away
+under the finger. The wash has to be applied to the scroll view, not to what it
+scrolls:
+
+```swift
+ScrollView { HubStage(…) }
+    .stageWash(Palette.stage)
+```
+
+A consequence worth naming, because it is a deviation: the wash no longer
+scrolls. On the web the gradient belongs to the stage `<div>` and moves with it;
+here it is a fixed backdrop the content slides over. That is what "fills the
+screen" means on a phone, and it is what was asked for.
+
+The shop already had it right (its `ScrollView` is inside the stage). `HubStage`
+therefore no longer paints itself, and `HubRasterTests` applies the same
+modifier so the raster tier sees the same pixels.
+
+### The test that had to be thrown away
+
+The first assertion — find the hub's `UIScrollView`, require it spans the window
+— passed against a build with the bug in it. **A `UIWindow` created in a test has
+no safe area at all**: there is no scene to take one from, so every inset is
+zero and a safe-area claim is true by construction. It was the second vacuous
+test of this session (`playForTesting` was the first), and it passed for the
+same reason: it asserted something that could not have failed.
+
+What replaced it measures pixels, with the insets injected:
+
+```swift
+controller.additionalSafeAreaInsets = UIEdgeInsets(top: 59, left: 0, bottom: 34, right: 0)
+…
+let top = pixel(root, at: CGPoint(x: phone.width / 2, y: 3))
+#expect(top.r >= 250 && top.b <= 210)   // #FFE7C9, not #efe6da
+```
+
+`#FFE7C9` and `#efe6da` are 17 apart in blue, which is plenty. Mutation-checked
+by dropping `ignoresSafeArea()` from `stageWash`: the top pixel comes back
+`(239, 230, 218)` — `#efe6da` exactly, the reported defect, to the byte.
+
+---
+
+## D52 — `aspect-square`, and three bugs that were one line
+
+> « the rewards badge is too small and the exercise level box is also too small
+> and gets completely hidden by the badge »
+
+Three complaints, one cause, and the cause was a modifier that compiles, reads
+like the CSS it ports, and means something else.
+
+```swift
+Text(verbatim: "\(cell.level)")
+    .font(…)
+    .frame(maxWidth: .infinity)
+    .aspectRatio(1, contentMode: .fit)   // aspect-square
+```
+
+`.fit` means *shrink me until I fit inside the proposal I was given*, and the
+proposal a `LazyVGrid` cell hands down carries the CONTENT's ideal height. A
+24 pt digit is 28.67 pt tall. So a 60 pt-wide column rendered a **28.67 pt**
+square, centred, with 31 pt of dead stage around it — and from that one number:
+
+- every level button was **under Apple's 44 pt floor**, on a game for a
+  six-year-old aiming with a whole hand (invariant 6);
+- the reward pill is an `.overlay`, so it is proposed the BUTTON's width — 28.67
+  pt — and truncated « +10 ⭐ » to « +1 » plus a clipped star. The screenshot
+  read as a speaker icon. **The app was misreporting the reward.**
+- the pill, pinned to a box a third the size it was drawn for, covered the digit.
+
+CSS derives the height FROM THE WIDTH. `Color.clear` has no ideal size and
+accepts whatever it is proposed, so the aspect ratio resolves against the width
+alone:
+
+```swift
+struct AspectSquare<Content: View>: View {
+    @ViewBuilder var content: Content
+    var body: some View {
+        Color.clear
+            .aspectRatio(1, contentMode: .fit)
+            .overlay { content }
+    }
+}
+```
+
+Plus `.fixedSize()` on the pill: the TSX badge is `position: absolute`, which is
+out of flow and sizes to its content, and a SwiftUI overlay is not. Without it a
+wider reward silently truncates again.
+
+Level buttons went 28.67 pt → 60 pt on the reported device. Nothing else moved.
+
+### How it was found, and why it took so long
+
+Every earlier attempt was indirect and every one of them lied a little:
+
+- **The device screenshot.** Measurable, and I measured the wrong thing: the
+  badge pitch (68 pt) is the COLUMN pitch, not the button, so the arithmetic
+  said the buttons were 60 pt while the eye said they were half that. Both were
+  true. The column was 60; the button inside it was 28.67.
+- **The `UIView` tree.** Empty. A SwiftUI `Button`, `Text` or `Capsule` is not a
+  view, it is a drawing command in one hosting layer.
+- **The accessibility tree.** Also empty — SwiftUI does not publish nodes unless
+  an assistive technology is actually running, so a walk finds nothing in a test.
+- **`GeometryReader` + `onAppear`.** Printed a plausible number ONCE, from a
+  provisional layout pass. Printing from the `GeometryReader`'s body instead
+  gave the real one, in the app, on the second try: `ZZCELL 28.666×28.666`.
+
+The lesson is the same one D48 cost a round trip over: an inference about the
+code is worth nothing next to a measurement OF the code.
+
+### What now guards it
+
+`AspectSquareTests`, on the host, in `swift test`. `ImageRenderer`'s raster is
+the size the view RESOLVED to, so it reads a laid-out dimension back without a
+window, a simulator or a `GeometryReader`:
+
+```swift
+let size = try resolvedSize(AspectSquare { Text("1").font(.system(size: 24, weight: .black)) }
+    .frame(width: 60))
+#expect(size == CGSize(width: 60, height: 60))
+```
+
+Mutation-checked against the old spelling: 60×28, 72×10, 72×33, and the tap
+target drops to 28 pt at iPhone SE width. Three failures, all of them the bug.
+
+### The harness this finally produced (D19 / W18, part one)
+
+`ScreenSnapshotTests` hosts a screen in a real `UIWindow` on a simulator
+destination and can do three things the host tier cannot: give it real safe-area
+insets, lay out a real `UIScrollView`, and read pixels back. It also writes a PNG
+per screen to the simulator's temp dir — unconditionally, because an env var does
+not survive the trip to a simulator test process and a tool you have to remember
+how to switch on is a tool nobody uses. `simctl` has no touch input, so hosting
+is the ONLY way to look at the dashboard, the paywall or an exercise; all four
+were checked for D51 that way.
+
+Still not built: the golden-master pixel diff of D3. What exists is a way to
+look, plus assertions on the two pixels that carry a claim.
+
+### Known, unfixed: five raster tests fail on the simulator destination
+
+`GrowthBarRasterTests` (3) and `Shop — paint order` (2) pass on the host and
+fail under `xcodebuild test -destination 'platform=iOS Simulator'`. **Verified
+pre-existing** — a baseline worktree at `f46efdd` fails the same five — so they
+are not a regression from D51/D52. Both suites rasterise through
+`ImageRenderer`, which composites `CAGradientLayer` and layered fills
+differently on iOS than on macOS (the growth bar's green reads back
+`(255, 56, 60)`). The tests are calibrated to the host tier they were written
+for; they need re-calibrating per destination, not deleting.
+

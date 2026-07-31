@@ -251,7 +251,6 @@ public struct WhoIsPlayingView: View {
         .padding(.horizontal, WhoIsPlayingMetrics.stagePaddingX)
         .padding(.top, WhoIsPlayingMetrics.stagePaddingTop)
         .padding(.bottom, WhoIsPlayingMetrics.stagePaddingBottom)
-        .background(Palette.stageAdult.gradient)
         .clipShape(RoundedRectangle(cornerRadius: WhoIsPlayingMetrics.cornerRadius))
         .fontDesign(.rounded)
         .onAppear { if creating == nil { creating = store.children.isEmpty } }
@@ -286,6 +285,8 @@ public struct WhoIsPlayingView: View {
         // would delay touch-down feedback (invariant 1). The two branches are
         // mutually exclusive, so the wrapper never sees a tile.
         .alPageScroll(enabled: isCreating)
+        // OUTSIDE the scroll view (D51) — see Picker's note.
+        .stageWash(Palette.stageAdult)
     }
 
     /// Alert button titles. NOT ported copy — the PWA never had them (browser
@@ -648,6 +649,10 @@ struct NewProfileForm: View {
                     )
                 }
                 .contentShape(Capsule())
+                // CSS `opacity` composites the element as a GROUP; SwiftUI's fades
+                // every layer separately, so the lifted capsule's lip showed
+                // THROUGH its own face — one button rendered as two.
+                .compositingGroup()
                 .opacity(canSubmit ? 1 : WhoIsPlayingMetrics.disabledOpacity)
         }
         .buttonStyle(.plain)

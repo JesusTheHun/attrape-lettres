@@ -320,6 +320,7 @@ public struct ParentalGateView: View {
                 .padding(.vertical, Self.buttonPaddingY)
                 .background(Palette.green.color, in: Capsule())
                 .contentShape(Capsule())
+                .compositingGroup()
                 .opacity(model.canSubmit ? 1 : Self.disabledOpacity)
         }
         .buttonStyle(.plain)

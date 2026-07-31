@@ -63,11 +63,15 @@ public struct RootView: View {
     public var body: some View {
         // `index.css` `#root`: page background, card top-centred
         // (`place-items: start center`), `max-width: 480px`, ≥ 16 pt gutters.
+        //
+        // D51 — the gutter is SAFE-AREA padding, not layout padding. Same insets
+        // for the content either way; the difference is that a screen's wash can
+        // ignore a safe area and cannot escape a `.padding`. See `stageWash`.
         ZStack(alignment: .top) {
             Palette.page.color.ignoresSafeArea()
             gatedScreen
                 .frame(maxWidth: Shell.cardMaxWidth)
-                .padding(Shell.minimumInset)
+                .safeAreaPadding(Shell.minimumInset)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }

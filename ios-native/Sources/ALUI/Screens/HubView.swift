@@ -282,6 +282,12 @@ public struct HubView: View {
                 onPaywall: onPaywall
             )
         }
+        // OUTSIDE the scroll view (D51). A wash applied to `HubStage` is part of
+        // the SCROLL CONTENT: it is pinned to the content, not the window, so
+        // the top of the screen stayed page-cream and the wash slid away under
+        // the finger. `HubStage` therefore does not paint itself, and the raster
+        // tier applies this same modifier to see the same pixels.
+        .stageWash(Palette.stage)
     }
 }
 
@@ -318,7 +324,6 @@ struct HubStage: View {
         .padding(.horizontal, HubMetrics.stagePaddingX)
         .padding(.top, HubMetrics.stagePaddingTop)
         .padding(.bottom, HubMetrics.stagePaddingBottom)
-        .background(Palette.stage.gradient)
         .clipShape(RoundedRectangle(cornerRadius: HubMetrics.cornerRadius))
         .fontDesign(.rounded)  // fontFamily: ui-rounded,'SF Pro Rounded',…
     }
@@ -514,11 +519,11 @@ struct HubStage: View {
 
     private func levelButton(_ meta: ExerciseMeta, _ cell: HubLevelCell) -> some View {
         Button(action: { onOpen(meta.id, cell.level) }) {
-            Text(verbatim: "\(cell.level)")
-                .font(Typography.rounded(Typography.Size.xxl, Typography.Weight.black))
-                .foregroundStyle(Palette.ink.color)
-                .frame(maxWidth: .infinity)
-                .aspectRatio(1, contentMode: .fit)  // aspect-square
+            AspectSquare {
+                Text(verbatim: "\(cell.level)")
+                    .font(Typography.rounded(Typography.Size.xxl, Typography.Weight.black))
+                    .foregroundStyle(Palette.ink.color)
+            }
                 .background(
                     Color.white.opacity(Palette.White.o80),
                     in: RoundedRectangle(cornerRadius: HubMetrics.levelCornerRadius)
@@ -529,7 +534,11 @@ struct HubStage: View {
                     y: HubMetrics.shadow.y
                 )
                 .overlay(alignment: .topTrailing) {
-                    if let reward = cell.reward { pill(reward) }
+                    // `.fixedSize()`: the TSX pill is `position: absolute`, which
+                    // is OUT of flow and sizes to its content. A SwiftUI overlay
+                    // is proposed its parent's size, so without this the pill is
+                    // squeezed into the button and the reward is misreported.
+                    if let reward = cell.reward { pill(reward).fixedSize() }
                 }
                 .contentShape(RoundedRectangle(cornerRadius: HubMetrics.levelCornerRadius))
         }

@@ -450,8 +450,8 @@ public struct ShopView: View {
                 .accessibilityHidden(true)
         }
         .frame(maxWidth: .infinity, minHeight: ShopMetrics.minHeight)
-        .background(Palette.stageAdult.gradient)
         .clipShape(RoundedRectangle(cornerRadius: ShopMetrics.cornerRadius))
+        .stageWash(Palette.stageAdult)
         .fontDesign(.rounded)  // ui-rounded,'SF Pro Rounded',…
         .onAppear {
             wireCelebrations()

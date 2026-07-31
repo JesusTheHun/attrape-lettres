@@ -242,7 +242,6 @@ public struct PickerView: View {
         .padding(.horizontal, PickerMetrics.paddingX)
         .padding(.top, PickerMetrics.paddingTop)
         .padding(.bottom, PickerMetrics.paddingBottom)
-        .background(Palette.stageAdult.gradient)
         .clipShape(RoundedRectangle(cornerRadius: PickerMetrics.cornerRadius))
         .fontDesign(.rounded)
         // D46. The stage is pinned to `minHeight` and the card list grows with
@@ -250,6 +249,10 @@ public struct PickerView: View {
         // no way to reach it, so one animal could not be chosen at all. On the
         // web the document scrolls and the question never arises.
         .alPageScroll()
+        // OUTSIDE the scroll view (D51): a wash inside scrolling content is
+        // pinned to the content, not the window, so the top of the screen stays
+        // page-cream and the wash slides away under the finger.
+        .stageWash(Palette.stageAdult)
     }
 
     /// `const pick = (s) => { chooseSpecies(s); onDone(); }` — in that order, so

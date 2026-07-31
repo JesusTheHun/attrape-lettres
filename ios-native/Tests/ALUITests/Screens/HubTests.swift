@@ -373,12 +373,19 @@ struct HubSourceScanTests {
             // `HubStage`, not `HubView`: `ImageRenderer` cannot lay out a
             // `ScrollView`'s content on the host, so the stage is rasterised
             // directly — it is everything the scroll contains.
+            //
+            // `.stageWash` is applied here because since D51 it lives OUTSIDE
+            // the scroll view (a wash inside scrolling content scrolls with it),
+            // so `HubStage` no longer paints itself. Same modifier, same value
+            // as `HubView` — what this asserts is that the hub lays out over the
+            // warm stage, not where the modifier is spelled.
             let hub = HubStage(
                 audio: SilentAudioEngine(),
                 onOpen: { _, _ in },
                 onDashboard: {},
                 onPaywall: {}
             )
+            .stageWash(Palette.stage)
             .environment(store)
             .environment(entitlement)
             .frame(width: 480, height: 700, alignment: .top)
