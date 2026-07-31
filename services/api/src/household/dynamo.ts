@@ -1,6 +1,7 @@
 import { TransactionCanceledException } from "@aws-sdk/client-dynamodb";
 import { QueryCommand, TransactWriteCommand } from "@aws-sdk/lib-dynamodb";
 
+import { householdRef, log } from "../log.js";
 import type { HouseholdStore, StoredHousehold, WriteResult } from "./store.js";
 import { etagOf, revisionOf } from "./store.js";
 import type { WireChild, WireRoster } from "./wire.js";
@@ -270,17 +271,26 @@ export class DynamoHouseholdStore implements HouseholdStore {
     } catch (error) {
       if (isConflict(error)) return { ok: false, conflict: true };
       // This throw becomes a 500, which both clients swallow — so this line may
-      // be the only trace that a family stopped syncing. Name the largest child
-      // on the way out: an item over DynamoDB's 400 KB cap is the one failure
-      // the schema cannot prevent (`colors` and `styles` are records with no
-      // bound on how many keys they hold, and `owned` allows 500×128 characters
-      // per species), and in a log it is otherwise indistinguishable from a
-      // network fault.
-      console.error(`household ${id}: write failed`, {
+      // be the only trace that a family stopped syncing, and it is what
+      // `HouseholdWriteFailed` in `infra/template.yaml` alarms on.
+      //
+      // The household is named by HASH, never by id: an id is the credential
+      // for that family's roster and this log would otherwise hand one to
+      // anybody with CloudWatch access. The hash is enough to answer the only
+      // question worth asking of it — one family or all of them.
+      //
+      // Naming the largest child is a leftover defence. `MAX_CHILD_BYTES` now
+      // rejects an oversized child at validation, so an ItemSizeTooLarge here
+      // means the two ceilings have drifted apart rather than that a family
+      // outgrew the schema — which is worth knowing at a glance, since in a log
+      // an oversized item is otherwise indistinguishable from a network fault.
+      log("error", "household.write_failed", {
+        household: householdRef(id),
         rev,
         children: children.length,
         largest: largestChild(children),
-        error,
+        name: error instanceof Error ? error.name : "unknown",
+        message: error instanceof Error ? error.message : String(error),
       });
       throw error;
     }

@@ -79,6 +79,48 @@ const persistedProfile = z
   })
   .strict();
 
+/**
+ * The ceiling on one child, in bytes of JSON.
+ *
+ * DynamoDB refuses an item over 400 KB and the store writes one item per child,
+ * so this is that limit expressed somewhere a client can be told about it.
+ * Without it the schema is generous in exactly the wrong places — `colors` and
+ * `styles` are records with no bound on how many keys they hold, and `owned`
+ * allows 500 strings of 128 characters per species across five species — and a
+ * child that is entirely legal by the schema can be twenty times larger than a
+ * real one. The integration suite writes exactly such a child to prove it.
+ *
+ * The number counts JSON rather than DynamoDB's own accounting, which counts
+ * attribute names and values but not the quotes, braces and colons between
+ * them. JSON is therefore always the larger of the two, so a child that passes
+ * here cannot be an item DynamoDB refuses. 256 KB against a 400 KB limit leaves
+ * the difference as slack for that approximation, and it is still five times
+ * the largest child this game can produce: a maxed-out profile measures about
+ * 30 KB at five devices and about 53 KB at ten.
+ *
+ * WHY A BYTE COUNT AND NOT TIGHTER FIELD BOUNDS. Bounding `owned` to the size
+ * of today's catalogue would couple this service to the client's content, and
+ * every new accessory would mean deploying the server before the app or
+ * rejecting valid pushes. A byte ceiling constrains the one thing the store
+ * actually cares about and needs no maintenance as content grows.
+ *
+ * This does not make the failure visible on its own — both clients swallow a
+ * 400 exactly as they swallow a 500. What it buys is that the rejection now
+ * happens BEFORE the transaction, deterministically, in one place that can name
+ * the household and the child index in a log line. See `household.oversized`.
+ */
+export const MAX_CHILD_BYTES = 256 * 1024;
+
+/**
+ * The marker on the oversized-child issue.
+ *
+ * `app.ts` matches on it to raise a distinct, alarmable log event, because this
+ * one validation failure is not a misbehaving client — it is a real family
+ * whose sync has just stopped, permanently, with nothing on their phone to say
+ * so. Every other 400 from this schema means somebody is posting nonsense.
+ */
+export const CHILD_TOO_LARGE = "child too large";
+
 /** A child as it travels: everything except who they are. */
 export const wireChild = z
   .object({
@@ -86,7 +128,15 @@ export const wireChild = z
     touchedAt: millis,
     profile: persistedProfile,
   })
-  .strict();
+  .strict()
+  // `.length` on the JSON string rather than `Buffer.byteLength`: a multi-byte
+  // character counts as one here and as two or three at the store, but every
+  // string in this document is already capped and the 144 KB between this
+  // ceiling and DynamoDB's covers the difference many times over. Counting
+  // UTF-16 units keeps the check cheap on the push path.
+  .refine((child) => JSON.stringify(child).length <= MAX_CHILD_BYTES, {
+    error: CHILD_TOO_LARGE,
+  });
 
 export const wireRoster = z
   .object({
@@ -96,6 +146,12 @@ export const wireRoster = z
      * child, and a transaction takes at most 100 items. Raising this above 99
      * would start rejecting valid rosters at the store rather than at the
      * schema. See `MAX_TRANSACT_ITEMS` in `dynamo.ts`.
+     *
+     * A transaction is also capped at 4 MB in total, which 64 children of
+     * `MAX_CHILD_BYTES` each would blow through. What keeps that unreachable is
+     * `MAX_BODY_BYTES` in `app.ts`: 2 MB of request body cannot become 4 MB of
+     * items. The three numbers are one constraint wearing three hats — change
+     * any of them and check the other two.
      */
     children: z.array(wireChild).max(64),
     /** childId → when it was deleted. A tombstone is a timestamp, nothing more. */
