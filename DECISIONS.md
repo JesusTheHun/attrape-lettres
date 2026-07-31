@@ -269,6 +269,35 @@ All four are mutation-checked: alphabetising the children, filtering tombstones,
 dropping the root's precondition, or treating every cancelled transaction as a
 412 each fail a test that names the consequence.
 
+### The stubs were not enough, and running it for real said so
+
+The unit suite stubs every store call. It proves the commands we build are the
+ones we meant to build and nothing about whether DynamoDB accepts them — and a
+single-threaded double cannot lose a race, so its "concurrency" tests were two
+sequential writes wearing the same etag. The property the whole design exists
+for had never been executed against anything that could actually race.
+
+So there is now an integration suite against `amazon/dynamodb-local`
+(`pnpm test:integration`, skipped loudly without `DYNAMO_ENDPOINT`). Eight
+genuinely concurrent writers on one household: exactly one wins. Five concurrent
+creators: exactly one wins. It also caught two things a stub never would — the
+paging loop had never run, and the whole-app block was killed by a table dropped
+in the wrong `afterAll`.
+
+It also found a hole worth keeping in view: **a child can be legal by the schema
+and too large for DynamoDB.** `colors` and `styles` are records with no bound on
+key count, and `owned` allows 500×128 characters per species across five
+species; the suite writes a 430 KB child. Sharding moved the ceiling from per
+family to per child, it did not remove it. Nothing pre-rejects on size — refusing
+a write DynamoDB would have accepted is worse than the error it prevents — so
+the store names the largest child in the log on any non-conflict failure, which
+may be the only trace that a family stopped syncing.
+
+And a limit of the harness itself, recorded as a passing test rather than a
+comment: **DynamoDB Local does not enforce the 400 KB item cap.** The 430 KB
+child is accepted there. Item-size behaviour is therefore not covered by any
+test, and the real guard is a size alarm in production.
+
 ## R6 — Android is native, and unbuilt
 
 The route is decided (Kotlin + Compose, mirroring `apps/game-ios`), the app is

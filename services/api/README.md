@@ -6,7 +6,28 @@ server this product has, and it has no database.
 ```bash
 HOUSEHOLD_TABLE=… TELEMETRY_BUCKET=… pnpm dev   # tsx watch
 pnpm test                                       # 46 tests, no AWS needed
+pnpm dynamo:local && pnpm test:integration      # + 11 against a real DynamoDB
 ```
+
+## What the tests do and do not prove
+
+`pnpm test` stubs every store call. It exercises real routing, real Zod
+validation and the real store logic, and it proves the commands we build are the
+ones we meant to build — **and nothing about whether DynamoDB accepts them**. A
+stub also cannot lose a race: the in-memory double is single-threaded, so its
+"concurrency" tests are two sequential writes wearing the same etag.
+
+`pnpm test:integration` runs the same store against `amazon/dynamodb-local` for
+the handful of properties only a real engine can answer: the condition
+expressions parse, the transaction actually serialises under eight genuinely
+concurrent writers, an empty map survives marshalling, and the paging loop runs
+at all. Without `DYNAMO_ENDPOINT` that file skips loudly, so a skip is never
+mistaken for coverage.
+
+One thing neither can prove: **DynamoDB Local does not enforce the 400 KB item
+limit.** A 430 KB child is written there without complaint. That is recorded as
+a passing test asserting the gap rather than as a comment, because the gap is
+the point — see below.
 
 `src/server.ts` is the only file that reads env, opens a client or listens.
 Everything else is a pure function of its dependencies, which is why the tests
@@ -72,6 +93,20 @@ rounding error at this volume.
 push writes one root plus one item per child, which is what makes `wireRoster`'s
 cap of 64 children load-bearing rather than polite. Raising it above 99 would
 start rejecting valid rosters at the store instead of at the schema.
+
+**The per-child ceiling is not enforced by the schema, and should be.** Sharding
+moved the 400 KB limit from per family to per child, which buys a lot of room —
+but not an unbounded amount, and the wire schema does not police it: `colors`
+and `styles` are records with no bound on how many keys they hold, and `owned`
+allows 500 strings of 128 characters per species across five species. A child
+that is entirely legal by the schema can exceed 400 KB, and the integration
+suite writes exactly such a child to prove it. Real DynamoDB would refuse it,
+the push would fail, and both clients would swallow the failure.
+
+Nothing pre-rejects on size: rejecting a write DynamoDB would have accepted is
+worse than the error it prevents. What the store does instead is name the
+largest child in the log on any non-conflict failure, because that log line may
+be the only trace that a family stopped syncing.
 
 **Tombstoned children are still returned.** A tombstone does not delete: the
 device-side merge resurrects a child whose `touchedAt` is later than the

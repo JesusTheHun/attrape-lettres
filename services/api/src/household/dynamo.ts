@@ -168,6 +168,25 @@ function isConflict(error: unknown): boolean {
   );
 }
 
+/**
+ * The biggest sidecar in a push, and roughly how many bytes it is.
+ *
+ * Only ever called on the failure path, so the serialisation costs nothing when
+ * writes succeed. The byte count is JSON's rather than DynamoDB's own
+ * accounting — close enough to point at the culprit, and deliberately not used
+ * to reject anything, because rejecting a write DynamoDB would have accepted is
+ * worse than the error it would have prevented.
+ */
+function largestChild(children: HouseholdItem[]): { sk: string; bytes: number } | null {
+  let worst: { sk: string; bytes: number } | null = null;
+  for (const c of children) {
+    if (isRoot(c)) continue;
+    const bytes = Buffer.byteLength(JSON.stringify(c), "utf8");
+    if (!worst || bytes > worst.bytes) worst = { sk: c.sk, bytes };
+  }
+  return worst;
+}
+
 export class DynamoHouseholdStore implements HouseholdStore {
   constructor(
     private readonly client: DocumentClientLike,
@@ -250,6 +269,19 @@ export class DynamoHouseholdStore implements HouseholdStore {
       );
     } catch (error) {
       if (isConflict(error)) return { ok: false, conflict: true };
+      // This throw becomes a 500, which both clients swallow — so this line may
+      // be the only trace that a family stopped syncing. Name the largest child
+      // on the way out: an item over DynamoDB's 400 KB cap is the one failure
+      // the schema cannot prevent (`colors` and `styles` are records with no
+      // bound on how many keys they hold, and `owned` allows 500×128 characters
+      // per species), and in a log it is otherwise indistinguishable from a
+      // network fault.
+      console.error(`household ${id}: write failed`, {
+        rev,
+        children: children.length,
+        largest: largestChild(children),
+        error,
+      });
       throw error;
     }
 
