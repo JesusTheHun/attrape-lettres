@@ -82,6 +82,14 @@ final class AppEnvironment {
             // The OS setting can change while backgrounded (D32's observer
             // covers the foreground; this covers the gap).
             platform.reduceMotion.refresh()
+            // Re-arm the audio graph BEFORE a finger can arrive. `unlock()` on
+            // the tap path already heals a suspended graph, but invariant 1 is
+            // that the tap must not pay for it — and there are two ways to reach
+            // a suspended one: an interruption that ended with
+            // `shouldResume == false` (`LiveAudioEngine.handle`), and a launch
+            // whose session activation lost to the app not being foreground yet.
+            // Idempotent: ready graph in, one Bool read out.
+            audio.prewarm()
             // Resume: re-check the licence and exchange rosters.
             platform.profiles.syncNow()
             Task { await platform.entitlement.refresh() }

@@ -135,6 +135,8 @@ public final class SpeechFallback: NSObject, SpeechPlayback, AVSpeechSynthesizer
     private var handler: ((Bool) -> Void)?
     private var live: AVSpeechUtterance?
     private var resolvedVoice: AVSpeechSynthesisVoice??  // outer: resolved yet; inner: found one
+    /// A background resolve is in flight (see `prewarm()`).
+    private var resolving = false
 
     public override init() {
         super.init()
@@ -144,8 +146,42 @@ public final class SpeechFallback: NSObject, SpeechPlayback, AVSpeechSynthesizer
     /// The web warms the engine in `unlock()` with a silent `" "` utterance to
     /// satisfy the autoplay policy. iOS has no such requirement, so that is
     /// dropped; the voice lookup is what is worth doing early.
+    ///
+    /// **Off the main thread.** `AVSpeechSynthesisVoice.speechVoices()` is a
+    /// synchronous IPC to the system voice database, and it is not fast: on a
+    /// simulator launch it and the voice construction that follows straddled
+    /// 54 ms of main-thread time. iOS 26 flags it in the bargain —
+    ///
+    ///     [com.apple.Accessibility:AXCommon] Potential Structural Swift
+    ///     Concurrency Issue: unsafeForcedSync called from Swift Concurrent
+    ///     context.
+    ///
+    /// — twice at every launch, which was traced here by removing this one call
+    /// and watching both go to zero. Apple's forced sync is Apple's business,
+    /// but a runtime issue that always fires is noise that hides the next real
+    /// one, and blocking the main thread at launch is ours.
+    ///
+    /// Idempotent and race-free: `speak()` may still resolve synchronously
+    /// while this is in flight, and whoever lands first wins. Nothing waits on
+    /// this — skipping it entirely only costs the first utterance its lookup.
     public func prewarm() {
-        _ = voice()
+        guard resolvedVoice == nil, !resolving else { return }
+        resolving = true
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            // Resolved whole on this thread: constructing the voice by
+            // identifier goes back to the same database, so splitting the work
+            // would just move half the block back to the main thread.
+            let resolved = SpeechFallback.resolveSystemVoice()
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated {
+                    guard let self else { return }
+                    self.resolving = false
+                    // `speak()` got there first: keep its answer, not ours.
+                    guard self.resolvedVoice == nil else { return }
+                    self.resolvedVoice = .some(resolved)
+                }
+            }
+        }
     }
 
     public func speak(_ text: String, rate: Double, pitch: Double, onEnd: @escaping (Bool) -> Void) {
@@ -169,10 +205,23 @@ public final class SpeechFallback: NSObject, SpeechPlayback, AVSpeechSynthesizer
         }
     }
 
+    /// The voice, resolving it here and now if `prewarm()` has not landed yet.
+    /// That synchronous path is the one `speak()` needs to keep — a child who
+    /// taps the score in the first moments of a launch must hear it, not wait.
     private func voice() -> AVSpeechSynthesisVoice? {
         if let cached = resolvedVoice { return cached }
-        // `voiceschanged` is not ported: `speechVoices()` is stable per launch,
-        // and the language is fixed `fr`.
+        let resolved = Self.resolveSystemVoice()
+        resolvedVoice = .some(resolved)
+        return resolved
+    }
+
+    /// The system lookup, with no actor and no state: safe to run on whichever
+    /// thread the caller is on. `nonisolated` is what lets `prewarm()` keep it
+    /// off the main one.
+    ///
+    /// `voiceschanged` is not ported: `speechVoices()` is stable per launch, and
+    /// the language is fixed `fr`.
+    private nonisolated static func resolveSystemVoice() -> AVSpeechSynthesisVoice? {
         let candidates = AVSpeechSynthesisVoice.speechVoices().map { voice in
             FrenchVoiceCandidate(
                 identifier: voice.identifier,
@@ -182,10 +231,8 @@ public final class SpeechFallback: NSObject, SpeechPlayback, AVSpeechSynthesizer
             )
         }
         let picked = FrenchVoicePicker.pickBest(candidates)
-        let resolved = picked.flatMap { AVSpeechSynthesisVoice(identifier: $0.identifier) }
+        return picked.flatMap { AVSpeechSynthesisVoice(identifier: $0.identifier) }
             ?? AVSpeechSynthesisVoice(language: "fr-FR")
-        resolvedVoice = .some(resolved)
-        return resolved
     }
 
     // MARK: - AVSpeechSynthesizerDelegate

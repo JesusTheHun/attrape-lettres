@@ -1438,3 +1438,87 @@ exactly: `(insides → [true]) == [false]` — the flick taps.
   It delays `touchesBegan` to content VIEWS, not to gesture recognisers attached
   to them, so the touch-down path should be unaffected — but "should" is what
   this entry is about. Still unmeasured.
+
+---
+
+## D50 — Two runtime issues at launch, traced by deletion
+
+Xcode printed this twice on every launch, on device and in the simulator:
+
+```
+Potential Structural Swift Concurrency Issue: unsafeForcedSync called from
+Swift Concurrent context.
+```
+
+**Whose?** The log line carries a subsystem the Xcode Issue navigator drops:
+
+```
+[com.apple.Accessibility:AXCommon] Potential Structural Swift Concurrency Issue: …
+```
+
+Accessibility, not SwiftUI and not our audio. The obvious suspect was therefore
+`UIAccessibility.isReduceMotionEnabled` (`SystemReduceMotion`,
+`SystemDefaultReduceMotion`) — and that was wrong. The line immediately after
+the second fault named the real one:
+
+```
+[com.apple.Accessibility:VoiceDBClient] Error fetching voices: DecodingError…
+```
+
+`TextToSpeech` logs under the Accessibility subsystem. The call is
+`AVSpeechSynthesisVoice.speechVoices()`, from `SpeechFallback.prewarm()`.
+
+**Confirmed by deletion, not by reading.** One probe build with
+`(speech as? SpeechFallback)?.prewarm()` commented out: both faults went to
+**zero**. Restored, they came back. That is the whole diagnosis — no stack
+trace needed, and no guess of the kind D48 is an apology for.
+
+### What was actually wrong, and it was ours
+
+Apple's forced sync is Apple's business. Where it ran was ours:
+`speechVoices()` is a synchronous IPC to the system voice database, invoked on
+the **main thread** at launch, and the two faults straddle 54 ms of it. The
+lookup now runs on `DispatchQueue.global(qos: .userInitiated)` and hands the
+resolved voice back — the same shape `ClipPlayer.preload` already uses.
+
+`voice()` keeps its synchronous path: a child who taps the score in the first
+moments of a launch must hear it, not wait for a background resolve. Whoever
+lands first wins, and both roads lead to the same database, so the race has no
+wrong outcome.
+
+**Verified by measurement, not by a unit test**: 2 faults → 0, with the voice
+database still consulted 134 times in the same launch (so the work still
+happens, off the main thread). A host test could only have asserted which queue
+a call was made on, which is the thing measured here directly. The picker logic
+it feeds was already covered by `FrenchVoicePicker`'s tests, and is untouched.
+
+Worth keeping the reason for caring: a runtime issue that fires on every launch
+is noise, and noise is what hides the next real one.
+
+### The two audio lines in the same console dump
+
+```
+IPCAUClient.cpp:139   IPCAUClient: can't connect to server (-66748)
+AVAudioBuffer.mm:281  mBuffers[0].mDataByteSize (0) should be non-zero
+```
+
+**Not reproducible here** — zero occurrences in the simulator across every run
+of this investigation, so what follows is reasoning, not a finding, and is
+labelled as such.
+
+Both are AVFAudio's own diagnostics, and neither can come from a buffer this app
+built: `renderBuffers` refuses an empty sample array before it makes a buffer,
+and `ClipPlayer.decode` refuses a file with `frames == 0`. The pairing points at
+the engine starting while the IO server is unreachable, which on iOS means the
+audio session was not active — and `start()` runs from the root view's `.task`,
+which is not a guarantee of a foreground-active app.
+
+`unlock()` already heals that on the first tap, so it was never a functional
+bug. But invariant 1 says the tap must not pay for the engine start, so
+`prewarm()` now also runs on scene `.active`. That closes a second, unrelated
+gap that WAS reachable: an interruption ending with `shouldResume == false`
+leaves the graph suspended (`LiveAudioEngine.handle`) until something taps.
+
+**This is not verified to silence those two lines**, and it is not offered as
+their fix. It is right on its own terms; the diagnosis stays a hypothesis until
+a device says otherwise.
