@@ -2033,3 +2033,99 @@ the balance. It is the only test that would catch an engine that stopped calling
 nothing wrong, which is what made the answer « this is your design » defensible
 rather than a shrug — and after the change its expectation collapsed from a
 conditional to `curve[0] + difficulty.weight` for every row.
+
+## D53 — Pairing, and the first thing the two apps do not share
+
+`createHousehold()` and `joinHousehold(_:)` were written with the rest of
+`SyncClient` and called by nothing outside a test for the whole port, because
+`ALSyncURL` was empty and `enabled` was false whatever they did. A deployed
+server changed that, and exposed the one gap no amount of merge logic fills:
+two devices agreeing on **which** household they are.
+
+There is no TSX to port. The PWA has no pairing screen, so this is the first
+behaviour the two apps do not share, and it is recorded here rather than left
+for someone to find by diffing. The web app cannot reach the API at all today —
+the HTTP API declares no CORS, deliberately — so the divergence is not costing
+a shipped feature; it will need reconciling if the PWA ever syncs.
+
+### Apple has no family identifier, and that decided the design
+
+The obvious question is whether an Apple family can pair itself. It cannot.
+Nothing exposes family membership to a third-party app, on purpose: a family id
+would be a cross-user identifier, which is what the Kids Category exists to
+prevent being shared. `Transaction.ownershipType == .familyShared` says an
+entitlement reached you *through* a family and carries no key to pair on.
+`NSUbiquitousKeyValueStore` and CloudKit's private database are per **Apple ID**,
+not per family. `CKShare` crosses accounts but is itself an invitation flow —
+the same UX, wrapped in Apple's sheet, plus a second backing store beside the
+API we already run and a mandatory iCloud account.
+
+So both paths exist, and they carry different authority:
+
+* **iCloud KVS** settles one parent's own devices — phone and the family iPad —
+  automatically, with no screen. Three short strings, no container, no schema.
+* **A scanned link** is the only thing that crosses two Apple IDs, and the only
+  mechanism Android or the web could ever have.
+
+`CLAUDE.md` and `LicenseStore.swift` both plan entitlement "keyed by `familyId`".
+There is no `familyId` to key on. That plan needs a different anchor —
+`Transaction.appAccountToken` is the candidate, since we set it ourselves, but it
+exists only after a purchase and its propagation to family-shared transactions
+wants verifying on real hardware before anything is built on it.
+
+### Stamping is what makes "the scanned id wins" true
+
+A scan stamps `at: now` and is published to iCloud, so it outranks what this
+device held *and* what the family's other devices hold. Without the stamp, the
+deterministic tie-break would drag a freshly paired device back to the lower id
+and silently undo the pairing; there is a test named for that. Where no stamp
+means anything — two households each minted offline — lowest id wins. Which one
+is arbitrary; that both devices independently pick the same one is not, and the
+order is total and tested for commutativity, associativity and idempotence over
+every permutation of eight claims.
+
+This is a bare last-write-wins value, which invariant 9 forbids for anything a
+child accumulates. It is allowed for the same reason cosmetics are: **losing it
+costs nothing.** Joining swaps the id and blanks the ETag; it does not clear the
+roster, so the next `syncOnce` merges the local roster *into* the newly joined
+household. A week of stars on the losing device arrives in the winning household
+on the first sync after pairing. `HouseholdPairingTests` holds a roster still
+across a join, because that is the claim a parent would be angriest about.
+
+The hazard that remains is not data loss: a **third** device still pointing at
+the abandoned household keeps every star and keeps working, but stops converging
+until it is paired too. `SyncClient` cannot detect it — the abandoned document
+is on a server it no longer asks about — so the screen says it in French.
+
+### No camera, and the plist that cost
+
+The screen displays a QR and never reads one. An in-app scanner needs
+`NSCameraUsageDescription` on an app whose permission set is otherwise empty —
+one more line to justify in a Kids Category review, for something a parent does
+once. The system camera already reads QR codes and offers to open an installed
+app, so the code encodes a `PairingLink` URL rather than a bare id, which is why
+there is a URL scheme at all. `AppLinkContractTests` fails if that key ever
+appears, and fails if the scheme in the plist and the scheme in ALCore drift —
+nothing else would notice, since renaming one side still compiles and still
+ships and simply never opens.
+
+A custom scheme can be claimed by another app; a universal link cannot, and
+degrades to a web page when the app is not installed. It needs an
+associated-domains entitlement and an `apple-app-site-association` served from
+the API — both cheap now that we own the domain, neither free. What a hostile
+app would gain by intercepting is a household id, which unlocks anonymous
+progress counters and no name. Worth revisiting when the API serves an AASA.
+
+Two build-system findings, both of which cost a failed build:
+
+* `CFBundleURLTypes` is an array of dictionaries and has no `INFOPLIST_KEY_`
+  spelling. Setting `GENERATE_INFOPLIST_FILE` and `INFOPLIST_FILE` together does
+  not merge them — `error: Multiple commands produce '.../Info.plist'`. So
+  generation is off and every key lives in one readable file.
+* The app target is an Xcode 16 `PBXFileSystemSynchronizedRootGroup`: everything
+  under `App/AttrapeLettres/` joins the target automatically. An Info.plist there
+  is copied as a resource *and* processed as the Info.plist. Both config files
+  live in `App/Config/`, which needs no membership exception.
+
+Verified in the built Release binary rather than the source: `ALSyncURL` and
+`CFBundleURLTypes` are both in the shipped `Info.plist`.
