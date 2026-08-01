@@ -9,6 +9,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { buildApp } from "../src/app.js";
 import { DynamoHouseholdStore } from "../src/household/dynamo.js";
+import { MAX_CHILD_BYTES, wireChild } from "../src/household/wire.js";
 import type { WireChild, WireRoster } from "../src/household/wire.js";
 import { InMemoryTelemetrySink } from "../src/telemetry/sink.js";
 
@@ -256,16 +257,19 @@ describe.skipIf(!ENDPOINT)("DynamoDB, for real", () => {
     expect(result).toEqual({ ok: false, conflict: true });
   });
 
-  it("accepts a schema-legal child that real DynamoDB would REJECT", async () => {
-    // Not a happy result. `colors` and `styles` are records with no bound on
-    // how many keys they hold, and `owned` allows 500 strings of 128 characters
-    // per species across five species — so a child can be schema-legal at well
-    // over 400 KB, which real DynamoDB refuses and this engine does not.
+  it("accepts an oversized child that real DynamoDB would REJECT, so the schema has to", async () => {
+    // The gap this file exists to name. `colors` and `styles` are records with
+    // no bound on how many keys they hold, and `owned` allows 500 strings of
+    // 128 characters per species across five species, so the field rules alone
+    // permit a child of well over 400 KB. Real DynamoDB refuses such an item.
+    // DynamoDB Local does not, as the assertion below demonstrates — which
+    // means item-size enforcement CANNOT be exercised anywhere in this suite.
     //
-    // Recorded as a test rather than a comment because it says exactly what is
-    // NOT covered here: item-size enforcement cannot be exercised locally, so
-    // the guard against it is the size alarm in production, and the diagnostic
-    // is the log line in the store's failure path.
+    // So the guard is not here and cannot be. It is `MAX_CHILD_BYTES` in
+    // `wire.ts`, checked before the transaction, asserted at the end of this
+    // test and covered properly in `observability.test.ts`. The store's own
+    // failure path stays as a diagnostic for the day the two ceilings drift
+    // apart, not as the defence.
     const id = household();
     const huge = child("zoe", 1);
     huge.profile.species.dragon!.owned = Array.from({ length: 500 }, (_, n) =>
@@ -281,6 +285,11 @@ describe.skipIf(!ENDPOINT)("DynamoDB, for real", () => {
       ok: true,
       etag: '"1"',
     });
+
+    // …and this is the line that closes it. Nothing below the schema will stop
+    // this child, on this engine or on the real one, so the schema does.
+    expect(wireChild.safeParse(huge).success).toBe(false);
+    expect(bytes).toBeGreaterThan(MAX_CHILD_BYTES);
   });
 });
 

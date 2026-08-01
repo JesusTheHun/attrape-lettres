@@ -5,34 +5,21 @@ server this product has, and it has no database.
 
 ```bash
 HOUSEHOLD_TABLE=… TELEMETRY_BUCKET=… pnpm dev   # tsx watch
-pnpm test                                       # 46 tests, no AWS needed
+pnpm test                                       # 69 tests, no AWS needed
 pnpm dynamo:local && pnpm test:integration      # + 11 against a real DynamoDB
+pnpm bundle                                     # one esbuild file for Lambda
+./scripts/deploy.sh                             # bundle, package, deploy, smoke
 ```
 
-## What the tests do and do not prove
+## The thing to understand first
 
-`pnpm test` stubs every store call. It exercises real routing, real Zod
-validation and the real store logic, and it proves the commands we build are the
-ones we meant to build — **and nothing about whether DynamoDB accepts them**. A
-stub also cannot lose a race: the in-memory double is single-threaded, so its
-"concurrency" tests are two sequential writes wearing the same etag.
+**Both clients fail silent.** Anything that is not a 200, a 404 or a 412 is
+swallowed and the device keeps playing offline. That is correct — a six-year-old
+mid-round must never wait on a network call — and it means nothing that breaks
+here reaches a user, a support inbox or a crash reporter. It surfaces months
+later as two phones quietly disagreeing about a child's stars.
 
-`pnpm test:integration` runs the same store against `amazon/dynamodb-local` for
-the handful of properties only a real engine can answer: the condition
-expressions parse, the transaction actually serialises under eight genuinely
-concurrent writers, an empty map survives marshalling, and the paging loop runs
-at all. Without `DYNAMO_ENDPOINT` that file skips loudly, so a skip is never
-mistaken for coverage.
-
-One thing neither can prove: **DynamoDB Local does not enforce the 400 KB item
-limit.** A 430 KB child is written there without complaint. That is recorded as
-a passing test asserting the gap rather than as a comment, because the gap is
-the point — see below.
-
-`src/server.ts` is the only file that reads env, opens a client or listens.
-Everything else is a pure function of its dependencies, which is why the tests
-run against real routing and real validation with an in-memory store, in
-milliseconds.
+Every unusual decision below follows from that one sentence.
 
 ## The contract
 
@@ -74,12 +61,10 @@ in one partition and a single `Query` returns it all — `#` sorts before `c`, s
 the root arrives first.
 
 **Why shard.** DynamoDB caps one item at 400 KB, and the household document is
-the only unbounded thing here: children × five mascots × up to five hundred
-owned accessories × a per-device clear counter for every exercise and level,
-accumulating for years. As one blob, a large family approaches that ceiling; per
-child, each item would have to reach 400 KB on its own. Crossing it fails the
-push — and both clients swallow the failure, so the family would simply stop
-syncing and nobody would be told.
+the only unbounded thing here: children × five mascots × owned accessories × a
+per-device clear counter for every exercise and level, accumulating for years.
+As one blob, a large family approaches that ceiling; per child, each item would
+have to reach 400 KB on its own.
 
 **Why the write is a transaction.** Writing children first and the root last
 looks equivalent and silently loses stars: a push whose root condition fails has
@@ -89,76 +74,170 @@ newest play. `TransactWriteItems` makes the root's precondition govern every
 sidecar in the same push. It costs double write units — a rounding error on a
 rounding error at this volume.
 
-**Two numbers that are coupled.** A transaction takes at most 100 items and a
-push writes one root plus one item per child, which is what makes `wireRoster`'s
-cap of 64 children load-bearing rather than polite. Raising it above 99 would
-start rejecting valid rosters at the store instead of at the schema.
+**Three numbers that are one constraint.** A transaction takes at most 100 items
+and 4 MB; a push writes one root plus one item per child. So `wireRoster` caps
+children at 64, `MAX_CHILD_BYTES` caps one child at 256 KB, and `MAX_BODY_BYTES`
+caps the request at 2 MB. Change any of them and check the other two.
 
-**The per-child ceiling is not enforced by the schema, and should be.** Sharding
-moved the 400 KB limit from per family to per child, which buys a lot of room —
-but not an unbounded amount, and the wire schema does not police it: `colors`
-and `styles` are records with no bound on how many keys they hold, and `owned`
-allows 500 strings of 128 characters per species across five species. A child
-that is entirely legal by the schema can exceed 400 KB, and the integration
-suite writes exactly such a child to prove it. Real DynamoDB would refuse it,
-the push would fail, and both clients would swallow the failure.
+**The per-child ceiling is enforced at validation.** `colors` and `styles` are
+records with no bound on how many keys they hold, and `owned` allows 500 strings
+of 128 characters per species across five species — so a child that is entirely
+legal by the field rules can exceed 400 KB, and the integration suite writes
+exactly such a child to prove it. `MAX_CHILD_BYTES` is the ceiling that stops it:
+256 KB of JSON, which is five times the largest profile this game can produce at
+ten devices and safely under DynamoDB's limit once its own accounting (which
+does not count the quotes and braces JSON adds) is taken into account.
 
-Nothing pre-rejects on size: rejecting a write DynamoDB would have accepted is
-worse than the error it prevents. What the store does instead is name the
-largest child in the log on any non-conflict failure, because that log line may
-be the only trace that a family stopped syncing.
+A 400 is swallowed by both clients exactly as a 500 is, so this does not make the
+failure visible on its own. What it buys is that the rejection happens *before*
+the transaction, deterministically, in one place that knows which household and
+which child — which is what `household.oversized` and its alarm are built on.
+Nothing pre-rejects on size at the store, because rejecting a write DynamoDB
+would have accepted is worse than the error it prevents.
 
 **Tombstoned children are still returned.** A tombstone does not delete: the
 device-side merge resurrects a child whose `touchedAt` is later than the
 tombstone, because a parent tidying the roster on one phone must not erase a
 week of play that happened on the other. Filtering them here would be a merge
-rule living on the server — the one thing this design does not do — and it would
-make that resurrection impossible.
+rule living on the server — the one thing this design does not do.
 
 **The root stores the child order.** A `Query` returns sort-key order, which
 would quietly re-alphabetise a family's roster on its first sync. Order is
-observable in the merge, so it is stored rather than recomputed, and a pull
-returns exactly the array that was pushed.
+observable in the merge, so it is stored rather than recomputed.
 
-### The table
-
-One table, no secondary index, no stream. Nothing is ever queried across
-households — there is no code-to-id lookup, because the join code *is* the
-household id.
+## Deploying
 
 ```bash
-aws dynamodb create-table \
-  --table-name attrape-households \
-  --attribute-definitions AttributeName=pk,AttributeType=S AttributeName=sk,AttributeType=S \
-  --key-schema AttributeName=pk,KeyType=HASH AttributeName=sk,KeyType=RANGE \
-  --billing-mode PAY_PER_REQUEST
+ALARM_EMAIL=you@example.com \
+DOMAIN_NAME=api.example.fr HOSTED_ZONE_ID=Z0123… \
+./scripts/deploy.sh
 ```
 
-The service will not create it. A process that can create its own store will
-happily create a second, empty one after a typo in `HOUSEHOLD_TABLE` — at which
-point every family looks brand new and nothing errors. It calls `DescribeTable`
-on boot and refuses to start instead.
+One CloudFormation stack: a DynamoDB table, an S3 bucket, one Lambda behind an
+HTTP API, the Glue tables that make the telemetry queryable, and the alarms.
+`infra/template.yaml` is commented at length; the shape of it is:
 
-**`If-Match` absent means "I believe this household does not exist"** — which is
-exactly what a client says after a 404. So it creates, and conflicts if
-something is already there. It is never a blind overwrite: a client that lost
-its etag must re-read before it can write. A malformed etag is likewise a 412
-rather than a 400, because "re-pull and retry" is the right client response and
-a 400 would be swallowed and retried forever.
+**Lambda, not a container.** The workload is idle almost all the time — a
+household syncs on app open and on resume — so anything always-on bills for the
+twenty-three hours nobody is playing. The free tier is a million requests a
+month, forever, rather than for twelve months.
 
-## Two operational hazards
+**An HTTP API in front, not a Function URL.** Two reasons, both the same reason.
+The endpoint is compiled into a native binary that changes only through store
+review, so it must outlive the stack that created it, and a Function URL dies
+with its function. And a custom domain over a Function URL means CloudFront,
+which forwards no request headers by default — `If-Match` would vanish, every
+push would become a create, every create would conflict, and sync would stop for
+everyone. An HTTP API passes `If-Match` and `ETag` through untouched.
 
-**Do not let anything strip or rewrite the `ETag` header.** Both clients read
-`etag ?? ""` on the pull and send no `If-Match` when it is empty — so a proxy
-that drops ETag turns every push into a create, which conflicts, which retries
-three times and gives up. Sync then fails permanently and *silently*, because
-both clients swallow the error and keep playing offline. Compression middleware
-that weakens ETags does the same thing. This is the single easiest way to break
-this service without anyone noticing.
+> **Ship a custom domain before you ship an app.** `DomainName` is optional in
+> the template and mandatory in practice. The generated
+> `https://<id>.execute-api.<region>.amazonaws.com` dies with the stack, and an
+> installed binary cannot be repointed without a store release. Build the apps
+> against a name you own.
 
-**Deploy this before a client that adds a mascot.** The species key is a closed
-enum. A sixth mascot shipped to clients first would 400 every push from an
-updated device.
+**The stack does not create everything it uses, on purpose.** The table, the
+bucket and the log group are `Retain` on both delete and replace. `delete-stack`
+is one command, and the table is every star every child in every family has
+earned — unrecoverable, because a device that pulls a 404 creates a fresh
+household and the join code linking a family's phones is gone.
+
+**The role's omissions are the point.** No `DeleteItem`, `UpdateItem`, `Scan` or
+`GetItem`; no `s3:GetObject` or `DeleteObject`; no `logs:CreateLogGroup`. A
+compromised function can overwrite one household at a time under a condition it
+must first satisfy, and append telemetry. It cannot enumerate families, erase a
+child's progress, or read a single analytics row back. A test asserts this.
+
+## Detection, because nothing else will tell you
+
+`src/log.ts` writes one line of JSON per request, plus a line for a validation
+refusal, an unhandled throw and a failed store write. The alarms in the template
+are CloudWatch metric filters over those lines.
+
+| Alarm | Fires when |
+|---|---|
+| `server-errors` | A handled 500. **Lambda's own `Errors` metric cannot see these** — `onError` catches the throw, so the invocation succeeded as far as Lambda knows. |
+| `write-failures` | A push reached the store and did not land. |
+| `oversized-child` | A child no longer fits in one item. That family's sync has stopped for good. |
+| `conflict-storm` | Most pushes are conflicting. |
+| `lambda-errors` / `lambda-throttles` | Init failure, timeout, no concurrency left. |
+| `table-errors` | DynamoDB failed on its own side. |
+| `sync-went-quiet` | A full day with no successful push. Ships disabled. |
+
+The last two are the ones worth understanding.
+
+**`conflict-storm` is the ETag alarm.** A 412 is ordinary traffic — it is how two
+phones take turns — so its absolute count says nothing and its *ratio* says
+everything. Strip or weaken the `ETag` header anywhere in front of this service
+and both clients start sending no `If-Match` at all: every push becomes a create,
+every create conflicts, the rate goes to ~100% and stays there while the apps
+keep playing offline as though nothing happened. It is metric math over pushes
+and conflicts, guarded on volume so a quiet hour cannot page anybody.
+
+**`sync-went-quiet` alarms on absence.** An expired certificate, a changed DNS
+record, an app built against the wrong hostname — none of them produce an error
+here, because none of them reach here. They look identical from inside the
+service: traffic simply stops. It treats missing data as breaching, because no
+data *is* the alarm. It ships off, because a product with no users would fire it
+nightly; turn it on the day there is a baseline to fall below.
+
+**The strings are a contract, and `test/infra.test.ts` enforces it.** The filters
+match literal substrings of the log lines. That test reads every `FilterPattern`
+out of the template, drives the real app until it produces real log lines, and
+fails if any pattern no longer matches one — so renaming an event breaks a test
+instead of leaving a stack of alarms that read healthy forever. It does the same
+for the Glue columns against the Zod schema, and for the partition template
+against the keys the sink writes.
+
+**`deploy.sh` smoke-tests the ETag round trip on every run.** Not "did it
+deploy" — that is what the deploy command answered — but "does a stale
+`If-Match` still come back 412 and a fresh one still come back 200". It is the
+one question a successful deploy cannot answer.
+
+## Reading the telemetry
+
+The stack creates a Glue database with an `events` and an `errors` table over
+the NDJSON in S3, plus an Athena workgroup. Partitions come from **projection**,
+not a crawler: Athena works the date out of the `dt=YYYY-MM-DD` prefix, so
+nothing runs when a new day starts and no maintenance job can quietly stop
+running.
+
+`infra/athena.sql` holds the questions — what gets played and what gets
+abandoned, accuracy by exercise and level, the money funnel, purchase failures,
+errors grouped by message, which app versions are still in the wild. Every one
+filters on `dt`, which is the whole cost control: Athena bills per byte scanned
+and the workgroup caps a single query at one gigabyte.
+
+**None of this data has a device id, a household id or a session id.** Two rows
+from one phone are indistinguishable from two rows from two phones. There is no
+"users", no retention curve and no per-person cohort, by construction — see
+invariant 10 and the Kids Category note in the root `CLAUDE.md`. Read these as
+event counts, never as people.
+
+## What the tests do and do not prove
+
+`pnpm test` stubs every store call. It exercises real routing, real Zod
+validation and the real store logic, and it proves the commands we build are the
+ones we meant to build — **and nothing about whether DynamoDB accepts them**. A
+stub also cannot lose a race: the in-memory double is single-threaded, so its
+"concurrency" tests are two sequential writes wearing the same etag.
+
+`pnpm test:integration` runs the same store against `amazon/dynamodb-local` for
+the handful of properties only a real engine can answer: the condition
+expressions parse, the transaction actually serialises under eight genuinely
+concurrent writers, an empty map survives marshalling, and the paging loop runs
+at all. Without `DYNAMO_ENDPOINT` that file skips loudly, so a skip is never
+mistaken for coverage.
+
+One thing neither can prove: **DynamoDB Local does not enforce the 400 KB item
+limit.** A 430 KB child is written there without complaint. That is recorded as a
+passing test asserting the gap — and asserting, in the same test, that the wire
+schema refuses the child that the store would have taken.
+
+`src/server.ts` and `src/lambda.ts` are the only files that read env or listen;
+`src/aws.ts` is the only one that opens a client. Everything else is a pure
+function of its dependencies, which is why the tests run against real routing and
+real validation with an in-memory store, in milliseconds.
 
 ## Privacy is enforced here, not just on the clients
 
@@ -173,23 +252,42 @@ carrying one is rejected. Validation failures never echo the payload back —
 reflecting rejected input is how a server that holds no personal data starts
 logging some.
 
+**The logs are held to the same rule**, which took two fixes to get right. A
+household id is the only credential this service has — whoever holds one can read
+and overwrite that family's roster — and it sits in the path of every household
+request. So the request log records the matched route template (`/household/:id`)
+and never `c.req.path`, and the store's failure line records a hash of the id
+rather than the id. A Zod issue path walks into record *keys*, and in this schema
+those keys are device ids, so paths are scrubbed: a segment survives only if it
+is an array index or looks like a schema field name, and every id this system
+mints fails that test.
+
 Telemetry rows carry no device id, no household id and no session id. There is
 deliberately nothing to group them by, which is what makes them anonymous rather
 than pseudonymous — and why the data needs no retention policy. The object key
 is random rather than derived from anything in the payload, so it cannot quietly
-become a grouping handle either.
-
-Telemetry lands in S3, not in the households table. Newline-delimited JSON under
-`events/dt=YYYY-MM-DD/` and `errors/dt=YYYY-MM-DD/`, one object per accepted
-batch — one request to write, readable with Athena or by downloading a day, and
-nothing running in between. It is a different store from family data for the
-same reason it is a different port in the code.
+become a grouping handle either. The 400-day lifecycle rule on the bucket is a
+cost rule, not a privacy one.
 
 `message` and `stack` on `/errors` are the only free-form strings this service
 accepts anywhere. Both ends truncate.
 
 Adding a field to any of this means extending the tests that assert a name
 cannot appear in a payload. Never widen one side by reflex.
+
+## Two operational hazards
+
+**Do not let anything strip or rewrite the `ETag` header.** Both clients read
+`etag ?? ""` on the pull and send no `If-Match` when it is empty — so a proxy
+that drops ETag turns every push into a create, which conflicts, which retries
+three times and gives up. Sync then fails permanently and *silently*.
+Compression middleware that weakens ETags does the same thing. This is the
+single easiest way to break this service without anyone noticing, which is why
+`conflict-storm` exists and why `deploy.sh` checks it every time.
+
+**Deploy this before a client that adds a mascot.** The species key is a closed
+enum. A sixth mascot shipped to clients first would 400 every push from an
+updated device.
 
 ## Deliberately not done
 
@@ -205,8 +303,17 @@ cannot appear in a payload. Never widen one side by reflex.
   the one origin explicitly when the backoffice lands.
 - **No cleanup of tombstoned sidecars.** A deleted child's item is kept, because
   a tombstone does not delete — a later `touchedAt` resurrects the child, and a
-  swept sidecar would make that unrecoverable. The cost is one small item per
-  removed child, read on that family's pulls and nobody else's.
+  swept sidecar would make that unrecoverable.
 - **No secondary index, no stream, no TTL.** Nothing is queried across
   households, so there is nothing to index. "How many families are there" is a
   scan or an S3 inventory report, run when someone actually asks.
+- **No `DescribeTable` probe on Lambda.** `server.ts` keeps it, because a human
+  typing `HOUSEHOLD_TABLE` can typo it and every family would look brand new.
+  Under CloudFormation the name comes from a `Ref` to the table it just created,
+  so there is nothing to catch and no reason to spend a control-plane call on
+  every cold start.
+- **No API Gateway access log.** The function already writes one structured line
+  per request; a second copy would double the log bill to say less.
+- **No CI.** The deploy script runs the tests and refuses to continue if they
+  fail, which is the property that matters. A pipeline is worth adding when more
+  than one person deploys.

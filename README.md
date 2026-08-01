@@ -13,7 +13,8 @@ apps/
   game-android/   the native app — Kotlin · Compose · Gradle. Port in progress
   backoffice/     not built yet
 services/
-  api/            household sync + telemetry — Hono · Zod · DynamoDB · S3
+  api/            household sync + telemetry — Hono · Zod · DynamoDB · S3,
+                  shipped as one Lambda behind an HTTP API
 packages/         shared TypeScript — empty on purpose
 ```
 

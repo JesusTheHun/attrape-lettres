@@ -296,7 +296,95 @@ may be the only trace that a family stopped syncing.
 And a limit of the harness itself, recorded as a passing test rather than a
 comment: **DynamoDB Local does not enforce the 400 KB item cap.** The 430 KB
 child is accepted there. Item-size behaviour is therefore not covered by any
-test, and the real guard is a size alarm in production.
+test — which is why R10 moved the guard up to validation, where it can be.
+
+## R10 — The service is one Lambda, and most of its infrastructure is detection
+
+Built. `infra/template.yaml`, `infra/athena.sql`, `scripts/deploy.sh`,
+`src/lambda.ts`, `src/log.ts`, `test/infra.test.ts`.
+
+Everything here follows from one sentence that was already true and had no
+consequences until the service had to run somewhere: **both clients swallow every
+response that is not a 200, a 404 or a 412 and keep playing offline.** That is
+right for a six-year-old mid-round, and it means nothing that breaks on this
+server reaches a user, a support inbox or a crash reporter. It surfaces months
+later as two phones disagreeing about a child's stars.
+
+**Lambda, because the workload is idle.** A household syncs on app open and on
+resume, so a family of three devices makes a handful of requests a day. Anything
+always-on bills for the twenty-three hours nobody is playing, and Lambda's free
+tier is a million requests a month permanently rather than for twelve months.
+Scale-to-zero is also the honest shape for a product with no users yet.
+
+**An HTTP API in front, not a Function URL** — the free option, rejected twice
+over. The endpoint is compiled into a native binary that changes only through
+store review (R2), so it must outlive the stack that created it, and a Function
+URL dies with its function: recreate the stack and every installed app points at
+nothing, with no fix that is not a release. And a custom domain over a Function
+URL means CloudFront, which forwards no request headers by default — `If-Match`
+would vanish, every push would become a create, every create would conflict, and
+sync would stop for everyone. The one documented way to break this service would
+have been introduced by its own deployment. `DomainName` is optional in the
+template and mandatory in practice, and the README says so in a block quote.
+
+**The bundle includes the AWS SDK.** This is a pnpm workspace, so zipping
+`node_modules` produces broken symlinks; and which SDK version a managed runtime
+ships is not ours to choose, and has changed before. One esbuild output, not
+minified, because a mangled stack in the only record of an outage is a bad trade
+for a smaller zip.
+
+**The per-child ceiling moved to validation.** R9 left it unenforced: `colors`
+and `styles` are unbounded records and `owned` allows 500×128 characters per
+species, so a schema-legal child could be twenty times larger than a real one and
+the guard was "an alarm in production". `MAX_CHILD_BYTES` is 256 KB of JSON —
+five times the largest profile the game can produce at ten devices, and safely
+under 400 KB because JSON counts the quotes and braces that DynamoDB's own
+accounting does not. A byte ceiling rather than tighter field bounds, so the
+server is not coupled to the client's catalogue and a new accessory does not mean
+deploying the server first. It does not make the failure visible on its own — a
+400 is swallowed exactly as a 500 is — but it moves the rejection before the
+transaction, deterministically, where one log line can name the household and the
+child.
+
+**Two alarms are the interesting ones.** A conflict *ratio*, on metric math,
+because a 412 is ordinary traffic and only its proportion is diagnostic: strip
+the ETag header anywhere in front and the rate goes to ~100% and stays there. And
+an alarm on **absence** — a full day with no successful push, missing data
+treated as breaching — because an expired certificate, a changed DNS record or an
+app built against the wrong hostname all look identical from inside the service,
+which is to say they look like nothing at all. Nothing else in the stack looks
+for silence. It ships disabled, since a product with no users would fire it
+nightly.
+
+**The logs became a new way to leak, and two holes were already open.** A
+household id is the only credential this service has, and it sits in the path of
+every household request; the store's existing failure line was printing it in the
+clear. The request log now records the matched route template and never the raw
+path, the store logs a hash, and Zod issue paths are scrubbed — they walk into
+record keys, and in this schema those keys are device ids.
+
+**The strings that connect code to stack are tested.** Metric filters match
+literal substrings of the log lines, and the Glue columns restate the telemetry
+schema; neither side imports the other, and both would drift silently — a stale
+alarm never fires, and a stale column answers nothing, which reads like an
+answer. `test/infra.test.ts` reads the template as text, drives the real app, and
+fails if a pattern no longer matches a real line or a column no longer matches
+the Zod shape. `deploy.sh` smoke-tests the ETag round trip on every run, because
+that is the one question a successful deploy cannot answer.
+
+**Telemetry became readable** via Glue tables with partition projection — no
+crawler and no `MSCK REPAIR`, so nothing has to run when a new day starts and no
+maintenance job can quietly stop running — plus an Athena workgroup whose real
+purpose is its two guards: results expire in seven days and a single query cannot
+scan more than a gigabyte. `infra/athena.sql` holds the questions, and its header
+says the thing that matters most about this data: there is no device id,
+household id or session id anywhere in it, so it counts events and must never be
+read as people.
+
+Not done: no CI (the deploy script runs the tests and refuses to continue), no
+API Gateway access log (the function already writes one line per request), no
+`DescribeTable` probe on Lambda (the table name arrives from a `Ref`, so there is
+no typo to catch).
 
 ## R6 — Android is native, and unbuilt
 

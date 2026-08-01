@@ -16,7 +16,10 @@ apps/game-android/   the native app. Kotlin + Compose, a 5-module Gradle build.
                      progress: toolchain, module graph and rewards are in.
 apps/backoffice/     not built.
 services/api/        Hono + Zod. Household sync (ETag/412) on DynamoDB and
-                     telemetry on S3. Built; see its README.
+                     telemetry on S3. Ships as one Lambda behind an HTTP API;
+                     `infra/` is the whole deployment, and most of it is alarms,
+                     because both clients swallow every failure this service can
+                     produce. Built; see its README.
 packages/            shared TS. Empty on purpose — see its README.
 ```
 
