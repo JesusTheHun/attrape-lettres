@@ -74,7 +74,7 @@ Parameters:
   MaxConcurrency:
     Type: Number
     Default: 20
-    MinValue: 0
+    MinValue: -1
     Description: >-
       Reserved concurrency, which is both a cost ceiling and the kill switch.
       SET IT TO 0 AND THE SERVICE STOPS DEAD — every invocation is throttled,
@@ -88,6 +88,18 @@ Parameters:
       an unbounded bill overnight. The trade is that past the cap devices are
       throttled, which is a sync they retry on the next resume and an alarm we
       see immediately.
+
+      -1 MEANS "RESERVE NOTHING", and it exists because a reservation is not
+      always available. Lambda refuses any reservation that would leave the
+      account fewer than 10 unreserved executions, and a new AWS account has a
+      concurrency limit of exactly 10 until the quota is raised — so on a fresh
+      account the only permitted values are -1 and 0, and asking for 20 fails
+      the create outright. Reserving nothing there costs nothing: the account
+      limit of 10 is a tighter ceiling than this parameter would have been.
+      What it costs is LATER, because raising the quota to 1000 silently
+      removes that ceiling. scripts/deploy.sh is what keeps that from
+      happening — it reads the live limit on every deploy and reinstates the
+      reservation the moment there is room for it.
 
   GlueDatabaseName:
     Type: String
@@ -117,6 +129,9 @@ Conditions:
     - !Not [!Equals [!Ref DomainName, ""]]
     - !Not [!Equals [!Ref HostedZoneId, ""]]
   QuietAlarmOn: !Equals [!Ref EnableQuietSyncAlarm, "true"]
+  # -1 is "reserve nothing", which has to become an absent property rather than
+  # a number. See the parameter.
+  ReserveConcurrency: !Not [!Equals [!Ref MaxConcurrency, "-1"]]
 
 Resources:
   # -------------------------------------------------------------------------
@@ -275,7 +290,8 @@ Resources:
       # A device that times out retries on the next resume and loses nothing.
       Timeout: 10
       # Cost ceiling and kill switch in one number. See the parameter.
-      ReservedConcurrentExecutions: !Ref MaxConcurrency
+      ReservedConcurrentExecutions:
+        !If [ReserveConcurrency, !Ref MaxConcurrency, !Ref "AWS::NoValue"]
       Role: !GetAtt ApiRole.Arn
       LoggingConfig:
         LogGroup: !Ref ApiLogGroup
@@ -350,6 +366,21 @@ Resources:
         - DomainName: !Ref DomainName
           HostedZoneId: !Ref HostedZoneId
 
+  # `!Ref ApiCertificate` below does NOT hold this back until the certificate is
+  # issued, and it is worth knowing that before reading a stack event and
+  # concluding the template is broken. CloudFormation's ACM provider finishes
+  # its create as soon as ACM hands back an ARN — PENDING_VALIDATION — and does
+  # the wait for issuance in a separate stabilization phase, which does not
+  # block dependents. Measured on the first deploy of this stack: certificate
+  # "Eventual consistency check initiated" at 01:40:47.426, this resource
+  # started at 01:40:47.762. 336 ms, with DNS validation still minutes away.
+  #
+  # It works anyway because the ApiGatewayV2 provider treats "Certificate is
+  # not in an ISSUED state" as retryable and sits in its own loop — on that
+  # same deploy it retried for 36 seconds and only gave up when an unrelated
+  # failure elsewhere cancelled the certificate out from under it. `DependsOn`
+  # would not change any of this: it resolves at the same moment the implicit
+  # Ref does, and that moment has already passed.
   ApiDomain:
     Type: AWS::ApiGatewayV2::DomainName
     Condition: HasCustomDomain

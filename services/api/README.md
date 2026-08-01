@@ -197,6 +197,17 @@ concurrency of 20, which is roughly a thousand families opening the app in the
 same second and far beyond any real load. Past it, devices are throttled — a sync
 they retry on the next resume, and an alarm we see immediately.
 
+**A new AWS account cannot have that ceiling, and that is fine.** Lambda refuses
+any reservation leaving the account under 10 unreserved executions, and a fresh
+account's whole limit *is* 10 — so nothing above 0 is legal, and asking for 20
+fails the stack create outright. `deploy.sh` defaults to `MAX_CONCURRENCY=auto`,
+reads the live limit, and reserves nothing (`-1`) when there is no room. That
+costs nothing while the account limit is 10, because 10 is a tighter ceiling than
+20 would have been. It costs something the day the quota is raised — which is
+why `auto` re-checks on every deploy and puts the reservation back by itself
+rather than leaving a `-1` hard-coded somewhere nobody rereads. The warning it
+prints carries the `service-quotas` command.
+
 **Setting `MaxConcurrency=0` is the kill switch.** Every invocation is throttled,
 which both clients swallow, so children keep playing offline and nobody sees an
 error; families simply stop syncing between devices. `deploy.sh` asks for

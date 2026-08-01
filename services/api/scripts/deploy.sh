@@ -32,8 +32,15 @@ DOMAIN_NAME="${DOMAIN_NAME:-api.attrape-lettres.app}"
 HOSTED_ZONE_ID="${HOSTED_ZONE_ID:-Z0958531H2SK1733D6VT}"
 TELEMETRY="${TELEMETRY:-1}"
 QUIET_SYNC_ALARM="${QUIET_SYNC_ALARM:-false}"
-# Set to 0 to stop the service dead. See the template.
-MAX_CONCURRENCY="${MAX_CONCURRENCY:-20}"
+# Set to 0 to stop the service dead, -1 to reserve nothing. See the template.
+# "auto" asks the account what it will allow and takes the ceiling if there is
+# room for one — which there is not on a new account. See below.
+MAX_CONCURRENCY="${MAX_CONCURRENCY:-auto}"
+# What "auto" reaches for when the account has the headroom.
+WANT_CONCURRENCY="${WANT_CONCURRENCY:-20}"
+# Lambda's rule, hard-coded by AWS: a reservation may not leave the account
+# with fewer than this many unreserved executions.
+UNRESERVED_FLOOR=10
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$here"
@@ -50,6 +57,86 @@ account="$(aws sts get-caller-identity --query Account --output text)"
 # once, reused forever.
 artifacts="${ARTIFACTS_BUCKET:-${STACK}-artifacts-${account}-${REGION}}"
 
+# ---------------------------------------------------------------------------
+# How much concurrency this account will actually let us reserve.
+#
+# Lambda refuses a reservation that would leave the account under
+# UNRESERVED_FLOOR, and a NEW AWS ACCOUNT HAS A LIMIT OF EXACTLY 10 — so the
+# floor eats the entire budget and no positive reservation is legal at all.
+# The first deploy of this stack died on precisely that, five seconds in, after
+# the certificate had already been requested:
+#
+#   Specified ReservedConcurrentExecutions for function decreases account's
+#   UnreservedConcurrentExecution below its minimum value of [10]
+#
+# Asking here costs one API call and turns a rolled-back stack into a printed
+# sentence. It is also what puts the ceiling BACK the day the quota is raised:
+# hard-coding -1 once would remove the cost ceiling permanently and silently,
+# which is the failure this whole parameter exists to prevent.
+# ---------------------------------------------------------------------------
+conc_note=""
+if [ "$MAX_CONCURRENCY" != "-1" ] && [ "$MAX_CONCURRENCY" != "0" ]; then
+  limit="$(aws lambda get-account-settings --region "$REGION" \
+    --query "AccountLimit.ConcurrentExecutions" --output text)"
+  unreserved="$(aws lambda get-account-settings --region "$REGION" \
+    --query "AccountLimit.UnreservedConcurrentExecutions" --output text)"
+  # What this function already holds, if it exists: on an update Lambda swaps
+  # the old reservation for the new one, so our own is headroom, not spent.
+  mine="$(aws lambda get-function-concurrency --function-name "${STACK}-api" \
+    --region "$REGION" --query "ReservedConcurrentExecutions" \
+    --output text 2>/dev/null || true)"
+  case "$mine" in ''|None) mine=0 ;; esac
+  headroom=$(( unreserved + mine - UNRESERVED_FLOOR ))
+
+  if [ "$MAX_CONCURRENCY" = "auto" ]; then
+    if [ "$headroom" -ge "$WANT_CONCURRENCY" ]; then
+      MAX_CONCURRENCY="$WANT_CONCURRENCY"
+      conc_note="  (auto; account allows up to ${headroom})"
+    else
+      MAX_CONCURRENCY=-1
+      conc_note="  (auto; account allows ${headroom}, so no reservation)"
+      cat <<WARN
+
+  ------------------------------------------------------------------------
+  NO CONCURRENCY CEILING WILL BE SET.
+
+  This account's Lambda limit is ${limit}, and a reservation may not leave
+  fewer than ${UNRESERVED_FLOOR} unreserved, so the largest legal reservation
+  is ${headroom}. Deploying with none.
+
+  Nothing is unsafe about that TODAY — the account limit of ${limit} is a
+  tighter ceiling than the ${WANT_CONCURRENCY} we wanted. It stops being true
+  the moment the quota is raised, because then nothing caps this function.
+  Raising it and re-running this script reinstates the reservation:
+
+    aws service-quotas request-service-quota-increase \\
+      --service-code lambda --quota-code L-B99A9384 \\
+      --desired-value 1000 --region ${REGION} --profile ${PROFILE}
+
+  ------------------------------------------------------------------------
+
+WARN
+    fi
+  elif [ "$MAX_CONCURRENCY" -gt "$headroom" ]; then
+    cat <<ERR >&2
+MAX_CONCURRENCY=${MAX_CONCURRENCY} will be REFUSED by Lambda and roll the stack back.
+
+  account limit          ${limit}
+  currently unreserved   ${unreserved}
+  this function holds    ${mine}
+  largest legal request  ${headroom}
+
+Either reserve no more than ${headroom}, pass MAX_CONCURRENCY=-1 to reserve
+nothing, or raise the quota:
+
+  aws service-quotas request-service-quota-increase \\
+    --service-code lambda --quota-code L-B99A9384 \\
+    --desired-value 1000 --region ${REGION} --profile ${PROFILE}
+ERR
+    exit 1
+  fi
+fi
+
 cat <<SUMMARY
 stack      ${STACK}
 profile    ${PROFILE:-<ambient credentials>}
@@ -60,7 +147,7 @@ domain     ${DOMAIN_NAME:-<none — see the warning in README.md>}
 zone       ${HOSTED_ZONE_ID:-<none>}
 telemetry  ${TELEMETRY}
 alarms to  ${ALARM_EMAIL:-<nobody>}
-max conc   ${MAX_CONCURRENCY}
+max conc   ${MAX_CONCURRENCY}${conc_note}
 SUMMARY
 
 if [ "$MAX_CONCURRENCY" = "0" ]; then
@@ -93,6 +180,34 @@ if ! aws s3api head-bucket --bucket "$artifacts" --region "$REGION" 2>/dev/null;
     --region "$REGION" \
     --lifecycle-configuration \
       '{"Rules":[{"ID":"expire-old-bundles","Status":"Enabled","Filter":{},"Expiration":{"Days":30}}]}'
+fi
+
+# A stack whose very first create failed sits in ROLLBACK_COMPLETE, which
+# cannot be updated — only deleted. Worth catching before the tests and the
+# bundle rather than after, and worth spelling out, because the deletion has a
+# second half that is easy to miss: three resources carry DeletionPolicy Retain
+# precisely so a stack delete can never take a family's progress with it, and
+# they survive with their names, so the next create collides with them. That
+# protection is right, and on this one occasion it is also in the way.
+state="$(aws cloudformation describe-stacks --stack-name "$STACK" --region "$REGION" \
+  --query "Stacks[0].StackStatus" --output text 2>/dev/null || true)"
+if [ "$state" = "ROLLBACK_COMPLETE" ]; then
+  cat <<ROLLBACK >&2
+Stack ${STACK} is in ROLLBACK_COMPLETE — its first create failed, and
+CloudFormation cannot update a stack in that state. Delete it, then delete the
+three resources it deliberately kept:
+
+  aws cloudformation delete-stack --stack-name ${STACK} --region ${REGION}
+  aws cloudformation wait stack-delete-complete --stack-name ${STACK} --region ${REGION}
+  aws dynamodb delete-table --table-name ${STACK}-households --region ${REGION}
+  aws s3 rb s3://${STACK}-telemetry-${account} --force
+  aws logs delete-log-group --log-group-name /aws/lambda/${STACK}-api --region ${REGION}
+
+CHECK THEM FIRST. On a failed first create they are empty and this is
+bookkeeping; at any other time those commands delete every household on the
+service. This script will not run them for you.
+ROLLBACK
+  exit 1
 fi
 
 echo "==> tests"
