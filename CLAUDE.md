@@ -191,7 +191,23 @@ These are why the game feels alive to a child. Changing them silently will regre
   famille" belongs to the app that can keep the promise — it lives in the iOS
   app's `Copy.swift`, and the web build, which has no store, says "sur vos
   appareils". The fix, when it is wanted, is entitlement on the sync backend
-  keyed by `familyId` — cheap now that the household record exists.
+  keyed by the household — **not by a `familyId`, which does not exist.** No
+  API exposes Apple family membership to a third-party app, deliberately: a
+  family identifier would be a cross-user identifier, exactly what the Kids
+  Category exists to keep out. `Transaction.ownershipType == .familyShared`
+  says an entitlement arrived *through* a family and carries no key to join
+  on. The candidate anchor is `Transaction.appAccountToken`, which we set
+  ourselves — but it exists only after a purchase, so it is nothing during the
+  trial, and its propagation to family-shared transactions wants verifying on
+  real hardware before anything is built on it.
+- **A household is joined, never inferred.** Two devices agree either through
+  iCloud key-value store (same Apple ID only — one parent's phone and the
+  family iPad, automatically, with no screen) or by scanning a QR, which is
+  the only path that crosses two Apple IDs and the only one Android or the web
+  could ever have. A scan is stamped and therefore wins; joining merges the
+  local roster INTO the joined household, so losing the id costs nothing —
+  which is the only reason invariant 9 tolerates a last-write-wins value here.
+  `apps/game-ios/DECISIONS.md` D53 has the whole argument.
 
 ## Recipes
 
