@@ -70,11 +70,12 @@ clip") runs on a machine that has never staged the audio.
 | `:core` — domain, content, levels, rewards, persistence, sync, licensing, telemetry, VO | done — **551 tests**, 83 classes |
 | `:art` — SVG runtime, 17 exercise icons, 4 word images, 5 mascots + their rig | done — **185 tests**, 33 classes |
 | `:platform` — storage, clip bank, SFX, haptics, reduce-motion, transports | done — **70 tests**, 11 classes |
-| `:ui` — interaction, tokens, copy, Tile, GameFrame, confetti, components | done — **227 tests**, 34 classes |
-| `:ui` — the 17 exercise engines, hub, router, shop, adult screens | next |
+| `:ui` — interaction, tokens, copy, Tile, GameFrame, confetti, components | done |
+| `:ui` — the 9 exercise engines and their 3 models | done — `:ui` now **409 tests**, 58 classes |
+| `:ui` — hub, router, shop, the three adult screens | next |
 | `MainActivity` — wiring the real adapters in | after that; still a placeholder |
 
-1033 host tests, none skipped. `:core` is complete except for the sync client's
+1215 host tests, none skipped. `:core` is complete except for the sync client's
 ETag/412 retry loop and household identity, which wait on the API contract (A7).
 Everything the game computes — every ladder, every round builder, the economy, the
 migrations, the merge, the entitlement state machine — is ported and tested on the

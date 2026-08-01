@@ -141,6 +141,11 @@ private val allCopy: List<String> = listOf(
     Copy.Exercise.spellHeadlineMixed(SpellSyllableMode.LETTERS_EXACT),
     Copy.Exercise.spellHeadlineMixed(SpellSyllableMode.LETTERS_EXTRA),
     Copy.Exercise.spellHeadlineMixed(SpellSyllableMode.LETTERS_TWO),
+    // The four engine consignes iOS had inlined. They carry U+0027 in
+    // « s'écrit » / « s'écrire » and U+2014 in the twins line, which is exactly
+    // what the apostrophe and dash checks below exist to hold still.
+    Copy.Exercise.FIND_SOUND_HEADLINE, Copy.Exercise.READ_IMAGE_HEADLINE,
+    Copy.Exercise.SPELL_SOUND_HEADLINE, Copy.Exercise.SOUND_TWINS_HEADLINE,
 ) + Copy.Shop.SLOT_LABEL.values.sorted()
 
 /**

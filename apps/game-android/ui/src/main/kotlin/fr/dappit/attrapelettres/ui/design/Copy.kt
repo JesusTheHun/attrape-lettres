@@ -620,6 +620,25 @@ object Copy {
         /** A tile's audition button (contentDescription). */
         fun listenTile(text: String): String = "Écouter $text"
 
+        // The consigne printed above the mascot, per engine. Four engines author
+        // theirs and they live here; the other five take theirs from :core
+        // (`GRID_PROMPT` for the two grid drills, `MODE_HINT` for the three
+        // assemble modes) or from [spellHeadline] below. FirstLetter and
+        // LetterMatch print none at all — `headline` is null for those two.
+
+        /** `FindSoundExercise.tsx`. */
+        const val FIND_SOUND_HEADLINE = "Écoute le son et trouve comment il s'écrit"
+
+        /** `ReadImageExercise.tsx`. */
+        const val READ_IMAGE_HEADLINE = "Lis le mot et touche la bonne image"
+
+        /** `SpellSoundExercise.tsx`. */
+        const val SPELL_SOUND_HEADLINE = "Écoute le son et écris-le avec les lettres"
+
+        /** `SoundTwinsExercise.tsx`. U+2014 em dash, and U+0027 in « s'écrire ». */
+        const val SOUND_TWINS_HEADLINE =
+            "Un son peut s'écrire de plusieurs façons — trouve-les toutes !"
+
         // Tile contentDescriptions — invariant 6. The letter-FORM exercises use
         // `core.domain.faceLabel` instead, because the form has to be named too.
         fun letterTile(letter: String): String = "Lettre $letter"
