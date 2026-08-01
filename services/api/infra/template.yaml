@@ -71,6 +71,24 @@ Parameters:
     Default: ""
     Description: Route 53 zone for DomainName. Both or neither.
 
+  MaxConcurrency:
+    Type: Number
+    Default: 20
+    MinValue: 0
+    Description: >-
+      Reserved concurrency, which is both a cost ceiling and the kill switch.
+      SET IT TO 0 AND THE SERVICE STOPS DEAD — every invocation is throttled,
+      which both clients swallow, so children keep playing offline and nobody
+      sees an error. That is the only safe way to turn this off.
+
+      20 is enormous for the real workload: a sync is one round trip on app
+      open and on resume, so twenty at once is roughly a thousand families
+      opening the app in the same second. It exists so that a loop in a shipped
+      client — which cannot be patched without store review — cannot turn into
+      an unbounded bill overnight. The trade is that past the cap devices are
+      throttled, which is a sync they retry on the next resume and an alarm we
+      see immediately.
+
   GlueDatabaseName:
     Type: String
     Default: attrape_telemetry
@@ -256,6 +274,8 @@ Resources:
       MemorySize: 512
       # A device that times out retries on the next resume and loses nothing.
       Timeout: 10
+      # Cost ceiling and kill switch in one number. See the parameter.
+      ReservedConcurrentExecutions: !Ref MaxConcurrency
       Role: !GetAtt ApiRole.Arn
       LoggingConfig:
         LogGroup: !Ref ApiLogGroup

@@ -22,6 +22,8 @@ DOMAIN_NAME="${DOMAIN_NAME:-}"
 HOSTED_ZONE_ID="${HOSTED_ZONE_ID:-}"
 TELEMETRY="${TELEMETRY:-1}"
 QUIET_SYNC_ALARM="${QUIET_SYNC_ALARM:-false}"
+# Set to 0 to stop the service dead. See the template.
+MAX_CONCURRENCY="${MAX_CONCURRENCY:-20}"
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$here"
@@ -41,7 +43,19 @@ artifacts  ${artifacts}
 domain     ${DOMAIN_NAME:-<none — see the warning in README.md>}
 telemetry  ${TELEMETRY}
 alarms to  ${ALARM_EMAIL:-<nobody>}
+max conc   ${MAX_CONCURRENCY}
 SUMMARY
+
+if [ "$MAX_CONCURRENCY" = "0" ]; then
+  echo
+  echo "MAX_CONCURRENCY=0 — this deploy TURNS THE SERVICE OFF."
+  echo "Every request will be throttled. Both clients swallow that, so children"
+  echo "keep playing offline and nobody sees an error; families simply stop"
+  echo "syncing between devices until it is turned back on."
+  printf 'type "off" to continue: '
+  read -r confirm
+  [ "$confirm" = "off" ] || { echo "aborted"; exit 1; }
+fi
 
 if ! aws s3api head-bucket --bucket "$artifacts" --region "$REGION" 2>/dev/null; then
   echo "creating artifacts bucket ${artifacts}"
@@ -85,6 +99,7 @@ echo "==> deploy"
 params=(
   "TelemetryEnabled=${TELEMETRY}"
   "EnableQuietSyncAlarm=${QUIET_SYNC_ALARM}"
+  "MaxConcurrency=${MAX_CONCURRENCY}"
 )
 [ -n "$ALARM_EMAIL" ] && params+=("AlarmEmail=${ALARM_EMAIL}")
 [ -n "$DOMAIN_NAME" ] && params+=("DomainName=${DOMAIN_NAME}")

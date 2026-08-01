@@ -148,6 +148,46 @@ compromised function can overwrite one household at a time under a condition it
 must first satisfy, and append telemetry. It cannot enumerate families, erase a
 child's progress, or read a single analytics row back. A test asserts this.
 
+## What it costs, and how to stop it
+
+The workload is one round trip on app open and on resume. Assume three devices
+per family and four syncs per device per day — deliberately generous, since a
+six-year-old does not open the app four times a day — so **12 requests per
+family per day**, each a `Query` plus a `TransactWriteItems` of one root and one
+sidecar per child.
+
+| Families | Requests/month | Lambda | API Gateway | DynamoDB | S3 + Athena | **Total** |
+|---:|---:|---:|---:|---:|---:|---:|
+| 100 | 36 k | free tier | free tier¹ | ~€0.02 | ~€0.01 | **~€0** |
+| 1 000 | 360 k | free tier | ~€0.35 | ~€0.20 | ~€0.05 | **< €1** |
+| 10 000 | 3.6 M | ~€0.60 | ~€3.40 | ~€2.00 | ~€0.50 | **~€7** |
+
+¹ API Gateway's free tier is twelve months; Lambda's million requests a month is
+permanent. The 10 000-family row assumes no free tier at all.
+
+Two fixed costs sit under all of it and do not scale with families: point-in-time
+recovery on the table (~€0.20/GB-month, cents at this size) and CloudWatch log
+storage (30-day retention, one line per request — the 10 000-family row is a few
+hundred megabytes, under €1).
+
+**The number that could actually hurt is not in that table.** A loop in a shipped
+client cannot be patched without store review, so a bug that syncs in a tight
+loop would bill for weeks. That is what `MaxConcurrency` is for: reserved
+concurrency of 20, which is roughly a thousand families opening the app in the
+same second and far beyond any real load. Past it, devices are throttled — a sync
+they retry on the next resume, and an alarm we see immediately.
+
+**Setting `MaxConcurrency=0` is the kill switch.** Every invocation is throttled,
+which both clients swallow, so children keep playing offline and nobody sees an
+error; families simply stop syncing between devices. `deploy.sh` asks for
+confirmation before doing it, because it is the one deploy that looks like every
+other one and quietly turns the product off.
+
+```bash
+MAX_CONCURRENCY=0 ./scripts/deploy.sh   # off
+MAX_CONCURRENCY=20 ./scripts/deploy.sh  # back on
+```
+
 ## Detection, because nothing else will tell you
 
 `src/log.ts` writes one line of JSON per request, plus a line for a validation
