@@ -22,7 +22,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
@@ -49,6 +48,8 @@ import fr.dappit.attrapelettres.ui.design.LocalViewportWidth
 import fr.dappit.attrapelettres.ui.design.Palette
 import fr.dappit.attrapelettres.ui.design.TilePaint
 import fr.dappit.attrapelettres.ui.design.Typography
+import fr.dappit.attrapelettres.ui.design.opacity
+import fr.dappit.attrapelettres.ui.design.overdraw
 import fr.dappit.attrapelettres.ui.interaction.TileMotion
 import fr.dappit.attrapelettres.ui.interaction.rememberTileMotion
 import fr.dappit.attrapelettres.ui.interaction.tileMotion
@@ -162,6 +163,17 @@ object TileMetrics {
      */
     val HIGHLIGHT_RING_WIDTH: Dp = 6.dp
     val HIGHLIGHT_RING_RADIUS: Dp = CORNER_RADIUS + HIGHLIGHT_RING_WIDTH
+
+    /**
+     * The margin a tile's graphics layers are grown by so the ring and the lip
+     * have somewhere to land — see `design/Overdraw.kt`. It is invisible to
+     * layout, and it must cover the widest thing that paints outside the border
+     * box: the ring's 6 dp spread and the lip's 8 dp drop.
+     */
+    val OVERDRAW: Dp = 8.dp
+
+    /** The same headroom for the « Écouter » pill, whose lip drops 3 dp. */
+    val PREVIEW_OVERDRAW: Dp = 3.dp
 
     /** `transition: box-shadow 0.15s`. */
     const val HIGHLIGHT_TRANSITION_MS = 150
@@ -623,21 +635,33 @@ private fun PickSurface(
                     true
                 }
             }
+            // HEADROOM, and it must come before the layers. Every graphics
+            // layer below records at its node's size, so without this the ring
+            // and the lip — both of which paint OUTSIDE the border box, the way
+            // a CSS `box-shadow` does — are cropped away. See
+            // `design/Overdraw.kt`. It sits AFTER `touchDown` so the hit rect
+            // stays the tile and not the margin.
+            .overdraw(TileMetrics.OVERDRAW)
             .tileMotion(motion)
-            .alpha(if (disabled) TileMetrics.DISABLED_OPACITY else 1f)
+            // `opacity`, NOT `Modifier.alpha` — see `design/Opacity.kt`. The
+            // stock modifier adds a clipping layer of its own, and this tile is
+            // `disabled` during the celebration window, i.e. at exactly the
+            // moment it is also `highlight`ed.
+            .opacity(if (disabled) TileMetrics.DISABLED_OPACITY else 1f)
             // The blurred cast. Android has no offset+blur shadow, only an
             // elevation; see `BoxShadow.softElevation` for why that is the
             // closest honest mapping. `clip = false` keeps the ring and the lip,
             // which both paint outside the border box, from being cut off.
-            .shadow(
-                elevation = cast.softElevation,
-                shape = shape,
-                clip = false,
-                ambientColor = cast.color,
-                spotColor = cast.color,
-            )
             .drawBehind {
                 val ringAlpha = ring.value
+                // This node is `OVERDRAW` bigger than the tile on every side,
+                // so the tile's own origin is at (margin, margin) and its size
+                // is `size` minus the two margins. Every number below is stated
+                // in the tile's coordinates and then shifted, exactly as the
+                // CSS is written against the border box.
+                val margin = TileMetrics.OVERDRAW.toPx()
+                val faceWidth = size.width - margin * 2f
+                val faceHeight = size.height - margin * 2f
 
                 // `0 0 0 6px #66BB6A` — a filled rounded rect one ring-width
                 // larger on every side, drawn behind the face. The face covers
@@ -646,8 +670,8 @@ private fun PickSurface(
                     val spread = TileMetrics.HIGHLIGHT_RING_WIDTH.toPx()
                     drawRoundRect(
                         color = ringColor,
-                        topLeft = Offset(-spread, -spread),
-                        size = Size(size.width + spread * 2f, size.height + spread * 2f),
+                        topLeft = Offset(margin - spread, margin - spread),
+                        size = Size(faceWidth + spread * 2f, faceHeight + spread * 2f),
                         cornerRadius = CornerRadius(TileMetrics.HIGHLIGHT_RING_RADIUS.toPx()),
                         alpha = ringAlpha,
                     )
@@ -661,13 +685,24 @@ private fun PickSurface(
                 if (lipAlpha > 0f) {
                     drawRoundRect(
                         color = Color.Black,
-                        topLeft = Offset(0f, lip.offsetY.toPx()),
-                        size = size,
+                        topLeft = Offset(margin, margin + lip.offsetY.toPx()),
+                        size = Size(faceWidth, faceHeight),
                         cornerRadius = CornerRadius(TileMetrics.CORNER_RADIUS.toPx()),
                         alpha = lipAlpha,
                     )
                 }
             }
+            // Inside the headroom again: the elevation cast must trace the FACE,
+            // not the margin, so this sits after the padding that restores the
+            // tile's own size.
+            .padding(TileMetrics.OVERDRAW)
+            .shadow(
+                elevation = cast.softElevation,
+                shape = shape,
+                clip = false,
+                ambientColor = cast.color,
+                spotColor = cast.color,
+            )
             .background(color = face, shape = shape)
             .height(side)
             // `minWidth: dim; width: auto` — a two-letter tile grows, a
@@ -723,8 +758,27 @@ private fun ListenSurface(
                     true
                 }
             }
+            // Headroom for the lip, which drops 3 dp below the pill. Same
+            // reason and same order as the tile above: after `touchDown`, before
+            // every graphics layer. See `design/Overdraw.kt`.
+            .overdraw(TileMetrics.PREVIEW_OVERDRAW)
             .tileMotion(motion)
-            .alpha(if (disabled) TileMetrics.DISABLED_OPACITY else 1f)
+            // `opacity`, not `Modifier.alpha`: one more clipping layer would
+            // undo the headroom this just bought. See `design/Opacity.kt`.
+            .opacity(if (disabled) TileMetrics.DISABLED_OPACITY else 1f)
+            .drawBehind {
+                val margin = TileMetrics.PREVIEW_OVERDRAW.toPx()
+                val pillWidth = size.width - margin * 2f
+                val pillHeight = size.height - margin * 2f
+                drawRoundRect(
+                    color = Color.Black,
+                    topLeft = Offset(margin, margin + lip.offsetY.toPx()),
+                    size = Size(pillWidth, pillHeight),
+                    cornerRadius = CornerRadius(pillHeight / 2f),
+                    alpha = lip.alpha,
+                )
+            }
+            .padding(TileMetrics.PREVIEW_OVERDRAW)
             .shadow(
                 elevation = cast.softElevation,
                 shape = CircleShape,
@@ -732,15 +786,6 @@ private fun ListenSurface(
                 ambientColor = cast.color,
                 spotColor = cast.color,
             )
-            .drawBehind {
-                drawRoundRect(
-                    color = Color.Black,
-                    topLeft = Offset(0f, lip.offsetY.toPx()),
-                    size = size,
-                    cornerRadius = CornerRadius(size.height / 2f),
-                    alpha = lip.alpha,
-                )
-            }
             .background(color = Color.White, shape = CircleShape)
             .height(TileMetrics.PREVIEW_HEIGHT.resolve(viewport)),
         contentAlignment = Alignment.Center,

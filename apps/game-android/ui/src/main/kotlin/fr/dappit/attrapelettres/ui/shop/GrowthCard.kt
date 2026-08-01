@@ -14,7 +14,6 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
@@ -41,6 +40,7 @@ import fr.dappit.attrapelettres.ui.components.liftedPill
 import fr.dappit.attrapelettres.ui.design.Copy
 import fr.dappit.attrapelettres.ui.design.Palette
 import fr.dappit.attrapelettres.ui.design.Typography
+import fr.dappit.attrapelettres.ui.design.opacity
 
 // ---------------------------------------------------------------------------
 // `src/shop/GrowthCard.tsx` — growth upgrade, the headline spend.
@@ -389,7 +389,7 @@ private fun GrowButton(
             // `opacity: disabled && !atMax ? 0.6 : 1` — the maxed-out button
             // stays fully opaque and merely goes grey, so « Niveau max ✨ » reads
             // as an achievement rather than as something broken.
-            .alpha(
+            .opacity(
                 if (surface.disabled && !surface.atMax) {
                     GrowthCardMetrics.UNAFFORDABLE_OPACITY
                 } else {

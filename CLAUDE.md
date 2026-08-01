@@ -13,7 +13,7 @@ apps/game-ios/       the native app. SwiftPM package + a thin Xcode wrapper.
                      Has its OWN ARCHITECTURE.md and DECISIONS.md.
 apps/game-android/   the native app. Kotlin + Compose, a 5-module Gradle build.
                      Has its OWN ARCHITECTURE.md and DECISIONS.md. Feature
-                     complete, 1596 host tests, never yet run on a device.
+                     complete, 1599 host tests, never yet run on a device.
 apps/backoffice/     not built.
 services/api/        Hono + Zod. Household sync (ETag/412) on DynamoDB and
                      telemetry on S3. Ships as one Lambda behind an HTTP API;

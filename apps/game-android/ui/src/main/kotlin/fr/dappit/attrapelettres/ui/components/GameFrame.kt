@@ -19,7 +19,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
@@ -42,6 +41,7 @@ import fr.dappit.attrapelettres.ui.design.Palette
 import fr.dappit.attrapelettres.ui.design.Shell
 import fr.dappit.attrapelettres.ui.design.Typography
 import fr.dappit.attrapelettres.ui.design.fixedSp
+import fr.dappit.attrapelettres.ui.design.opacity
 import fr.dappit.attrapelettres.ui.interaction.pulseAlpha
 import fr.dappit.attrapelettres.ui.interaction.rememberPulse
 import fr.dappit.attrapelettres.ui.interaction.touchDown
@@ -523,7 +523,7 @@ private fun StarCellGlyph(cell: StarCell, size: Dp, reduceMotion: ReduceMotionSo
             text = Copy.Frame.STAR,
             modifier = Modifier
                 .grayscale()
-                .alpha(Palette.Lost.opacity),
+                .opacity(Palette.Lost.opacity),
             style = glyphStyle(size, fontScale, Palette.ink.color),
         )
 
@@ -531,7 +531,7 @@ private fun StarCellGlyph(cell: StarCell, size: Dp, reduceMotion: ReduceMotionSo
 
         StarCell.PENDING -> Text(
             text = Copy.Frame.FUTURE_ROUND,
-            modifier = Modifier.alpha(Palette.futureDotOpacity),
+            modifier = Modifier.opacity(Palette.futureDotOpacity),
             style = glyphStyle(size, fontScale, Color.Black),
         )
     }

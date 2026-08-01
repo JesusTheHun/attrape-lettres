@@ -75,14 +75,14 @@ clip") runs on a machine that has never staged the audio.
 | `:ui` — router, hub, shop, dashboard, roster, the three adult screens | done — `:ui` now **765 tests**, 131 classes |
 | `:app` — `AppGraph`, lifecycle, the real adapters behind `RootView` | done — **25 tests**, 2 classes |
 
-1596 host tests, none skipped, and the app now runs its own UI rather than a
+1599 host tests, none skipped, and the app now runs its own UI rather than a
 placeholder. `:core` is complete except for the sync client's ETag/412 retry loop
 and household identity, which wait on the API contract (A7).
 Everything the game computes — every ladder, every round builder, the economy, the
 migrations, the merge, the entitlement state machine — is ported and tested on the
 host, as is everything it draws.
 
-What 1596 green tests do not prove, and nothing here proves yet: **not one pixel
+What 1599 green tests do not prove, and nothing here proves yet: **not one pixel
 has ever been produced.** `SvgCanvas` records a draw list that is heavily tested
 and `SvgRender` replays it into Compose untested; every `:ui` spec is asserted as
 data, with no composition and no frame clock anywhere in the suite. **Nothing has

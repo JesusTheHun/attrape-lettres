@@ -357,3 +357,50 @@ elsewhere.** The clamp closes the one caller Android has; it does not close
 `spend()`. Guarding `spend()` against a non-positive cost would close the class
 for all three apps at once, and that is a decision to take across web, iOS and
 Android together rather than unilaterally in the newest port.
+
+## A19 — A graphics layer crops what it records, so a tile buys headroom
+
+Found on an emulator, not on the host. The tile's green highlight ring
+(`0 0 0 6px #66BB6A`) rendered as four green slivers in the corners and nothing
+else, and the hard lip (`0 8px 0 rgba(0,0,0,.12)`) under both the tile and the
+« Écouter » pill never rendered at all.
+
+The cause is a piece of Compose that reads the opposite way round to CSS.
+`Modifier.graphicsLayer` — and therefore `Modifier.alpha`, `Modifier.shadow`,
+and every animated scale — records its subtree into a layer the size of its
+node. Content painted outside those bounds is not clipped so much as never
+recorded. **`clip` does not govern this**: `clip` chooses whether the layer's
+OUTLINE crops the content, while the recording bounds always do. So
+`clip = false` next to a `drawBehind` that paints 6 dp outward reads as correct
+and is not, which is exactly how it survived review.
+
+CSS is the other way: a `box-shadow` takes part in no layout and nothing crops
+it. Every shadow in this app is a ported `box-shadow`, so the mismatch was
+systemic rather than local.
+
+Measured, because the geometry and the crop produce similar-looking wrongness.
+With the tile at `[232,991][416,1175]`, green pixels existed at `dy=2` and
+`dy=182` and NOWHERE on the centre line — the signature of a crop, not of a bad
+radius. A magenta disc of radius 30 dp drawn at the tile's own origin survived
+only as a corner sliver. Moving the `drawBehind` out from under
+`Modifier.shadow` changed nothing, which ruled the shadow out and left the
+press-animation and opacity layers.
+
+Two things came out of it.
+
+`design/Opacity.kt` — `Modifier.opacity`, the port's only fade. Disassembled
+from ui-android 1.11.4, `Modifier.alpha` installs `graphicsLayer(clip = true)`
+for any alpha below 1, so it crops on the outline as well. CSS `opacity` never
+crops. `OpacitySourceScanTest` bans `Modifier.alpha` from `:ui` outright.
+
+`design/Overdraw.kt` — `Modifier.overdraw(all)`, which measures its subtree
+larger on every side, reports the original size, and places the subtree back at
+the negative offset. Layers to its right are bigger and can paint into the
+margin; everything to its left, including the pointer-input node that owns
+invariant 1, sees the tile's true size and an unchanged hit rect. Tile bounds
+are byte-identical before and after: `[227,1084][519,1376]`, 292 px = 111.2 dp,
+which is `clamp(92px, 27vw, 150px)` at a 411 dp viewport.
+
+The general rule for this port: **anything that paints outside its border box
+needs `overdraw` before the first layer, or it is not on the screen.** No host
+test can see this one — `:ui` is asserted as data and rasterises nothing.
