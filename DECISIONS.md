@@ -392,6 +392,34 @@ says the thing that matters most about this data: there is no device id,
 household id or session id anywhere in it, so it counts events and must never be
 read as people.
 
+**The first real deploy failed, and the lesson was about where a check belongs.**
+Lambda refuses a reservation that would leave the account under ten unreserved
+executions, and a new AWS account's entire limit is ten — the floor eats the
+whole budget, so the reserved concurrency that exists as a cost ceiling was not
+merely large, it was illegal, and nothing above zero could have worked. That
+arrives as a rollback five seconds in, after the tests, the bundle, the upload
+and thirty-one built resources. It is now one API call before any of that:
+`MaxConcurrency` accepts `-1` for "reserve nothing", `deploy.sh` defaults to
+`auto`, reads the live limit, and picks. Reserving nothing costs nothing while
+the limit is ten, because ten is the tighter ceiling; it costs something the day
+the quota is raised, which is exactly why the answer is recomputed on every
+deploy instead of being hard-coded once by the person who hit the problem.
+
+That deploy also proved the `DeletionPolicy: Retain` on the table, the bucket and
+the log group cuts both ways. It is there so no stack delete can take a family's
+progress with it, and it means those three outlive a *failed first create* under
+their own names and block the retry. The script detects `ROLLBACK_COMPLETE`,
+prints the five commands, and refuses to run them — at any moment other than that
+one they delete every household on the service.
+
+And one thing that reads as a template bug is not: referencing the certificate
+does not hold the custom domain back until it is issued. CloudFormation's ACM
+provider completes its create the moment ACM returns a `PENDING_VALIDATION` ARN
+and waits for issuance in a stabilization phase that does not block dependents —
+336 ms between the two, measured. It works anyway because the ApiGatewayV2
+provider retries "not in an ISSUED state" in its own loop. `DependsOn` resolves
+at the same instant the reference already does and would change nothing.
+
 Not done: no CI (the deploy script runs the tests and refuses to continue), no
 API Gateway access log (the function already writes one line per request), no
 `DescribeTable` probe on Lambda (the table name arrives from a `Ref`, so there is
