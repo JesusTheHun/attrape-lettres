@@ -10,7 +10,7 @@ state, and nothing to buy in front of a child.
 apps/
   game-web/       the PWA — Vite · React 18 · TypeScript (strict) · Tailwind
   game-ios/       the native app — SwiftPM package + a thin Xcode wrapper
-  game-android/   the native app — Kotlin · Compose · Gradle. Port in progress
+  game-android/   the native app — Kotlin · Compose · Gradle
   backoffice/     not built yet
 services/
   api/            household sync + telemetry — Hono · Zod · DynamoDB · S3,
@@ -20,8 +20,8 @@ packages/         shared TypeScript — empty on purpose
 
 `apps/game-web`, `apps/game-ios` and `apps/game-android` are independent
 implementations of the same game. They are not a shared core with three shells:
-each port was written against the web app line by line, and ~1450 host tests are
-what hold the iOS one in agreement. What they genuinely share is the baked
+each port was written against the web app line by line, and host tests are what
+hold them in agreement — ~1450 on iOS, 1596 on Android. What they genuinely share is the baked
 voice-over — 845 clips that live once, in `apps/game-web/src/vo/clips/`,
 hard-linked into each app's bundle at build time and never committed twice.
 
@@ -37,6 +37,9 @@ pnpm dev                          # the web app
 
 cd apps/game-ios && swift test    # the iOS suite, on the host, no simulator
 open apps/game-ios/App/AttrapeLettres.xcodeproj
+
+cd apps/game-android && ./gradlew test        # the Android suite, no emulator
+cd apps/game-android && ./gradlew assembleDebug
 ```
 
 From the root, `pnpm build`, `pnpm typecheck` and `pnpm test` run across every
