@@ -113,7 +113,19 @@ being reworked, and the household document shape is what a client binds to
 hardest.
 
 So `:core` ships `SyncTransport` as an interface and a stub implementation, and
-no HTTP exists in this app yet. `Merge.kt` is unaffected by that: it is pure and
+`:platform`'s `HttpSyncTransport` is a labelled sketch: the addressing, the
+ETag/412 re-pull-re-merge-retry loop and the wire-to-wire fold are real and
+written to the contract as described, while the document codec throws
+`SyncContractNotLanded` and household identity is not invented at all. Nothing
+constructs it — `Adapters.kt` wires `ProfileStore(sync = null)` — and if
+something one day does before the codec lands, what escapes is an `IOException`,
+which `syncNow` already swallows, so the device just keeps playing alone.
+(Telemetry is the opposite case and is fully wired: `HttpTelemetryTransport` is
+real, because `POST /events` binds to a closed property allowlist rather than to
+the household shape.) When the contract lands, the codec belongs in `:core` next
+to `Wire.kt`, where a test can assert on the serialised bytes.
+
+`Merge.kt` is unaffected by any of that: it is pure and
 takes no transport, so the expensive, invariant-9-critical half of sync can be
 ported and property-tested now, and only the last few hundred bytes of wire
 plumbing wait for the contract. `Wire.kt` gets the same treatment as iOS —
@@ -133,3 +145,47 @@ and would have kept `:core` dependency-free. It was rejected because it lives in
 `android.*`, which A1 makes unavailable in `:core` on purpose, and because
 hand-written readers for four schema versions are precisely the code that
 silently drops a field.
+
+## A9 — Android modules name `kotlin-test-junit` themselves
+
+`kotlin.test.Test` is an `expect` typealias with no `actual` until a runner
+binding is on the test classpath. `:core` gets one implicitly: `useJUnitPlatform()`
+tells the Kotlin plugin which variant of `kotlin-test` to resolve. An Android
+library variant has no equivalent switch, so nothing supplies it, and every
+`import kotlin.test.Test` in the module is unresolved while `assertEquals` from
+the same package resolves fine — a confusing failure that looks like a broken
+import and is not.
+
+`:art` and `:platform` therefore add `testImplementation(libs.kotlin.test.junit)`
+next to `libs.kotlin.test`. Adding `junit:junit` alone does **not** fix it: the
+problem is variant selection on `kotlin-test`, not the absence of JUnit. Same
+artifact family and version as the dependency already there, `testImplementation`
+only, so nothing reaches the APK.
+
+`:ui` and `:app` will need the identical line the day they get their first test;
+they have no `src/test` today, so their existing `kotlin-test` line is inert.
+
+## A10 — `:art` is tested as a pure draw list, not as pixels
+
+Compose's `Path`, `Color` and `DrawScope` cannot be instantiated on a bare JVM,
+so a test that touches them needs an emulator or Robolectric, and the port loses
+the loop A1 exists to protect. `:art` is split instead: `SvgCanvas` parses path
+data and records a neutral `List<SvgDrawOp>` in plain Kotlin, which is what the
+185 tests assert on, and `SvgRender` is a thin replay of that list into a
+`DrawScope`.
+
+The honest cost is stated once here rather than implied: **the replay layer has
+no test and no pixel has been produced.** What the suite proves is that the
+right shapes, in the right order, with the right paint, would be drawn. The
+mascots and icons are additionally pinned against the web by string: all 30
+exercise-icon `d` strings and all 46 word-image `d` strings are byte-identical
+to `ExerciseIcon.tsx` and `src/img/*.svg` after whitespace normalisation, and the
+SVG corpus test parses all 189 path strings read straight from
+`apps/game-ios/Tests/ALArtTests/Resources/svg-corpus.json` — the iOS file, not a
+copy, so the two ports cannot drift apart silently.
+
+The twelve dragon parts the port skips (`CloudWings`, `DomeFin`, `Bolt`,
+`RainCloud`, `Gem`, `AngularWings`, `FrillBand`, `DustPuffs`, `KnightHelmet`,
+`Shield`, `ChestArmor`, `EggShield`) have zero references anywhere in
+`apps/game-web/src` outside `dragonParts.tsx`: they are unreachable design-run
+candidates, and iOS skipped the same list.

@@ -33,5 +33,8 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.kotlinx.coroutines.core)
 
+    // See :art — `kotlin.test.Test` needs a runner to alias onto, and an
+    // Android library has no `useJUnitPlatform()`.
     testImplementation(libs.kotlin.test)
+    testImplementation(libs.kotlin.test.junit)
 }

@@ -35,5 +35,10 @@ dependencies {
     implementation(libs.compose.foundation)
     implementation(libs.androidx.annotation)
 
+    // `kotlin.test.Test` is a typealias that needs a runner behind it. :core
+    // gets its binding from `useJUnitPlatform()`; an Android library variant has
+    // no equivalent switch, so the JUnit 4 binding is named here or every
+    // `import kotlin.test.Test` in this module is unresolved.
     testImplementation(libs.kotlin.test)
+    testImplementation(libs.kotlin.test.junit)
 }

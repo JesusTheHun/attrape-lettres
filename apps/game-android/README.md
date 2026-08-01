@@ -67,11 +67,20 @@ clip") runs on a machine that has never staged the audio.
 | Layer | State |
 |-------|-------|
 | Toolchain, Gradle module graph, debug APK | done — builds |
-| `:core` — domain, content, levels, rewards, persistence, sync, licensing, telemetry, VO | done — **551 tests**, 83 classes, none skipped |
-| `:platform` audio, storage, billing | next |
-| `:art` mascots and icons, `:ui` screens | after `:platform` |
+| `:core` — domain, content, levels, rewards, persistence, sync, licensing, telemetry, VO | done — **551 tests**, 83 classes |
+| `:art` — SVG runtime, 17 exercise icons, 4 word images, 5 mascots + their rig | done — **185 tests**, 33 classes |
+| `:platform` — storage, clip bank, SFX, haptics, reduce-motion, transports | done — **70 tests**, 11 classes |
+| `:ui` — the Compose screens, and wiring the adapters into `MainActivity` | next |
 
-`:core` is complete except for the sync client's ETag/412 retry loop and household
-identity, which wait on the API contract (A7). Everything the game computes — every
-ladder, every round builder, the economy, the migrations, the merge, the entitlement
-state machine — is ported and tested on the host.
+806 host tests, none skipped. `:core` is complete except for the sync client's
+ETag/412 retry loop and household identity, which wait on the API contract (A7).
+Everything the game computes — every ladder, every round builder, the economy, the
+migrations, the merge, the entitlement state machine — is ported and tested on the
+host, as is everything it draws.
+
+Two things a green build here does not prove, and neither is proven yet: **no
+pixel has ever been produced** (`SvgCanvas` records a draw list that is heavily
+tested; `SvgRender` replays it into Compose and is not), and **nothing has run on
+a device or an emulator** — audio latency in particular is unmeasurable from the
+host. Billing is absent by decision: no Play Billing dependency is taken and
+`:app` wires the stub, so nothing can be bought.

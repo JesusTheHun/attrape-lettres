@@ -13,7 +13,8 @@ apps/game-ios/       the native app. SwiftPM package + a thin Xcode wrapper.
                      Has its OWN ARCHITECTURE.md and DECISIONS.md.
 apps/game-android/   the native app. Kotlin + Compose, a 5-module Gradle build.
                      Has its OWN ARCHITECTURE.md and DECISIONS.md. Port in
-                     progress: toolchain, module graph and rewards are in.
+                     progress: `:core`, `:platform` and `:art` are in and green
+                     on the host (806 tests); `:ui` is the remaining layer.
 apps/backoffice/     not built.
 services/api/        Hono + Zod. Household sync (ETag/412) on DynamoDB and
                      telemetry on S3. Ships as one Lambda behind an HTTP API;
