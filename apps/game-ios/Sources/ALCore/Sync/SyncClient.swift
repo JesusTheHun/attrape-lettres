@@ -42,6 +42,14 @@ public enum PushResult: Equatable, Sendable {
 public final class SyncClient {
     public static let householdKey = "attrape-lettres:household:v1"
     public static let etagKey = "attrape-lettres:household-etag:v1"
+    /// The stamp on `householdKey`, split in two because `KVStore` stores
+    /// strings and a composite would need an encoding nobody else reads.
+    /// ADDITIVE: D7 freezes the two names above as a migration contract with
+    /// the shipped PWA, and these are new keys the PWA simply never writes —
+    /// absent reads as `Rev.zero`, which is the correct answer for a household
+    /// that predates the stamp.
+    public static let householdRevAtKey = "attrape-lettres:household-rev-at:v1"
+    public static let householdRevByKey = "attrape-lettres:household-rev-by:v1"
 
     private let kv: KVStore
     private let transport: SyncTransport
@@ -67,6 +75,76 @@ public final class SyncClient {
     public func joinHousehold(_ id: String) {
         kv.set(id, for: Self.householdKey)
         kv.set("", for: Self.etagKey)
+    }
+
+    /* -- the stamp, and the two ways a household arrives ---------------------*/
+
+    /**
+     * What this device currently believes, as a comparable claim.
+     *
+     * An id stored before this stamp existed — a device that paired on an
+     * older build, or a household minted by the PWA — reads as `Rev.zero` and
+     * therefore loses every comparison. That is deliberate and it is safe:
+     * losing swaps the id, it does not clear the roster, so the local progress
+     * merges into the winning household on the next sync (`HouseholdClaim`'s
+     * header). A legacy device converging onto the family's household is the
+     * outcome we want, not a regression to guard against.
+     */
+    public func claim() -> HouseholdClaim? {
+        guard let id = householdId(), !id.isEmpty else { return nil }
+        return HouseholdClaim(id: id, rev: storedRev())
+    }
+
+    /**
+     * Join because somebody meant to — a scanned QR, a shared link.
+     *
+     * Stamped with the current time so it outranks whatever was stored and,
+     * once written to the directory, outranks what the family's other devices
+     * hold too. This is what makes "the scanned id wins" true beyond the phone
+     * that did the scanning.
+     *
+     * Returns false for an id this app would never mint. The caller has
+     * nothing to do about that except ignore it (invariant 3: a bad link is
+     * not an error state a family has to clear).
+     */
+    @discardableResult
+    public func join(_ id: String, at now: Millis, by device: String) -> Bool {
+        guard PairingLink.isWellFormed(id) else { return false }
+        adopt(HouseholdClaim(id: id, rev: Rev(at: now, by: device)))
+        return true
+    }
+
+    /**
+     * Reconcile with a household id that arrived without anyone asking —
+     * iCloud key-value store, i.e. the same Apple ID on another device.
+     *
+     * Returns the household this device now belongs to. Writes back whenever
+     * the local claim wins, so the two devices converge from both directions
+     * rather than one of them silently deferring forever.
+     *
+     * Every branch here is total. There is no failure mode that leaves the
+     * device without a household it can play offline against.
+     */
+    @discardableResult
+    public func reconcile(with directory: HouseholdClaim?) -> HouseholdClaim? {
+        let local = claim()
+        guard let winner = HouseholdClaim.winner(local, directory) else { return nil }
+        if winner != local { adopt(winner) }
+        return winner
+    }
+
+    /// Swap identity and blank the ETag — the next pull is unconditional, and
+    /// the local roster merges into whatever it finds.
+    private func adopt(_ claim: HouseholdClaim) {
+        kv.set(claim.id, for: Self.householdKey)
+        kv.set(String(claim.rev.at), for: Self.householdRevAtKey)
+        kv.set(claim.rev.by, for: Self.householdRevByKey)
+        kv.set("", for: Self.etagKey)
+    }
+
+    private func storedRev() -> Rev {
+        let at = kv.string(Self.householdRevAtKey).flatMap(Millis.init) ?? 0
+        return Rev(at: at, by: kv.string(Self.householdRevByKey) ?? "")
     }
 
     @discardableResult
