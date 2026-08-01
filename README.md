@@ -40,6 +40,7 @@ open apps/game-ios/App/AttrapeLettres.xcodeproj
 
 cd apps/game-android && ./gradlew test        # the Android suite, no emulator
 cd apps/game-android && ./gradlew assembleDebug
+pnpm android:emulator                        # boot a Pixel 7 to look at it
 ```
 
 From the root, `pnpm build`, `pnpm typecheck` and `pnpm test` run across every

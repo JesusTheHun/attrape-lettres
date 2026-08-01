@@ -17,7 +17,20 @@ export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
 ./gradlew test              # every module's host tests
 ./gradlew assembleDebug     # app/build/outputs/apk/debug/app-debug.apk
 scripts/stage-vo.sh         # hard-link the 845 baked clips into :platform
+
+pnpm android:emulator       # boot a Pixel 7, API 36 (from the repo root)
+./gradlew installDebug      # ...then push this build onto it
 ```
+
+`scripts/emulator.sh`, behind that `pnpm` script, finds the SDK the same way
+Gradle does (`ANDROID_HOME`, then `sdk.dir` in `local.properties`), creates the
+`al-pixel7` AVD if it is missing, and waits for `sys.boot_completed` rather than
+for `adb` — which answers minutes earlier. It will NOT download the ~4.3 GB of
+SDK packages on its own: missing ones are named with the exact `sdkmanager`
+command, or fetched with `pnpm android:emulator -- --install`. The image is
+`google_apis`, not `google_apis_playstore`, because the Play images refuse
+`adb root` and root is how the v4 schema and the backup-rule exclusions get
+inspected on disk.
 
 `:core` is a plain JVM module and does not apply the Android plugin, so
 `./gradlew :core:test` is the Kotlin analogue of `swift test`: the entire game's
