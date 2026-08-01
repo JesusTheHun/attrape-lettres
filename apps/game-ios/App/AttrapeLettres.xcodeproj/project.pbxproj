@@ -209,7 +209,7 @@
 				DEVELOPMENT_TEAM = 2YJBB225MB;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_ALSyncURL = "";
+				INFOPLIST_KEY_ALSyncURL = "https://api.attrape-lettres.app";
 				INFOPLIST_KEY_ALTelemetryURL = "";
 				INFOPLIST_KEY_CFBundleDisplayName = "Attrape-Lettres";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -242,7 +242,7 @@
 				DEVELOPMENT_TEAM = 2YJBB225MB;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_ALSyncURL = "";
+				INFOPLIST_KEY_ALSyncURL = "https://api.attrape-lettres.app";
 				INFOPLIST_KEY_ALTelemetryURL = "";
 				INFOPLIST_KEY_CFBundleDisplayName = "Attrape-Lettres";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

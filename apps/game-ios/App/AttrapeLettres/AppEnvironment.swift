@@ -27,12 +27,22 @@ import SwiftUI
 /* ── Endpoints ─────────────────────────────────────────────────────────────── */
 /* `URLSessionTransports` reads `ALSyncURL` / `ALTelemetryURL` from the         */
 /* Info.plist (`PlatformConfiguration.fromBundle()`). The project uses          */
-/* `GENERATE_INFOPLIST_FILE = YES` and sets NEITHER key, so both modules are    */
-/* inert — the safe default. To enable them, add to the AttrapeLettres          */
-/* target's build settings (or an xcconfig):                                    */
+/* `GENERATE_INFOPLIST_FILE = YES` and sets them in the AttrapeLettres          */
+/* target's build settings, Debug and Release alike:                            */
 /*                                                                             */
-/*     INFOPLIST_KEY_ALSyncURL      = https://…                                 */
-/*     INFOPLIST_KEY_ALTelemetryURL = https://…                                 */
+/*     INFOPLIST_KEY_ALSyncURL      = https://api.attrape-lettres.app           */
+/*     INFOPLIST_KEY_ALTelemetryURL = ""                                        */
+/*                                                                             */
+/* SYNC IS ON. Telemetry is still empty, deliberately: an endpoint here would   */
+/* only be honest once the consent the Kids Category requires is asked for and  */
+/* recorded, and that is a product decision, not a build setting.               */
+/*                                                                             */
+/* An empty value means absent (`PlatformConfiguration.normalised`), so a build */
+/* that clears either key fails silent rather than fails closed — nothing waits */
+/* on the network and no child is stopped. Debug points at the same stack as    */
+/* Release because there is only one; the day a staging stack exists            */
+/* (`STACK=attrape-staging ./scripts/deploy.sh`), Debug should point at it, or  */
+/* development traffic lands in real families' table.                          */
 /*                                                                             */
 /* (This file does not own the pbxproj; the settings are recorded here and in   */
 /* the phase report.)                                                          */
