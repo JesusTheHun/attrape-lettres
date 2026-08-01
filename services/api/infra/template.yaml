@@ -526,7 +526,7 @@ Resources:
   # JSON filter needs the whole log event to be JSON, and Lambda prefixes every
   # line with a timestamp and a request id.
   #
-  # These strings are a contract with `src/log.ts`, and `test/alarms.test.ts`
+  # These strings are a contract with `src/log.ts`, and `test/infra.test.ts`
   # reads this file and asserts every pattern still matches a line the running
   # app produces. Rename an event without that test and the alarms keep
   # reporting healthy forever.

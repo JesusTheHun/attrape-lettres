@@ -35,7 +35,7 @@ type Sink = (level: LogLevel, record: LogFields) => void;
 /**
  * The exact bytes that reach CloudWatch.
  *
- * Exported because `test/alarms.test.ts` reads every `FilterPattern` out of
+ * Exported because `test/infra.test.ts` reads every `FilterPattern` out of
  * `infra/template.yaml` and asserts it still matches a line this produces. The
  * alarms match literal substrings of this string, so a reordered field or a
  * renamed event breaks them — and breaks them silently, which is the one
