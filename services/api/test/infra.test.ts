@@ -7,21 +7,23 @@ import type { HouseholdStore, WriteResult } from "../src/household/store.js";
 import { InMemoryHouseholdStore } from "../src/household/store.js";
 import type { WireChild } from "../src/household/wire.js";
 import { captureLogs, formatLine } from "../src/log.js";
+import { S3TelemetrySink } from "../src/telemetry/s3.js";
+import { errorReport, eventProps } from "../src/telemetry/schema.js";
 import { InMemoryTelemetrySink } from "../src/telemetry/sink.js";
 
 /* -------------------------------------------------------------------------- */
-/* The alarms are only as good as the strings they match.                      */
+/* The seam between the code and the stack, made executable.                   */
 /*                                                                             */
-/* `infra/template.yaml` detects every failure in this system by matching       */
-/* literal substrings of the log lines `src/log.ts` writes. Nothing in either   */
-/* file knows about the other, so renaming an event, reordering a field or      */
-/* changing a status code leaves a stack full of alarms that will never fire    */
-/* again and a dashboard that reads healthy forever.                            */
+/* `infra/template.yaml` reaches into this service twice, by copying strings    */
+/* out of it. The alarms match literal substrings of the log lines `log.ts`     */
+/* writes; the Glue tables restate the shape of `telemetry/schema.ts`. Neither  */
+/* side imports the other, so both drift the moment somebody renames an event   */
+/* or adds a property — and both drift SILENTLY. A stale alarm simply never     */
+/* fires again. A stale column is worse: the query still runs, and answers      */
+/* nothing, which reads exactly like an answer.                                 */
 /*                                                                             */
-/* So this test reads the template, pulls out every FilterPattern, drives the   */
-/* real app until it has produced real log lines, and insists that each pattern */
-/* still matches one of them. It is the seam between code and infrastructure,   */
-/* made executable.                                                            */
+/* So these tests read the template as text and hold it against what the code   */
+/* actually produces.                                                          */
 /* -------------------------------------------------------------------------- */
 
 const TEMPLATE = new URL("../infra/template.yaml", import.meta.url);
@@ -194,3 +196,103 @@ describe("every alarm in the template still matches a line the service writes", 
     }
   });
 });
+
+describe("the Athena tables still describe what the service writes", () => {
+  const yaml = readFileSync(TEMPLATE, "utf8");
+
+  /** The column names inside `struct<a:string,b:int>`, in template order. */
+  function structFields(struct: string): string[] {
+    const inner = /^struct<(.*)>$/.exec(struct.trim())?.[1];
+    if (!inner) throw new Error(`not a struct: ${struct}`);
+    return inner.split(",").map((field) => field.split(":")[0]!.trim());
+  }
+
+  it("has a props column for every telemetry property, and no ghosts", () => {
+    const declared = /Type:\s*(struct<[^\n]*>)/.exec(yaml)?.[1];
+    expect(declared, "no props struct found in the template").toBeDefined();
+
+    // Hive has no uppercase, and the serde folds JSON keys to match — which is
+    // how `daysLeft` on the wire lands in `daysleft` here. Comparing lowercased
+    // is not laxness; it is the actual matching rule.
+    expect(structFields(declared!).sort()).toEqual(
+      Object.keys(eventProps.shape)
+        .map((k) => k.toLowerCase())
+        .sort()
+    );
+  });
+
+  it("has a column for every field of an error report, under the name it is queried by", () => {
+    // `where` is a SQL keyword, so the serde renames it to `origin` on the way
+    // in. That mapping is the reason this test cannot just compare key sets.
+    const RENAMED: Record<string, string> = { where: "origin" };
+
+    const errors = yaml.slice(yaml.indexOf("ErrorsTable:"));
+    const columns = [...errors.matchAll(/- Name: (\w+)\n\s+Type: string/g)].map((m) => m[1]!);
+
+    expect(columns).toContain("origin");
+    expect(columns).not.toContain("where");
+    expect(errors).toContain("mapping.origin: where");
+    for (const field of Object.keys(errorReport.shape)) {
+      expect(columns, `no column for errorReport.${field}`).toContain(
+        RENAMED[field] ?? field.toLowerCase()
+      );
+    }
+  });
+
+  it("partitions both tables on the prefix the sink actually writes", async () => {
+    // `dayOf` builds `events/dt=YYYY-MM-DD/…`, and partition projection only
+    // works if the template's location template agrees character for character.
+    const sink = new S3TelemetrySink(
+      {
+        async send(command: { input: { Key?: string } }) {
+          keys.push(command.input.Key!);
+          return {};
+        },
+      } as never,
+      "bucket",
+      () => new Date("2026-07-31T09:00:00Z")
+    );
+    const keys: string[] = [];
+
+    await sink.events({ v: "1.0.0", events: [{ event: "shop_opened", props: {} }] });
+    await sink.error({ v: "1.0.0", where: "boot", message: "x", stack: "y" });
+
+    expect(keys[0]).toMatch(/^events\/dt=2026-07-31\/[0-9a-f-]{36}\.ndjson$/);
+    expect(keys[1]).toMatch(/^errors\/dt=2026-07-31\/[0-9a-f-]{36}\.ndjson$/);
+    expect(yaml).toContain("storage.location.template: !Sub \"s3://${TelemetryBucket}/events/dt=${!dt}/\"");
+    expect(yaml).toContain("storage.location.template: !Sub \"s3://${TelemetryBucket}/errors/dt=${!dt}/\"");
+    expect(yaml).toContain("projection.dt.format: yyyy-MM-dd");
+  });
+
+  it("grants the function no way to read telemetry back or delete a family", () => {
+    // Append-only and overwrite-under-condition by POLICY, not merely by code.
+    // A role that can GetObject is a role that can be made to hand over the
+    // analytics; a role that can DeleteItem can erase a child's progress.
+    //
+    // Read from the policy body with the prose stripped, because the comments
+    // above it name the very actions being forbidden.
+    const role = yaml.slice(yaml.indexOf("  ApiRole:"), yaml.indexOf("  ApiFunction:"));
+    const policy = role
+      .split("\n")
+      .filter((line) => !/^\s*#/.test(line))
+      .join("\n");
+
+    expect(policy).toContain("s3:PutObject");
+    expect(policy).toContain("dynamodb:Query");
+    expect(policy).toContain("dynamodb:PutItem");
+    for (const forbidden of [
+      "s3:GetObject",
+      "s3:DeleteObject",
+      "s3:ListBucket",
+      "dynamodb:DeleteItem",
+      "dynamodb:UpdateItem",
+      "dynamodb:Scan",
+      "dynamodb:GetItem",
+      "logs:CreateLogGroup",
+      "*:*",
+    ]) {
+      expect(policy, `the function's role grants ${forbidden}`).not.toContain(forbidden);
+    }
+  });
+});
+

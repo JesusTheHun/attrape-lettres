@@ -57,8 +57,13 @@ export const EXERCISE_IDS = [
  * Every property that may be stored. All numeric except `exercise`, which is a
  * closed enum of ids — never a free string. `.strict()` is the load-bearing
  * word: an unknown key is a 400, not a silently-kept column.
+ *
+ * Exported so `test/infra.test.ts` can hold it against the `props` struct in
+ * `infra/template.yaml`. A property added here and not there is written to S3
+ * and then invisible to every query — the expensive kind of missing data, the
+ * kind you believe you already have.
  */
-const props = z
+export const eventProps = z
   .object({
     exercise: z.enum(EXERCISE_IDS).optional(),
     level: z.number().int().min(0).max(1000).optional(),
@@ -78,7 +83,7 @@ export const eventBatch = z
   .object({
     v: appVersion,
     events: z
-      .array(z.object({ event: z.enum(TELEMETRY_EVENTS), props }).strict())
+      .array(z.object({ event: z.enum(TELEMETRY_EVENTS), props: eventProps }).strict())
       .min(1)
       .max(100),
   })

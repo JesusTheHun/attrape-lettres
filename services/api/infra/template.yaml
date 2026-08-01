@@ -71,6 +71,15 @@ Parameters:
     Default: ""
     Description: Route 53 zone for DomainName. Both or neither.
 
+  GlueDatabaseName:
+    Type: String
+    Default: attrape_telemetry
+    AllowedPattern: "^[a-z0-9_]+$"
+    Description: >-
+      Where the Athena tables live. Not derived from the stack name because
+      Glue accepts only lowercase letters, digits and underscores, and stack
+      names here carry a dash.
+
   EnableQuietSyncAlarm:
     Type: String
     Default: "false"
@@ -159,6 +168,13 @@ Resources:
             Status: Enabled
             AbortIncompleteMultipartUpload:
               DaysAfterInitiation: 7
+          # Query output is derived data that can be recomputed for pennies.
+          # Keeping it is how the analytics bucket ends up mostly analytics
+          # about the analytics.
+          - Id: expire-query-results
+            Status: Enabled
+            Prefix: athena-results/
+            ExpirationInDays: 7
 
   # -------------------------------------------------------------------------
   # The service
@@ -342,6 +358,144 @@ Resources:
       AliasTarget:
         DNSName: !GetAtt ApiDomain.RegionalDomainName
         HostedZoneId: !GetAtt ApiDomain.RegionalHostedZoneId
+
+  # -------------------------------------------------------------------------
+  # Reading the telemetry
+  #
+  # The sink writes newline-delimited JSON under a date prefix and nothing
+  # runs in between, which is cheap and completely unreadable without a
+  # schema. These three resources are that schema, declared here rather than
+  # pasted into a console so that "we can see what the game is doing" survives
+  # a laptop being reinstalled.
+  #
+  # PARTITION PROJECTION, not a crawler and not MSCK REPAIR: Athena works the
+  # partitions out from the date in the prefix, so nothing has to run when a
+  # new day starts and no maintenance job can quietly stop running. The cost
+  # of the whole arrangement is the S3 storage and $5 per terabyte scanned, of
+  # which a product this size will scan approximately none — as long as every
+  # query filters on `dt`, which is why the sample queries all do.
+  # -------------------------------------------------------------------------
+
+  TelemetryDatabase:
+    Type: AWS::Glue::Database
+    Condition: TelemetryOn
+    Properties:
+      CatalogId: !Ref AWS::AccountId
+      DatabaseInput:
+        Name: !Ref GlueDatabaseName
+        Description: Attrape-Lettres first-party telemetry
+
+  EventsTable:
+    Type: AWS::Glue::Table
+    Condition: TelemetryOn
+    Properties:
+      CatalogId: !Ref AWS::AccountId
+      DatabaseName: !Ref TelemetryDatabase
+      TableInput:
+        Name: events
+        TableType: EXTERNAL_TABLE
+        Parameters:
+          classification: json
+          projection.enabled: "true"
+          projection.dt.type: date
+          projection.dt.format: yyyy-MM-dd
+          # NOW is evaluated per query, so this never needs touching again.
+          projection.dt.range: 2026-01-01,NOW
+          projection.dt.interval: "1"
+          projection.dt.interval.unit: DAYS
+          # `${!dt}` keeps the braces literal through !Sub — Athena substitutes
+          # them, CloudFormation must not.
+          storage.location.template: !Sub "s3://${TelemetryBucket}/events/dt=${!dt}/"
+        PartitionKeys:
+          - Name: dt
+            Type: string
+        StorageDescriptor:
+          Location: !Sub "s3://${TelemetryBucket}/events/"
+          InputFormat: org.apache.hadoop.mapred.TextInputFormat
+          OutputFormat: org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.openx.data.jsonserde.JsonSerDe
+          # Column names are lowercase because Hive has no other kind. The
+          # serde matches JSON keys case-insensitively by default, which is
+          # what makes `daysLeft` on the wire land in `daysleft` here.
+          #
+          # The shape mirrors `src/telemetry/schema.ts` exactly, and that is
+          # not a coincidence to preserve casually: a property added there and
+          # not here is written to S3 and then silently invisible to every
+          # query, which is the most expensive kind of missing data — the kind
+          # you believe you have.
+          Columns:
+            - Name: v
+              Type: string
+              Comment: App version, stamped at build time
+            - Name: event
+              Type: string
+            - Name: props
+              Type: struct<exercise:string,level:int,rounds:int,perfect:int,points:int,cost:int,stage:int,daysleft:int>
+            - Name: receivedat
+              Type: string
+              Comment: Server clock, ISO 8601. The only field the server adds.
+
+  ErrorsTable:
+    Type: AWS::Glue::Table
+    Condition: TelemetryOn
+    Properties:
+      CatalogId: !Ref AWS::AccountId
+      DatabaseName: !Ref TelemetryDatabase
+      TableInput:
+        Name: errors
+        TableType: EXTERNAL_TABLE
+        Parameters:
+          classification: json
+          projection.enabled: "true"
+          projection.dt.type: date
+          projection.dt.format: yyyy-MM-dd
+          projection.dt.range: 2026-01-01,NOW
+          projection.dt.interval: "1"
+          projection.dt.interval.unit: DAYS
+          storage.location.template: !Sub "s3://${TelemetryBucket}/errors/dt=${!dt}/"
+        PartitionKeys:
+          - Name: dt
+            Type: string
+        StorageDescriptor:
+          Location: !Sub "s3://${TelemetryBucket}/errors/"
+          InputFormat: org.apache.hadoop.mapred.TextInputFormat
+          OutputFormat: org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.openx.data.jsonserde.JsonSerDe
+            Parameters:
+              # `where` is a SQL keyword and would need quoting in every single
+              # query. The serde renames it on the way in instead.
+              mapping.origin: where
+          Columns:
+            - Name: v
+              Type: string
+            - Name: origin
+              Type: string
+              Comment: Which part of the app threw. `where` on the wire.
+            - Name: message
+              Type: string
+            - Name: stack
+              Type: string
+            - Name: receivedat
+              Type: string
+
+  # A workgroup exists mostly for the two guards on it: results land somewhere
+  # with a lifecycle rule, and a single query cannot scan more than a gigabyte.
+  # Athena bills for bytes scanned, and the classic way to find that out is a
+  # `SELECT *` with no `dt` filter run once, by accident.
+  TelemetryWorkgroup:
+    Type: AWS::Athena::WorkGroup
+    Condition: TelemetryOn
+    Properties:
+      Name: !Sub "${AWS::StackName}-telemetry"
+      State: ENABLED
+      WorkGroupConfiguration:
+        EnforceWorkGroupConfiguration: true
+        PublishCloudWatchMetricsEnabled: false
+        BytesScannedCutoffPerQuery: 1073741824
+        ResultConfiguration:
+          OutputLocation: !Sub "s3://${TelemetryBucket}/athena-results/"
 
   # -------------------------------------------------------------------------
   # Detection
@@ -641,6 +795,11 @@ Outputs:
   TelemetryBucketName:
     Condition: TelemetryOn
     Value: !Ref TelemetryBucket
+
+  TelemetryWorkgroupName:
+    Condition: TelemetryOn
+    Description: Run the queries in infra/athena.sql against this workgroup.
+    Value: !Ref TelemetryWorkgroup
 
   AlarmTopicArn:
     Description: Subscribe more than one person to this.
