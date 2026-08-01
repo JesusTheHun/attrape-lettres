@@ -432,14 +432,27 @@ public struct DashboardView: View {
     /// it cannot feed its own measurement back).
     @State private var box: CGFloat = 0
 
+    /// « Partager entre appareils 📱 » — the parent door, and the only thing on
+    /// this screen that is not for the child. nil hides it entirely, which is
+    /// what every preview and every existing test gets: the app target is the
+    /// only caller that supplies it.
+    ///
+    /// The door is VISIBLE to a child and what is behind it is not — the
+    /// callback raises a `ParentalGateView` first. Guideline 1.3 is about not
+    /// putting an adult mechanism within a child's reach, and a share sheet
+    /// handing out the household credential is one.
+    public let onShare: (() -> Void)?
+
     public init(
         onBack: @escaping () -> Void,
         onShop: @escaping () -> Void,
-        onSwitch: @escaping () -> Void
+        onSwitch: @escaping () -> Void,
+        onShare: (() -> Void)? = nil
     ) {
         self.onBack = onBack
         self.onShop = onShop
         self.onSwitch = onSwitch
+        self.onShare = onShare
     }
 
     /// `const { config, balance } = profile` — a READ of the folded counters,
@@ -456,6 +469,7 @@ public struct DashboardView: View {
             growthCard
             shopDoor
             switchDoor
+            shareDoor
         }
         .background(
             GeometryReader { proxy in
@@ -659,6 +673,35 @@ public struct DashboardView: View {
         }
         .buttonStyle(.plain)
         .frame(maxWidth: DashboardMetrics.cardMaxWidth)
+    }
+
+    /// Same shape as `switchDoor`, deliberately: it is a door like the others,
+    /// not a settings affordance hidden in a corner where a parent will not
+    /// find it. What separates it is the gate behind it, not its styling.
+    @ViewBuilder
+    private var shareDoor: some View {
+        if let onShare {
+            Button(action: onShare) {
+                Text(verbatim: Copy.Dashboard.shareDoor)
+                    .font(Typography.rounded(Typography.Size.lg, Typography.Weight.black))
+                    .foregroundStyle(Palette.ink.color)
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, DashboardMetrics.doorPaddingX)
+                    .padding(.vertical, DashboardMetrics.switchPaddingY)
+                    .background {
+                        ZStack {
+                            Capsule()
+                                .fill(Color.black.opacity(DashboardMetrics.switchLipOpacity))
+                                .offset(y: DashboardMetrics.switchLipDrop)
+                            Capsule()
+                                .fill(Color.white.opacity(Palette.White.o80))
+                        }
+                    }
+                    .contentShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .frame(maxWidth: DashboardMetrics.cardMaxWidth)
+        }
     }
 }
 

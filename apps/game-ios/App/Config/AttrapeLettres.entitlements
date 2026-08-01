@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  One entitlement, and it buys one thing: a parent's own devices pair without
+  a screen.
+
+  iCloud key-value store is per APPLE ID, not per family. My iPhone and the
+  family iPad, yes, automatically. Two parents are two Apple IDs and nothing
+  Apple exposes joins them — there is no family identifier available to a
+  third-party app, deliberately, and ownershipType == .familyShared says an
+  entitlement arrived through a family without carrying a key to pair on. That
+  is why the QR exists and why it is not going away.
+
+  NOT iCloud Documents and NOT CloudKit. This carries three short strings; a
+  container would be a second backing store beside the API we already run.
+
+  Every failure here is silence by design: no iCloud account, iCloud Drive off,
+  a device never online — NSUbiquitousKeyValueStore keeps working as a local
+  plist and never syncs. Nothing to surface, nothing for a parent to fix, and
+  the QR still works. Invariant 11's philosophy, applied to pairing.
+-->
+<plist version="1.0">
+<dict>
+	<key>com.apple.developer.ubiquity-kvstore-identifier</key>
+	<string>$(TeamIdentifierPrefix)$(CFBundleIdentifier)</string>
+</dict>
+</plist>

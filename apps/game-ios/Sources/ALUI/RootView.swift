@@ -48,13 +48,20 @@ public struct RootView: View {
         audio: any AudioEngine,
         kv: any KVStore,
         time: any TimeSource,
-        dev: DevScreen? = DevScreen.fromProcess()
+        dev: DevScreen? = DevScreen.fromProcess(),
+        onPair: (() -> Void)? = nil
     ) {
         self.audio = audio
         self.kv = kv
         self.time = time
         self.dev = dev
+        self.onPair = onPair
     }
+
+    /// Raises the pairing flow. Supplied only by the app target — the package
+    /// has no way to mint a link, and a preview or a test renders the
+    /// dashboard without the door exactly as before.
+    private let onPair: (() -> Void)?
 
     /// The process-wide instance is the TS module-level `track`; an injected
     /// one wins so a test or a preview can watch it (Paywall's pattern).
@@ -120,7 +127,8 @@ public struct RootView: View {
             DashboardView(
                 onBack: { route = .hub },
                 onShop: { route = .shop },
-                onSwitch: { route = .pick }
+                onSwitch: { route = .pick },
+                onShare: onPair
             )
         case .shop:
             // `.shop`'s back goes to `.dashboard`, not `.hub`.

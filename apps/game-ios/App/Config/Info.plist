@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  The app's Info.plist, explicitly.
+
+  It used to be generated: GENERATE_INFOPLIST_FILE = YES with one
+  INFOPLIST_KEY_* build setting per key. That works until a key is not a
+  scalar, and CFBundleURLTypes is an array of dictionaries — there is no
+  INFOPLIST_KEY_ spelling for it. Setting both GENERATE_INFOPLIST_FILE and
+  INFOPLIST_FILE does not merge them, it collides:
+
+      error: Multiple commands produce '.../Attrape-Lettres.app/Info.plist'
+
+  So generation is off and every key that used to live in a build setting
+  lives here instead, which is one file to read rather than a list to
+  reconstruct from the project. The $(...) values are the same build settings
+  Xcode would have substituted.
+
+  ── ONE URL SCHEME, AND NO OTHER PERMISSION ──────────────────────────────────
+  There is no NSCameraUsageDescription and there must not be one. The QR is
+  DISPLAYED here and read by the SYSTEM camera, which already offers to open an
+  installed app. An in-app scanner would be nicer and would cost a camera
+  permission on an app whose permission set is otherwise empty — one more line
+  to justify in a Kids Category review, for something a parent does once. The
+  Android manifest states the same rule for the other store, and
+  `AppLinkContractTests` fails if this key ever appears.
+
+  The scheme is ALCore's `PairingLink.scheme`. The same test compares them,
+  because nothing else would: rename one side and the app still compiles,
+  still ships, and simply never opens when a QR is scanned.
+
+  ALSyncURL is the sync endpoint. Empty means absent
+  (`PlatformConfiguration.normalised`), which makes the module inert rather
+  than broken — a build that clears it fails silent, and no child waits on a
+  network. ALTelemetryURL is deliberately still empty: an endpoint there would
+  only be honest once the consent the Kids Category requires is asked for and
+  recorded, and that is a product decision, not a build setting.
+-->
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>Attrape-Lettres</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+
+	<key>ALSyncURL</key>
+	<string>https://api.attrape-lettres.app</string>
+	<key>ALTelemetryURL</key>
+	<string></string>
+
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>fr.dappit.attrape-lettres.pair</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>attrape-lettres</string>
+			</array>
+		</dict>
+	</array>
+
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+	</dict>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
+	<key>UILaunchScreen</key>
+	<dict/>
+	<key>UIStatusBarHidden</key>
+	<true/>
+	<key>UIRequiresFullScreen</key>
+	<true/>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+	</array>
+</dict>
+</plist>

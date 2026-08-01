@@ -115,6 +115,10 @@ public enum Copy {
 
         public static let shopDoor = "Boutique 🛍️"
         public static let switchCompanion = "Changer de copain 🔄"
+        /// The parent door. Optional — `RootView` only supplies the
+        /// callback in the app target, so a preview or a test renders the
+        /// dashboard exactly as before.
+        public static let shareDoor = "Partager entre appareils 📱"
     }
 
     /* ====================================================================== */
@@ -244,6 +248,67 @@ public enum Copy {
         public static let consentTitle = "Nous aider à améliorer le jeu"
         public static let consentBody =
             "On reçoit seulement : quel exercice, quel niveau, réussi ou non. Jamais le prénom de votre enfant, jamais rien qui l'identifie. Vous pouvez changer d'avis à tout moment."
+    }
+
+    /* ====================================================================== */
+    /* Pairing — no TSX. The PWA has no such screen.                           */
+    /*                                                                        */
+    /* Written for the grown-up, like Onboarding and the gate, and plainly on  */
+    /* purpose: a screen that looks like the game invites a six-year-old to    */
+    /* press things on it.                                                     */
+    /* ====================================================================== */
+
+    public enum Pairing {
+        public static let heading = "Les mêmes progrès sur tous les appareils"
+
+        /// What it is for, in the terms a parent already has. No jargon: not
+        /// « synchronisation », not « compte », not « foyer ».
+        public static let intro =
+            "Le téléphone de papa, celui de maman, la tablette — les étoiles et les progrès de votre enfant se retrouvent sur tous."
+
+        /// The sentence that has to be here. Invariant 10 is the promise; this
+        /// is where the person it protects can read it.
+        public static let privacy =
+            "Sans compte et sans adresse e-mail. Le prénom de votre enfant ne quitte jamais l'appareil."
+
+        public static let showTitle = "Sur cet appareil"
+        public static let qrLabel = "Code à faire scanner par l'autre appareil"  // aria-label
+
+        /// Deliberately « l'appareil photo », the system camera. The app asks
+        /// for no camera permission of its own — one more permission to
+        /// justify in a Kids Category review, for a screen a parent opens once.
+        public static let scanHint =
+            "Ouvrez l'appareil photo de l'autre appareil et visez ce carré."
+
+        public static let share = "Partager le lien"
+        public static let shareMessage = "Rejoindre les progrès Attrape-Lettres"
+
+        /// The automatic path, named so a parent does not pair two devices by
+        /// hand for nothing.
+        public static let automatic =
+            "Vos propres appareils, avec le même identifiant Apple, se relient tout seuls."
+
+        public static let joinedTitle = "C'est fait"
+        public static let joined =
+            "Les deux appareils partagent maintenant les mêmes étoiles et les mêmes progrès."
+
+        /// The hazard `HouseholdClaim`'s header describes: a third device left
+        /// behind. Not data loss, so the wording must not read like a warning
+        /// about losing something.
+        public static let thirdDevice =
+            "Si un troisième appareil était déjà relié, reliez-le à nouveau. Il garde toutes ses étoiles, mais il ne se mettra plus à jour avec les autres."
+
+        /// No endpoint in this build. Says so rather than showing a code that
+        /// would do nothing.
+        public static let unavailable =
+            "Le partage entre appareils n'est pas disponible dans cette version."
+
+        public static let done = "Terminé"
+
+        /// Shown on the gate. Guideline 1.3 is about not putting an adult
+        /// mechanism in front of a child, and a share sheet is one — so the
+        /// door is visible but what is behind it is not reachable by tapping.
+        public static let gateReason = "Partager les progrès entre appareils"
     }
 
     /* ====================================================================== */
