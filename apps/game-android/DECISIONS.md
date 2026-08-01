@@ -189,3 +189,52 @@ The twelve dragon parts the port skips (`CloudWings`, `DomeFin`, `Bolt`,
 `Shield`, `ChestArmor`, `EggShield`) have zero references anywhere in
 `apps/game-web/src` outside `dragonParts.tsx`: they are unreachable design-run
 candidates, and iOS skipped the same list.
+
+## A11 — `:ui` is tested as data, because a host test cannot compose
+
+Measured, not assumed. On the unit-test JVM these all work and `:ui` uses them
+freely in both main code and tests: `Color` (a value class over `ULong`, so
+`lerp` and `compositeOver` are pure arithmetic), `Dp`, `TextUnit`, `TextStyle`,
+`FontWeight`, `Offset`, `Size`, `Brush.linearGradient`, `Modifier` chains —
+`Modifier.size(92.dp)` constructs and is inspectable — `mutableStateOf`,
+`mutableStateListOf` and `Animatable`. These throw `Method X in android.Y not
+mocked`: any `Path` operation (Compose's `Path` is `AndroidPath`, wrapping
+`android.graphics.Path`) and `android.graphics.Color.parseColor`.
+
+So the split is not the one `:art` needed. `:art` had to mirror geometry into a
+neutral draw list because `Path` is unusable; `:ui` keeps idiomatic Compose types
+and instead factors the *logic* out of the `@Composable` — the press state
+machine, the keyframe values, the fluid sizing math, the confetti physics, the
+copy — into plain classes and functions a test calls directly. No Robolectric, no
+`compose-ui-test`, and `testOptions.unitTests.returnDefaultValues` stays off: it
+would turn a wrong-layer test into a silently-passing one.
+
+The honest cost, stated once: **no composition ever runs.** The 227 tests prove
+what the animation *specs* say, not that a frame was drawn, and the central
+invariant-1 claim — that `awaitFirstDown(pass = PointerEventPass.Initial)`
+resumes synchronously inside pointer dispatch, before recomposition — is a
+property of Compose's internals that now compiles but has not been observed. That
+needs an instrumented test or a device trace, and until then it rests on the API
+contract.
+
+## A12 — The pointer-down rule binds gameplay, not navigation
+
+`Modifier.clickable` is absent from `:ui` and a source-scan test fails the build
+if it returns: it fires on UP, behind the ripple, after a commit, which is
+invariant 1 inverted. Every game surface goes through the one `touchDown`
+primitive in `ui/interaction/TouchDown.kt`, the only `pointerInput` in the module.
+
+Two things that look like exceptions and are not. The four `onClick` calls in
+`:ui` are `androidx.compose.ui.semantics.onClick` — accessibility actions
+registered in the semantics tree so a TalkBack double-tap reaches the same
+handler; they are not a touch path. And `GameFrame`'s « ← Menu » deliberately
+acts on the *lift*, through `touchDown`'s `onUp` with an empty down handler,
+because `GameFrame.tsx` uses `onClick` there too: leaving an exercise by accident
+costs a child their place, which is the one case where waiting for the lift is
+the kinder behaviour.
+
+Compose has more than one deferred phase, and the invariant is about the phase,
+not the API. `Anim.kt`'s six `Animatable`s are read inside `graphicsLayer`
+lambdas; `Tile`'s highlight ring is read inside `drawBehind`, because a painted
+colour band is not expressible as a layer transform. Both are draw-phase reads
+costing zero recompositions — which is what invariant 2 actually asks for.

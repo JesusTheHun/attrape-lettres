@@ -70,9 +70,11 @@ clip") runs on a machine that has never staged the audio.
 | `:core` — domain, content, levels, rewards, persistence, sync, licensing, telemetry, VO | done — **551 tests**, 83 classes |
 | `:art` — SVG runtime, 17 exercise icons, 4 word images, 5 mascots + their rig | done — **185 tests**, 33 classes |
 | `:platform` — storage, clip bank, SFX, haptics, reduce-motion, transports | done — **70 tests**, 11 classes |
-| `:ui` — the Compose screens, and wiring the adapters into `MainActivity` | next |
+| `:ui` — interaction, tokens, copy, Tile, GameFrame, confetti, components | done — **227 tests**, 34 classes |
+| `:ui` — the 17 exercise engines, hub, router, shop, adult screens | next |
+| `MainActivity` — wiring the real adapters in | after that; still a placeholder |
 
-806 host tests, none skipped. `:core` is complete except for the sync client's
+1033 host tests, none skipped. `:core` is complete except for the sync client's
 ETag/412 retry loop and household identity, which wait on the API contract (A7).
 Everything the game computes — every ladder, every round builder, the economy, the
 migrations, the merge, the entitlement state machine — is ported and tested on the
@@ -80,7 +82,10 @@ host, as is everything it draws.
 
 Two things a green build here does not prove, and neither is proven yet: **no
 pixel has ever been produced** (`SvgCanvas` records a draw list that is heavily
-tested; `SvgRender` replays it into Compose and is not), and **nothing has run on
-a device or an emulator** — audio latency in particular is unmeasurable from the
-host. Billing is absent by decision: no Play Billing dependency is taken and
-`:app` wires the stub, so nothing can be bought.
+tested; `SvgRender` replays it into Compose and is not; every `:ui` spec is
+asserted as data, with no composition and no frame clock anywhere in the suite),
+and **nothing has run on a device or an emulator** — audio latency and the claim
+that `awaitFirstDown` resumes inside pointer dispatch before recomposition are
+both device-only facts. `MainActivity` still renders a placeholder, so the APK
+*contains* `:ui` and never reaches it. Billing is absent by decision: no Play
+Billing dependency is taken and `:app` wires the stub, so nothing can be bought.

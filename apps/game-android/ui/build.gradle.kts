@@ -44,4 +44,5 @@ dependencies {
     implementation(libs.compose.ui.tooling.preview)
 
     testImplementation(libs.kotlin.test)
+    testImplementation(libs.kotlin.test.junit)
 }
