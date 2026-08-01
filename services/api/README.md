@@ -108,10 +108,19 @@ observable in the merge, so it is stored rather than recomputed.
 ## Deploying
 
 ```bash
-ALARM_EMAIL=you@example.com \
-DOMAIN_NAME=api.example.fr HOSTED_ZONE_ID=Z0123… \
-./scripts/deploy.sh
+./scripts/deploy.sh          # everything is already defaulted
 ```
+
+| | |
+|---|---|
+| Account | `697245141810`, via SSO profile `attrape` |
+| Region | `eu-west-3` (Paris) |
+| Hostname | **`api.attrape-lettres.app`** |
+| Hosted zone | `Z0958531H2SK1733D6VT` |
+| Alarms to | `jonathan.massuchetti@dappit.fr` |
+
+Every one of those is a `${VAR:-default}` in `scripts/deploy.sh`; override any
+of them from the environment. `PROFILE=""` falls back to ambient credentials.
 
 One CloudFormation stack: a DynamoDB table, an S3 bucket, one Lambda behind an
 HTTP API, the Glue tables that make the telemetry queryable, and the alarms.
@@ -130,11 +139,22 @@ which forwards no request headers by default — `If-Match` would vanish, every
 push would become a create, every create would conflict, and sync would stop for
 everyone. An HTTP API passes `If-Match` and `ETag` through untouched.
 
-> **Ship a custom domain before you ship an app.** `DomainName` is optional in
-> the template and mandatory in practice. The generated
-> `https://<id>.execute-api.<region>.amazonaws.com` dies with the stack, and an
-> installed binary cannot be repointed without a store release. Build the apps
-> against a name you own.
+> **`api.attrape-lettres.app` is effectively permanent.** It gets compiled into
+> native binaries that change only through store review, so moving it strands
+> every installed app until a new release clears. `DomainName` is optional in
+> the template and mandatory in practice: the generated
+> `https://<id>.execute-api.<region>.amazonaws.com` dies with its stack.
+>
+> `api.` rather than the apex on purpose — the apex holds one A record set, and
+> spending it on a backend API would foreclose ever putting the site or the PWA
+> there.
+>
+> Two things about that name that fail quietly. `.app` is on the **HSTS preload
+> list**, so HTTPS is mandatory at the browser level and there is no HTTP
+> fallback, ever, including for debugging. And the domain's **ICANN registrant
+> verification** must be completed or the registration is suspended after 15
+> days — the domain simply stops resolving, and the first symptom is the
+> `sync-went-quiet` alarm.
 
 **The stack does not create everything it uses, on purpose.** The table, the
 bucket and the log group are `Retain` on both delete and replace. `delete-stack`

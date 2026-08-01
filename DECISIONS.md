@@ -327,6 +327,17 @@ sync would stop for everyone. The one documented way to break this service would
 have been introduced by its own deployment. `DomainName` is optional in the
 template and mandatory in practice, and the README says so in a block quote.
 
+**The name is `api.attrape-lettres.app`, and it is close to irreversible.** It
+is compiled into native binaries that change only through store review, so
+moving it strands every installed app until a release clears. `api.` rather
+than the apex because the apex holds one A record set, and spending it on a
+backend API would foreclose ever putting the site or the PWA there. Two
+properties of that name fail quietly and are written down in the service README
+rather than trusted to memory: `.app` is on the HSTS preload list, so there is
+no HTTP fallback ever; and the domain's ICANN registrant verification, if left
+unclicked, suspends the registration after fifteen days — at which point the
+first symptom is the `sync-went-quiet` alarm and nothing else.
+
 **The bundle includes the AWS SDK.** This is a pnpm workspace, so zipping
 `node_modules` produces broken symlinks; and which SDK version a managed runtime
 ships is not ours to choose, and has changed before. One esbuild output, not
