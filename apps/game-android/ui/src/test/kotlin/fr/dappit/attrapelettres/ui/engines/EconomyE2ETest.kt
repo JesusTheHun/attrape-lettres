@@ -1,6 +1,5 @@
 package fr.dappit.attrapelettres.ui.engines
 
-import fr.dappit.attrapelettres.core.domain.ExerciseId
 import fr.dappit.attrapelettres.core.domain.ExerciseMeta
 import fr.dappit.attrapelettres.core.levels.EXERCISES
 import fr.dappit.attrapelettres.core.levels.exerciseDifficulty
@@ -11,6 +10,8 @@ import fr.dappit.attrapelettres.core.rewards.REWARD_CURVE
 import fr.dappit.attrapelettres.core.rewards.ledgerKey
 import fr.dappit.attrapelettres.core.support.RandomSource
 import fr.dappit.attrapelettres.core.support.SeededGenerator
+import fr.dappit.attrapelettres.ui.screens.ExerciseEngine
+import fr.dappit.attrapelettres.ui.screens.engineFor
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -34,6 +35,11 @@ import kotlin.test.assertEquals
 /* engine stopped calling `award`, if a catalog row were dispatched to the      */
 /* wrong engine, or if a session came back empty (which sets `done` in the      */
 /* model's own construction and skips the finish transition entirely).         */
+/*                                                                             */
+/* AND IT DISPATCHES THROUGH THE ROUTER, not through a copy of it. See          */
+/* `playCatalogRow` below — `engineFor` is the function `RootView` calls, so    */
+/* "the wrong engine" above now means the app's wrong engine and not this       */
+/* file's opinion of it.                                                       */
 /* -------------------------------------------------------------------------- */
 
 private class EconomyWorld {
@@ -121,20 +127,31 @@ private fun <Item, Round, Slot : Any> playAssembly(
 }
 
 /**
- * The hub's dispatch, in test form: four id checks first, then four capability
- * checks — `App.tsx`'s order, ported exactly. It lives here rather than in
- * `:ui`'s main source because the router that will own it is a later package;
- * when it lands, this switch is what it has to agree with.
+ * Plays one catalog row through THE SHIPPING DISPATCH.
+ *
+ * This function used to hold its own hand-written copy of `App.tsx`'s if-chain,
+ * because no router existed yet. That copy was the weak link in the whole
+ * suite: it proved that every row banks under the right `ledgerKey` *given the
+ * dispatch this file believed in*, and nothing forced the app to believe the
+ * same thing. A row that quietly moved engine would have kept this suite green
+ * while a child's stars landed under another key — silently, permanently, and
+ * invisibly to every other test.
+ *
+ * So the copy is gone. `engineFor` is `ui/screens/Router.kt`'s function, the one
+ * `RootView` calls to choose a composable, and the `when` below is only the
+ * mapping from an engine to the model that engine renders. `RouterDispatchTest`
+ * pins `engineFor` itself against the TypeScript, row by row; this suite now
+ * inherits that instead of restating it.
  */
 private fun playCatalogRow(world: EconomyWorld, meta: ExerciseMeta, level: Int, seed: Long) {
     val h = world.harness
     val deps = world.deps
     val rng: RandomSource = SeededGenerator(seed)
-    when {
-        meta.id == ExerciseId.READ_IMAGE ->
+    when (val engine = engineFor(meta)) {
+        ExerciseEngine.ReadImage ->
             playPerfectly(h, SinglePickModel.readImage(level, deps, rng))
 
-        meta.id == ExerciseId.SPELL_SOUND -> playAssembly(
+        ExerciseEngine.SpellSound -> playAssembly(
             h = h,
             model = AssemblyModel.spellSound(level, deps, rng),
             answers = { it.target.spelling },
@@ -142,22 +159,22 @@ private fun playCatalogRow(world: EconomyWorld, meta: ExerciseMeta, level: Int, 
             matches = { a, b -> a == b },
         )
 
-        meta.id == ExerciseId.FIND_SOUND ->
+        ExerciseEngine.FindSound ->
             playPerfectly(h, SinglePickModel.findSound(level, deps, rng))
 
-        meta.id == ExerciseId.SOUND_TWINS ->
+        ExerciseEngine.SoundTwins ->
             playTwinsPerfectly(h, TwinsModel(level, deps, rng))
 
-        meta.grid != null ->
-            playPerfectly(h, SinglePickModel.syllableGrid(meta.id, meta.grid!!, level, deps, rng))
+        is ExerciseEngine.SyllableGrid ->
+            playPerfectly(h, SinglePickModel.syllableGrid(meta.id, engine.mode, level, deps, rng))
 
-        meta.spell != null -> playAssembly(
+        is ExerciseEngine.SpellSyllable -> playAssembly(
             h = h,
             model = AssemblyModel.spellSyllable(
                 exercise = meta.id,
-                mode = meta.spell!!,
+                mode = engine.mode,
                 level = level,
-                mixed = meta.mixed,
+                mixed = engine.mixed,
                 deps = deps,
                 rng = rng,
             ),
@@ -166,18 +183,19 @@ private fun playCatalogRow(world: EconomyWorld, meta: ExerciseMeta, level: Int, 
             matches = ::sameFace,
         )
 
-        meta.match != null ->
-            playPerfectly(h, SinglePickModel.letterMatch(meta.id, meta.match!!, level, deps, rng))
+        is ExerciseEngine.LetterMatch ->
+            playPerfectly(h, SinglePickModel.letterMatch(meta.id, engine.kind, level, deps, rng))
 
-        meta.mode != null -> playAssembly(
+        is ExerciseEngine.Assemble -> playAssembly(
             h = h,
-            model = AssemblyModel.assemble(meta.id, meta.mode!!, level, deps, rng),
+            model = AssemblyModel.assemble(meta.id, engine.mode, level, deps, rng),
             answers = { it.word.syllables },
             tray = { round -> round.tray.map { it.id to it.syllable } },
             matches = { a, b -> a == b },
         )
 
-        else -> playPerfectly(h, SinglePickModel.firstLetter(level, deps, rng))
+        ExerciseEngine.FirstLetter ->
+            playPerfectly(h, SinglePickModel.firstLetter(level, deps, rng))
     }
 }
 

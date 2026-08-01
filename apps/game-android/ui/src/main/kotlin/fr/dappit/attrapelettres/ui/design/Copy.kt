@@ -217,6 +217,15 @@ object Copy {
         const val NEW_PROFILE_GLYPH = "＋"
         const val NEW_PROFILE_LABEL = "Nouveau"
 
+        /**
+         * The 👋 above « Comment tu t'appelles ? ». Deliberately a second
+         * constant rather than a reference to [Onboarding.WAVE]: the two
+         * screens author the same glyph independently, at different sizes, and
+         * a shared constant would let a change to the adult screen's greeting
+         * silently redraw a six-year-old's.
+         */
+        const val WAVE = "👋"
+
         const val ASK_NAME = "Comment tu t'appelles ?"
 
         /** Both the field's contentDescription and its placeholder. */
@@ -468,6 +477,21 @@ object Copy {
          * `SLOT_LABEL` — the body part a colour/style slot dresses; it titles
          * that slot's group in the list. Keyed by the raw slot name, which is
          * data from the catalogue, so this stays a Map and not an enum.
+         *
+         * THE LAST FOUR ARE A DELIBERATE DIVERGENCE FROM THE WEB, and the only
+         * one in this file. `Shop.tsx`'s `SLOT_LABEL` has eleven entries and
+         * falls back to `?? slot`, so the rabbit's inner ears and the dragon's
+         * wings and crest are today headed « innerEarColor », « wingColor » and
+         * « crestStyle » — a raw config key, in English, above a group of tiles,
+         * in front of a six-year-old who is learning to read. iOS ported the
+         * eleven faithfully and inherited it. That fallback is a bug, not
+         * behaviour, and it is invisible precisely because nothing fails: this
+         * is why `ShopCopyCoverageTest` now walks every slot in `:core`'s
+         * CATALOG and DEFAULT_LOOKS and fails when one has no French.
+         *
+         * The four names follow the map's own convention — the BODY PART, not
+         * the property, so a colour slot and a style slot on the same part share
+         * a heading exactly as `tailColor` / `tailStyle` already do.
          */
         val SLOT_LABEL: Map<String, String> = mapOf(
             "bodyColor" to "Corps",
@@ -481,6 +505,10 @@ object Copy {
             "hair" to "Poil",
             "tailSize" to "Queue",
             "furPattern" to "Pelage",
+            "innerEarColor" to "Oreilles",
+            "earStyle" to "Oreilles",
+            "wingColor" to "Ailes",
+            "crestStyle" to "Crête",
         )
 
         /** The group title for `category == accessory` — it has no slot. */

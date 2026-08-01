@@ -573,13 +573,21 @@ class CopyTest {
         assertEquals("Poil", Copy.Shop.SLOT_LABEL["hair"])
         assertEquals("Queue", Copy.Shop.SLOT_LABEL["tailSize"])
         assertEquals("Pelage", Copy.Shop.SLOT_LABEL["furPattern"])
-        assertEquals(11, Copy.Shop.SLOT_LABEL.size)
+        // The four the TSX map is MISSING, added here on purpose — see the note
+        // on SLOT_LABEL. Without them the rabbit's ears and the dragon's wings
+        // and crest are headed with their raw config key. `ShopCopyCoverageTest`
+        // is the test that makes the gap impossible to reintroduce.
+        assertEquals("Oreilles", Copy.Shop.SLOT_LABEL["innerEarColor"])
+        assertEquals("Oreilles", Copy.Shop.SLOT_LABEL["earStyle"])
+        assertEquals("Ailes", Copy.Shop.SLOT_LABEL["wingColor"])
+        assertEquals("Crête", Copy.Shop.SLOT_LABEL["crestStyle"])
+        assertEquals(15, Copy.Shop.SLOT_LABEL.size)
         assertEquals("Accessoires", Copy.Shop.ACCESSORY_LABEL)
 
         // `SLOT_LABEL[slot] ?? slot` in the TSX: an unknown slot shows its key.
         assertEquals("Accessoires", Copy.Shop.groupLabel(isAccessory = true, slot = "bodyColor"))
         assertEquals("Corps", Copy.Shop.groupLabel(isAccessory = false, slot = "bodyColor"))
-        assertEquals("wingColor", Copy.Shop.groupLabel(isAccessory = false, slot = "wingColor"))
+        assertEquals("nopeColor", Copy.Shop.groupLabel(isAccessory = false, slot = "nopeColor"))
 
         assertEquals("Essayer Corne dorée", Copy.Shop.TryOn.title("Corne dorée"))
         assertEquals("Ne pas acheter", Copy.Shop.TryOn.CANCEL)

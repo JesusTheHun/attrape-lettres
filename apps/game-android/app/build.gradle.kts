@@ -57,5 +57,19 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
 
+    // :core and :platform both take coroutines as `implementation`, so the
+    // types are not on this module's compile classpath transitively — and the
+    // composition root names them directly: the process-lifetime CoroutineScope
+    // telemetry sends run on is built here.
+    implementation(libs.kotlinx.coroutines.core)
+    // The Main dispatcher's ServiceLoader binding — see the catalog note. It is
+    // on the classpath transitively today; naming it here is what stops a future
+    // dependency tidy-up from turning it into a crash in Application.onCreate.
+    implementation(libs.kotlinx.coroutines.android)
+
     testImplementation(libs.kotlin.test)
+    // A9 — `kotlin.test.Test` is an expect-typealias and an Android variant has
+    // no `useJUnitPlatform()` to pick the actual for it. Same artifact family
+    // and version as the line above, testImplementation only, nothing in the APK.
+    testImplementation(libs.kotlin.test.junit)
 }

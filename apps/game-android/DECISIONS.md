@@ -238,3 +238,122 @@ not the API. `Anim.kt`'s six `Animatable`s are read inside `graphicsLayer`
 lambdas; `Tile`'s highlight ring is read inside `drawBehind`, because a painted
 colour band is not expressible as a layer transform. Both are draw-phase reads
 costing zero recompositions — which is what invariant 2 actually asks for.
+
+## A13 — The object graph hangs off `Application`, not off `MainActivity`
+
+`AttrapeLettresApplication.onCreate` builds `AppGraph` and nothing else builds
+one. The activity reads it. Two facts force that, and neither is style:
+
+- **Telemetry's scope must outlive an activity.** `PlatformEnvironment`'s own
+  contract asks for a scope that lives as long as the PROCESS, because a
+  rotation must not cancel an in-flight send. An activity-scoped
+  `CoroutineScope` cannot promise it.
+- **The audio engine owns native handles.** Static `AudioTrack`s, a reused
+  `MediaPlayer` and a `TextToSpeech` service binding. Rebuilding it on every
+  activity recreation would leak them and would re-pay the prewarm, which is
+  exactly what invariant 1 forbids paying twice. `android:configChanges` covers
+  the common recreations, but "don't keep activities", a density change and a
+  font-scale change still recreate the activity, and none of them may cost a
+  child their sound.
+
+The corollary is that `SfxPlayer` is constructed in `AppGraph` and passed to
+`LiveAudioEngine.live(sfx = …)` rather than left to the engine's default. That
+constructor IS the prewarm — it renders the PCM and primes the tracks — so
+building it during process start-up is what makes `pop()` on the pointer-down
+path three JNI calls with nothing to load. Nothing in the graph is `by lazy`,
+for the same reason: lazy moves the cost to whoever touches it first, and for
+the audio half that is a finger.
+
+Nothing is released on `onDestroy`. A process-scoped engine has one end, and it
+is the process ending.
+
+## A14 — `Dispatchers.Main` is a declared dependency, not an inherited one
+
+The telemetry scope runs on `Dispatchers.Main.immediate`, because `Telemetry`
+keeps its queue and its pending-job list in unlocked `ArrayList`s and is
+documented main-thread bound; only the socket leaves the main thread, inside
+`HttpTelemetryTransport`'s own `withContext(Dispatchers.IO)`.
+
+`Dispatchers.Main` resolves through a `ServiceLoader`, so it is a RUNTIME
+dependency that no compiler checks: without `kotlinx-coroutines-android` on the
+classpath it throws on first access. AndroidX supplies it transitively today
+(`lifecycle-runtime-android` lists it in both its API and runtime variants),
+which is precisely the kind of accident a dependency tidy-up removes — and the
+first access is in `Application.onCreate`, so the failure mode is "the app does
+not start". `:app` therefore names the artifact itself. Same family and version
+as the `kotlinx-coroutines-core` entry already in the catalog.
+
+## A15 — System back leaves the app, and that is a recorded gap
+
+`RootView` deliberately has no back stack (`App.tsx` replaces the whole screen;
+a nav library would also put a gesture detector above the exercise tiles, which
+is invariant 1's territory), and it keeps the route private. `:app` therefore
+installs no `BackHandler`: from `:app` the only choice available would be
+"exit or trap", and trapping a user is worse than leaving.
+
+The consequence is real and is not pretended away: a system back gesture leaves
+the app from anywhere, including mid-round, where every screen's own affordance
+(« ← Menu ») would have returned to the hub. Fixing it means hoisting the route
+out of `RootView` so the activity can map back onto "go to hub, and exit only
+from the hub" — a `:ui` change, not one to smuggle into the composition root.
+
+## A16 — Edge-to-edge is switched on, because the shell already assumes it
+
+`MainActivity.onCreate` calls `enableEdgeToEdge()` and the activity declares
+`windowSoftInputMode="adjustResize"`. Not decoration: `RootView`'s `ShellFrame`
+computes its gutter from `WindowInsets.safeDrawing`, and those insets are only
+reported once the window stops fitting system windows. `targetSdk = 36` forces
+edge-to-edge from API 35 anyway, so without this the shell would behave
+differently on the two halves of the supported range — including for the IME
+inset that keeps « Ton prénom » and the parental gate's answer box above the
+keyboard.
+
+## A17 — Zero permissions, and a test that keeps it that way
+
+The manifest declares no `<uses-permission>` at all, INTERNET included. Sync is
+not wired (A7) and telemetry is inert without an endpoint, which no build
+declares — so the app genuinely opens no socket, and the Play Data safety form
+and the Kids Category review have nothing to explain.
+
+The hazard is the day that changes, in both directions, and `ManifestContractTest`
+pins both. An endpoint declared without INTERNET does not fail loudly:
+`HttpURLConnection` raises `SecurityException`, `Telemetry.post` swallows it by
+design ("telemetry must never surface to a child"), and the result is an app
+that looks instrumented and reports nothing forever. A permission declared with
+no endpoint is the mirror image — invisible in testing, expensive exactly once,
+in review.
+
+## A18 — The growth price is clamped, and Android is the only app that clamps it
+
+`GrowthCard` is the one place a price reaching `spend()` is **computed** rather
+than read from the authored `CATALOG`: `growthPrice(stage) = 30 * (stage + 1)`.
+The stage it multiplies comes off disk through `LooseDecoding`, as
+`obj["stage"].looseDouble()?.toInt()`, with no range check — the same latitude the
+web gets from `JSON.parse(localStorage…)`.
+
+A stored `stage: -4` therefore prices a growth at −90. `affordable` is trivially
+true, `atMax` is false, and `ProfileStore.spend(-90)` does not refuse: its only
+guard is `balanceOf(...) < cost`, and `0 < -90` is false. It then bumps the
+`spent` counter by −90, which *lowers* spending, which *raises* the folded
+balance. That is a mint, outside `sessionReward`, from a value the app never
+writes but will happily read — invariant 8 defeated without a single line of
+arithmetic in `:ui`.
+
+Reachability is low: it needs a hand-edited prefs file, so root or `adb` on a
+debuggable build, and `sync = null` means no remote party can write one. It is
+also **inherited, not introduced** — `apps/game-web/src/shop/GrowthCard.tsx:17`
+and `apps/game-ios/Sources/ALUI/Shop/GrowthCard.swift:18` compute the identical
+unclamped price, and `useProfile.tsx:425` has the identical unguarded `spend`.
+
+`growthCardSurface` clamps with `stage.coerceIn(0, GROWTH_STAGES - 1)`, and
+`performGrow` re-derives through the same clamp rather than incrementing the raw
+value. The clamp is at the top rather than inside the purchase because a surface
+that cannot legitimately be bought must not be *rendered* either — an unclamped
+one would draw « Grandir · ⭐ -90 » and a pip row of −3. `:core` already defends
+the same input the same way in `stageScale`'s `coerceIn(0, 9)`.
+
+**This is a deliberate divergence from the source of truth, and the real fix is
+elsewhere.** The clamp closes the one caller Android has; it does not close
+`spend()`. Guarding `spend()` against a non-positive cost would close the class
+for all three apps at once, and that is a decision to take across web, iOS and
+Android together rather than unilaterally in the newest port.

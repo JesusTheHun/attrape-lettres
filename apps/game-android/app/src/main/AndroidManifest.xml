@@ -1,20 +1,103 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  The whole manifest for a one-activity, zero-permission, offline game.
+
+  == PERMISSIONS: THERE ARE NONE, AND THAT IS A DECISION ==
+
+  Not even INTERNET. Gameplay is entirely offline - the 845 voice clips are
+  staged into the APK's assets, the roster is SharedPreferences, and the economy
+  is arithmetic. The two things that would need a socket are both switched off
+  in this build:
+
+    * household SYNC is not wired at all (A7: ProfileStore is built with
+      sync = null, because the services/api contract is being reworked);
+    * TELEMETRY is compiled in and inert, because it is inert without an
+      endpoint and no endpoint is declared below.
+
+  So the app opens no socket, and a permission it does not use would be a
+  permission we would have to justify on the Play Data safety form and in a Kids
+  Category review for nothing. ManifestContractTest pins the coupling in BOTH
+  directions: no endpoint may be declared without INTERNET (every telemetry send
+  would throw SecurityException and be swallowed, which is the worst of both
+  worlds), and no permission may be declared while no endpoint is. Turning
+  telemetry on is therefore a two-line change, and the test names the second
+  line.
+
+  To enable an endpoint, add BOTH of these inside application, plus the INTERNET
+  permission above it. The meta-data keys are the same names the iOS app uses in
+  its Info.plist, so the release runbook is one page for two stores:
+
+      meta-data android:name="ALTelemetryURL" android:value="https://..."
+      meta-data android:name="ALSyncURL"      android:value="https://..."
+
+  PlatformConfiguration.fromMetaData reads them; both are optional and both fail
+  silent when absent, which is what makes "absent" the safe default a build that
+  forgot them gets.
+-->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!--
+      allowBackup and the two rules files are A5, and they are load-bearing
+      rather than boilerplate. Play has no price-0 in-app product, so unlike iOS
+      there is no signed StoreKit purchaseDate to date the 14-day trial from:
+      the stamp is a local value in SharedPreferences, and Auto Backup is the
+      only thing that carries it across a reinstall. Both rules files include
+      the whole sharedpref domain and exclude exactly one file, the device id -
+      a counter key must belong to exactly one LIVE device, or max()-merged
+      counters read two devices' independent progress as one stale one and a
+      child loses stars (invariant 9). :platform's SharedPreferencesKVStoreTest
+      asserts the excluded filename is the same string the code opens.
+
+      android:name is the process's own class: it builds the object graph and
+      primes the SFX tracks before a window exists, which is what "audio is
+      warm before the first tap" means in practice (invariant 1).
+    -->
     <application
+        android:name=".AttrapeLettresApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:label="@string/app_name"
         android:supportsRtl="false"
         android:theme="@style/Theme.AttrapeLettres">
 
+        <!--
+          ORIENTATION. The game is authored portrait: the card caps at 480 dp
+          and every fluid size is a fraction of the viewport WIDTH, so landscape
+          buys nothing and costs the vertical room the exercise grids need. The
+          platform caveat is noted rather than pretended away - an app targeting
+          SDK 36 has its orientation lock IGNORED on displays 600 dp and wider,
+          so on a tablet or an unfolded foldable this attribute is a request the
+          system may decline. That case still renders correctly (the shell
+          top-centres a 480 dp card at any width and each screen scrolls
+          itself); it is simply not the composition the art was drawn for.
+
+          SCREEN SIZES are deliberately unconstrained - no compatible-screens,
+          no supports-screens. Those are Play distribution filters, and a filter
+          that hides the game from a family's tablet is a worse outcome than a
+          roomy layout on it.
+
+          configChanges is an ACTIVITY-LIFETIME decision, not laziness. The
+          object graph is process-scoped (see AppGraph) but the ROUTE is a plain
+          mutableStateOf inside RootView, so an activity recreation throws a
+          six-year-old out of the round they were in. Every entry listed is a
+          change Compose re-reads by itself - density and fontScale reach
+          LocalDensity through the composition locals, the rest are pure layout
+          - so handling them costs nothing and keeps the child where they were.
+
+          windowSoftInputMode=adjustResize pairs with enableEdgeToEdge() in
+          MainActivity: together they are what make WindowInsets.safeDrawing
+          report the IME, which is what keeps the « Ton prénom » field and the
+          parental gate's answer box above the keyboard.
+        -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:screenOrientation="portrait"
-            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode"
+            android:windowSoftInputMode="adjustResize"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|density|fontScale|keyboardHidden|uiMode"
             android:theme="@style/Theme.AttrapeLettres">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

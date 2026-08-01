@@ -27,6 +27,15 @@ compose-material3 = { module = "androidx.compose.material3:material3" }
 
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
+# `Dispatchers.Main` is a ServiceLoader lookup, not a compile-time symbol: without
+# this artifact on the RUNTIME classpath it throws on first access rather than
+# failing to compile. :app's composition root puts telemetry's process-scope on
+# Main.immediate (the queue is main-thread bound by contract), so the app would
+# die in Application.onCreate. AndroidX drags it in transitively today via
+# lifecycle-runtime, which is exactly the kind of accident that disappears in a
+# dependency cleanup — so :app names it. Same family and version as the core
+# artifact already here; no new third-party dependency.
+kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
 
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }

@@ -72,21 +72,32 @@ clip") runs on a machine that has never staged the audio.
 | `:platform` — storage, clip bank, SFX, haptics, reduce-motion, transports | done — **70 tests**, 11 classes |
 | `:ui` — interaction, tokens, copy, Tile, GameFrame, confetti, components | done |
 | `:ui` — the 9 exercise engines and their 3 models | done — `:ui` now **409 tests**, 58 classes |
-| `:ui` — hub, router, shop, the three adult screens | next |
-| `MainActivity` — wiring the real adapters in | after that; still a placeholder |
+| `:ui` — router, hub, shop, dashboard, roster, the three adult screens | done — `:ui` now **765 tests**, 131 classes |
+| `:app` — `AppGraph`, lifecycle, the real adapters behind `RootView` | done — **25 tests**, 2 classes |
 
-1215 host tests, none skipped. `:core` is complete except for the sync client's
-ETag/412 retry loop and household identity, which wait on the API contract (A7).
+1596 host tests, none skipped, and the app now runs its own UI rather than a
+placeholder. `:core` is complete except for the sync client's ETag/412 retry loop
+and household identity, which wait on the API contract (A7).
 Everything the game computes — every ladder, every round builder, the economy, the
 migrations, the merge, the entitlement state machine — is ported and tested on the
 host, as is everything it draws.
 
-Two things a green build here does not prove, and neither is proven yet: **no
-pixel has ever been produced** (`SvgCanvas` records a draw list that is heavily
-tested; `SvgRender` replays it into Compose and is not; every `:ui` spec is
-asserted as data, with no composition and no frame clock anywhere in the suite),
-and **nothing has run on a device or an emulator** — audio latency and the claim
-that `awaitFirstDown` resumes inside pointer dispatch before recomposition are
-both device-only facts. `MainActivity` still renders a placeholder, so the APK
-*contains* `:ui` and never reaches it. Billing is absent by decision: no Play
-Billing dependency is taken and `:app` wires the stub, so nothing can be bought.
+What 1596 green tests do not prove, and nothing here proves yet: **not one pixel
+has ever been produced.** `SvgCanvas` records a draw list that is heavily tested
+and `SvgRender` replays it into Compose untested; every `:ui` spec is asserted as
+data, with no composition and no frame clock anywhere in the suite. **Nothing has
+run on a device or an emulator** — audio latency, whether the keyboard covers
+« Ton prénom », whether the consent card wraps rather than truncates, and the
+central invariant-1 claim that `awaitFirstDown` resumes inside pointer dispatch
+before recomposition are all device-only facts. The app assembles, installs and
+should open; nobody has watched it.
+
+Two absences are deliberate. Billing: no Play Billing dependency is taken and
+`:app` wires the stub, so nothing can be bought — which points the right way for
+invariant 11, since with no store the machine can never conclude "not paid".
+Sync: `ProfileStore(sync = null)`, pending the API contract (A7).
+
+One release gate: `platform/src/main/assets/vo/` is gitignored. A clean checkout
+that skips `scripts/stage-vo.sh` builds an app where every line falls back to
+`TextToSpeech` — quieter, device-dependent, never broken, and **nothing in the
+build fails.**
