@@ -2129,3 +2129,93 @@ Two build-system findings, both of which cost a failed build:
 
 Verified in the built Release binary rather than the source: `ALSyncURL` and
 `CFBundleURLTypes` are both in the shipped `Info.plist`.
+
+## D58 — The app icon has a source, and the source is the app
+
+The app shipped without an icon: `AppIcon.appiconset` held a `Contents.json`
+declaring one 1024 slot and no file. Every other icon in this app is authored
+art — invariant 7 spells it out for exercise icons, "an original drawn icon,
+never an emoji" — and the icon a family sees before anything else was the one
+that did not exist.
+
+The question was whether to draw it here or generate it with an image model.
+Generation loses on three counts, and only the first is about taste:
+
+* **it has no source.** A 1024 raster is a leaf: the day `#FF8A65` moves, the
+  PNG is a file nobody can regenerate, only redo. `AppIcon.swift` is a view
+  built from `Palette.tileColors[0]`, `TileMetrics.cornerRadius` and
+  `ConfettiSystem.colors` — change the tile's coral and the icon moves with it.
+* **it cannot be checked.** The properties that matter are mechanical: 1024
+  square, no alpha channel (App Store Connect refuses the *binary* for that,
+  hours after a green build), the subject clear of the mask, the glyph still a
+  glyph at 29 pt. All four are assertions over pixels, and assertions need
+  something to re-render.
+* **an icon is a 29 pt problem.** A painterly 1024 illustration is chosen at
+  1024 and lived with at 60. Bold silhouette and flat colour is not a stylistic
+  preference here, it is the constraint.
+
+So: `Sources/ALUI/AppIcon/AppIcon.swift` draws it, `swift run IconForge` bakes
+it, `AppIconTests` refuses to let the two drift.
+
+### Four candidates, and why the pale one lost
+
+`IconForge --sheet` renders every variant masked as iOS masks it, then at 60 pt
+and 29 pt beneath. That sheet decided it:
+
+| | at 1024 | at 29 pt |
+|---|---|---|
+| **Tuile** — coral tile on the stage wash | the screen a child actually plays on | coral on cream is too little contrast; the A goes soft |
+| **Tuile inversée** — cream tile on a coral field | the same mark, inverted | **the A is still a letter.** Ships |
+| **Renard** — the mascot | charming | an orange blob |
+| **Deux tuiles** — A over B | says "assembly", the heart of the game | two blobs, and the B ran into the mask |
+
+« Renard » lost twice over. Beyond legibility, the child *chooses* their species
+from five; making the fox the app's face states something the app spends its
+whole shop contradicting.
+
+### Two walls, both got wrong by eye first
+
+The confetti has to live in a band, and each edge of it was found by rendering
+rather than by looking:
+
+    INNER   a 560 tile turned 7° reaches 280·cos7 + 280·sin7 ≈ 312 from centre
+    OUTER   iOS's mask is a rounded square of radius 0.2237 × 1024 ≈ 229, so its
+            corner arcs are centred at (±283, ±283)
+
+The first pass put flecks past the outer wall and the sheet came back with two
+of them sliced. The correction over-shot the inner wall and they reappeared as
+stubs growing out of the tile's edge. Only the third pass, computed, sat right.
+
+### The web gets the same mark, and one extra file
+
+`IconForge` writes `icon-192`, `icon-512` and `apple-touch-icon` into
+`apps/game-web/public/` off the same render. The two apps are independent
+implementations on purpose; the one thing they may not disagree about is what
+the family recognises on a home screen.
+
+`icon-maskable-512.png` is separate, and is the flecked mark **without** the
+confetti. `purpose: "maskable"` promises everything meaningful sits inside the
+80 % safe zone — a circle of radius 410 here — and the flecks sit at 462 and
+424. The manifest had been claiming maskable for the ordinary icon since the
+placeholder; on the devices that honour it, that is a visibly clipped icon.
+The tile itself was never at risk: its rounded corners put its furthest point at
+~326.
+
+`icon.svg` is the one icon that can still drift — no renderer here emits SVG, so
+the favicon is transcribed by hand, in the same 1024 space, with the numbers it
+came from in comments.
+
+### What the tests actually assert
+
+Not a pixel diff. Glyph rasterisation moves between OS versions, and a strict
+diff on a letter is a test that fails on somebody else's Mac. The drift check
+compares 16×16 signatures with a tolerance of 3/255 — loose enough for hinting,
+far tighter than any colour or layout change. Beside it: no alpha on the
+committed file, the corners still showing field, the ink covering > 2 % of a
+29 pt render, and — in `AppLinkContractTests`, next to the URL scheme —
+`ASSETCATALOG_COMPILER_APPICON_NAME` present in *both* build configurations,
+because without it Xcode compiles the catalog, injects no `CFBundleIconName`,
+and ships a valid signed build with a blank home screen.
+
+Verified in the built Release binary: `Assets.car` carries `AppIcon-1024.png`
+and the shipped `Info.plist` carries `CFBundleIconName = AppIcon`.

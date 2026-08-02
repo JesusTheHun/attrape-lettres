@@ -39,7 +39,9 @@ pnpm typecheck      # every JS/TS package
 pnpm test           # every JS/TS package
 pnpm vo:build       # bake the VO clip bank (needs GEMINI_API_KEY)
 
-cd apps/game-ios && swift test    # 1454 host tests, no simulator needed
+cd apps/game-ios && swift test    # 1502 host tests, no simulator needed
+cd apps/game-ios && swift run IconForge                 # re-bake the app icon, both apps
+cd apps/game-ios && swift run IconForge --sheet <dir>   # every candidate, at 300/60/29
 
 # Android needs JDK 21 on JAVA_HOME; see apps/game-android/README.md.
 cd apps/game-android && ./gradlew :core:test   # game logic, no emulator needed
@@ -210,6 +212,16 @@ These are why the game feels alive to a child. Changing them silently will regre
   `apps/game-ios/DECISIONS.md` D53 has the whole argument.
 
 ## Recipes
+
+**Change the app icon:** edit `apps/game-ios/Sources/ALUI/AppIcon/AppIcon.swift`
+— it is a SwiftUI view built from the product's own tokens, not a raster — then
+`swift run IconForge`, which writes the iOS `AppIcon.appiconset` AND the PWA's
+`icon-192`/`icon-512`/`apple-touch-icon`/`icon-maskable-512`. Forget the re-bake
+and `AppIconTests` fails: it compares the committed PNG against a fresh render.
+`--sheet <dir>` renders every candidate masked as iOS masks it, at 300, 60 and
+29 pt — judge there, not at 1024. `public/icon.svg` is transcribed by hand (no
+renderer here emits SVG) and is the only icon that can drift. D58 has the rest,
+including why the confetti sits exactly where it does.
 
 **Add a word:** append to `LETTER_WORDS` or `SYLLABLE_WORDS` in `content.ts`. For
 syllable words, author the split. That's it — pools derive automatically.
