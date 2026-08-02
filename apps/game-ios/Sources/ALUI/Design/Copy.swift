@@ -312,6 +312,34 @@ public enum Copy {
     }
 
     /* ====================================================================== */
+    /* « Suggérer une correction » — no TSX. The PWA has no such link.          */
+    /*                                                                        */
+    /* The one adult affordance that lives INSIDE a child's screen, so its     */
+    /* wording carries more weight than usual: it has to read as "not for you" */
+    /* to a six-year-old and as "yes, that" to the parent beside them. Hence   */
+    /* the flat register and no glyph — the link is text, and quiet.           */
+    /* ====================================================================== */
+
+    public enum Correction {
+        /// The link at the foot of every exercise. Deliberately not « Signaler
+        /// une erreur » — a parent is helping, not filing a complaint, and a
+        /// child who reads a little should not find the word « erreur » under a
+        /// game with no fail state (invariant 3).
+        public static let link = "Suggérer une correction"
+
+        /// The gate's one line. Says what the adult is about to do, because
+        /// what follows leaves the app.
+        public static let gateReason =
+            "Nous écrire au sujet de cet exercice \u{2014} un mot, un son ou une image qui vous semble faux."
+
+        /// No mail client answered the `mailto:`. Not an error state: the
+        /// address is shown so the parent can write from wherever they like.
+        public static func noMailApp(_ address: String) -> String {
+            "Aucune application e-mail sur cet appareil. Écrivez-nous à \(address)."
+        }
+    }
+
+    /* ====================================================================== */
     /* Parental gate — `components/ParentalGate.tsx`                           */
     /* ====================================================================== */
 

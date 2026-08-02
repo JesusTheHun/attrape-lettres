@@ -119,8 +119,14 @@ public struct GameFrame<Overlay: View, Content: View>: View {
     private let content: Content
 
     @Environment(\.alViewportWidth) private var viewport
+    /// nil outside the play route — a preview or a test renders exactly the
+    /// frame it always did. `RootView` sets it; see `CorrectionLink.swift`.
+    @Environment(\.alCorrectionReport) private var correctionReport
     @State private var headerHeight: CGFloat = 0
     @State private var flowHeight: CGFloat = 0
+    /// The adult door at the foot of the exercise. Owned here so that every one
+    /// of the nine engines gets it without a call site that could forget one.
+    @State private var correction = CorrectionFlowModel()
 
     /// - Parameters:
     ///   - done: rounds completed — engines pass `done ? total : idx`.
@@ -152,6 +158,12 @@ public struct GameFrame<Overlay: View, Content: View>: View {
             VStack(spacing: 0) {
                 Color.clear.frame(height: headerHeight)
                 content
+                // « Suggérer une correction ». Below the exercise column, which
+                // already claims `maxHeight: .infinity`, so this lands at the
+                // foot of the frame and never between the child and a tile.
+                if correctionReport != nil {
+                    CorrectionFooter(model: correction)
+                }
             }
             .frame(maxWidth: .infinity)
             .background(
@@ -188,6 +200,17 @@ public struct GameFrame<Overlay: View, Content: View>: View {
         .clipShape(RoundedRectangle(cornerRadius: GameFrameMetrics.cornerRadius))
         .stageWash(Palette.stage)
         .fontDesign(.rounded) // fontFamily: ui-rounded,'SF Pro Rounded',…
+        // The gate, OVER the frame — over the confetti, the header and the
+        // children alike (40 / 41 / 42 above). Applied outside the clip so the
+        // scrim covers the rounded corners too, and as an overlay rather than a
+        // sheet so the exercise underneath is never torn down: the child comes
+        // back to the same round, the same star and the same audio (invariant 3).
+        .overlay {
+            if let correctionReport {
+                CorrectionGate(report: correctionReport, model: correction)
+                    .zIndex(CorrectionMetrics.gateZIndex)
+            }
+        }
     }
 
     // MARK: header row — ← Menu, the strip, the sm: spacer

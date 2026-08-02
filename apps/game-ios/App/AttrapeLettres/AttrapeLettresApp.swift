@@ -36,6 +36,9 @@ struct AttrapeLettresApp: App {
                 audio: appEnvironment.audio,
                 kv: appEnvironment.platform.kv,
                 time: appEnvironment.platform.time,
+                // Read by « Suggérer une correction » and nothing else: a report
+                // about a clip we re-baked last month is unactionable without it.
+                version: appEnvironment.platform.appVersion,
                 onPair: { pairing = PairingSheet(joined: false) }
             )
             .environment(appEnvironment.platform.profiles)

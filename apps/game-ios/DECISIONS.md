@@ -2276,3 +2276,94 @@ The lesson generalises past signing. `DEVELOPMENT_TEAM`, `CODE_SIGN_STYLE`,
 IDE will write on your behalf, and every one of them can be wrong in a way that
 compiles. If a build setting has to hold a particular value for the app to be
 correct rather than merely to build, it belongs in that test.
+
+---
+
+## D60 — The correction link sends mail we never see the inside of
+
+**« Suggérer une correction » posts to nobody. It opens the parent's own mail
+client.**
+
+The content of this game is authored by hand — 855 baked clips, a hand-split
+syllable bank, a word list where every fragment had to be justified against a
+real French rule. Hand-authored means wrong sometimes, and the people who
+notice are parents sitting beside the child, not us and not a test. So the app
+needs a way for them to tell us. The question was only what carries it.
+
+### Why not an endpoint
+
+`services/api` already exists, already speaks to these devices, and a
+`POST /v1/correction` would have been an hour's work. It was the wrong hour.
+
+A free-text field posted to our server is a store of user-generated content,
+and everything that comes with one attaches to it: a retention policy, a
+moderation duty, an Article 30 processing record — for a suggestion box.
+
+The sharper reason is invariant 10. A parent writing « Léa dit que le son de
+… » is not doing anything wrong; they are describing the problem the way
+anybody would. But that sentence now contains a six-year-old's first name, and
+it is in our database. The cheapest way to keep "nothing identifying leaves the
+device" true of a free-text field is to never receive the text. `mailto:` does
+that: the message is composed in the parent's client, under their eyes, and
+they send it — or do not — as a letter.
+
+What we lose is real and worth naming: no delivery guarantee, no structure,
+nothing to query, and a device with no mail client gets a note with an address
+on it instead of a compose window. All three are acceptable for a channel that
+will carry a few messages a month.
+
+### What the report may hold
+
+`CorrectionReport` has three fields — a frozen `ExerciseId`, an `Int`, and the
+app's marketing version — and `CorrectionReportTests` asserts that list by
+reflection, the same device `TelemetryClosureTests` uses on `TelemetryProps`.
+A second test asserts that the ONLY `String` on the type is `appVersion`,
+because a `String` is exactly how `note`, `message`, `email` or `childName`
+would arrive. Adding one fails the run and has to be argued for in the same
+change.
+
+The version is not padding. A report about a clip we re-baked last month is
+unactionable without it, and a native binary changes only through store review,
+so the family may be several releases behind whatever we are looking at.
+
+### Why the gate, and why it is a rule rather than a screen
+
+The link leaves the app, and guideline 1.3 puts an external link in the same
+bucket as a purchase: visible to a child is fine, reachable by tapping is not.
+So the door is `ParentalGateView`, the same re-rolled multiplication the paywall
+and the pairing screen use.
+
+Drawing a gate is not the same as enforcing one. `CorrectionFlowModel.mailURL`
+is the only call site of `CorrectionMail.url` in the app, and it returns nil
+unless `gatePassed()` ran first; the authorisation is spent by reading it, so a
+re-render, a double tap or a retry cannot re-open the client, and re-opening the
+link asks again. `CorrectionFlowTests` walks all of those paths — including the
+two a refactor would plausibly introduce, asking twice and asking after a
+cancel.
+
+### Where it lives, and why it is inside the child's screen
+
+At the foot of every exercise, because that is where the mistake is. A parent
+notices a clip saying the wrong thing WHILE the child is hearing it; a link on a
+settings screen is one nobody finds their way back to.
+
+It is mounted once, by `RootView`, through an environment value rather than a
+parameter on nine engine views — nine call sites are nine chances to forget one,
+and the engines have no other use for it. `GameFrame` renders the link only when
+that value is non-nil, so a `GameFrame` outside the play route (a preview, a
+raster test) is byte-for-byte what it was.
+
+The gate is an overlay, not a sheet or a route. The exercise underneath is never
+torn down: the child comes back to the same round, the same star, the same
+audio. A six-year-old who taps the link meets a sum they cannot do, presses
+« Annuler », and has lost nothing (invariant 3).
+
+The wording is deliberately not « Signaler une erreur ». A parent is helping,
+not filing a complaint, and a child who is starting to read should not find the
+word « erreur » under a game that has no fail state.
+
+### The one part outside the repository
+
+`CorrectionMail.address` — `corrections@attrape-lettres.app` — has to exist as
+a real mailbox before the build ships. It is one constant, and changing it costs
+a release, which is the honest price of a native binary.

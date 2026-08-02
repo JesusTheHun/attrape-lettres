@@ -36,6 +36,11 @@ public struct RootView: View {
     private let audio: any AudioEngine
     private let kv: any KVStore
     private let time: any TimeSource
+    /// Which build a parent is describing when they suggest a correction. Not
+    /// read anywhere else here; the composition root passes the real one
+    /// (`ALPlatform.SystemAppVersion`), and the default keeps every preview and
+    /// test constructible without one.
+    private let version: any AppVersionProvider
     /// The `#stages` / `#vo` stand-in. Resolved once at launch; nil in Release.
     private let dev: DevScreen?
 
@@ -48,12 +53,14 @@ public struct RootView: View {
         audio: any AudioEngine,
         kv: any KVStore,
         time: any TimeSource,
+        version: any AppVersionProvider = FixedAppVersion("0.0.0"),
         dev: DevScreen? = DevScreen.fromProcess(),
         onPair: (() -> Void)? = nil
     ) {
         self.audio = audio
         self.kv = kv
         self.time = time
+        self.version = version
         self.dev = dev
         self.onPair = onPair
     }
@@ -242,6 +249,14 @@ public struct RootView: View {
             // level change tears the subtree down: fresh seeding, fresh audio,
             // fresh star array. Omit it and level 2 replays level 1's words.
             .id(AppRoute.play(exercise: exercise, level: level).remountKey)
+            // The one place an exercise is mounted, so the one place the
+            // correction link needs to be told what it is looking at. Nine
+            // engines get the link without nine chances to forget it — and
+            // outside this branch the environment stays nil, so no other
+            // `GameFrame` grows an adult door by accident.
+            .alCorrectionReport(
+                CorrectionReport(
+                    exercise: exercise, level: level, appVersion: version.marketing))
         } else {
             // `EXERCISES.findIndex` −1 would crash the TSX on `meta.levelCount`.
             // Unreachable (the catalog covers every ExerciseId — HubCatalogTests);
