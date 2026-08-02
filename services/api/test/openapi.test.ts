@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { buildApp } from "../src/app.js";
 import { InMemoryHouseholdStore } from "../src/household/store.js";
 import { InMemoryTelemetrySink } from "../src/telemetry/sink.js";
+import { InMemoryCodeStore } from "../src/codes/store.js";
 
 /* -------------------------------------------------------------------------- */
 /* The generated spec is a deliverable, not a debug page.                      */
@@ -17,6 +18,7 @@ function app(openapi = true) {
   return buildApp({
     households: new InMemoryHouseholdStore(),
     telemetry: new InMemoryTelemetrySink(),
+    codes: new InMemoryCodeStore(),
     openapi,
   });
 }
@@ -28,9 +30,11 @@ describe("openapi", () => {
 
     const doc = (await res.json()) as { paths: Record<string, Record<string, unknown>> };
     expect(Object.keys(doc.paths).sort()).toEqual([
+      "/entitlement/{id}",
       "/errors",
       "/events",
       "/household/{id}",
+      "/redeem",
     ]);
     expect(doc.paths["/household/{id}"]).toHaveProperty("get");
     expect(doc.paths["/household/{id}"]).toHaveProperty("put");

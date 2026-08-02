@@ -32,6 +32,8 @@ GET  /household/{id}                    → 200 + ETag | 404
 PUT  /household/{id}  If-Match: "<n>"   → 200 + ETag | 412 | 400
 POST /events                            → 204 | 400
 POST /errors                            → 204 | 400
+POST /redeem                            → 200 | 400 | 404 | 409 | 410
+GET  /entitlement/{id}                  → 200 | 404
 GET  /health, /openapi.json
 ```
 
@@ -44,6 +46,60 @@ that has since been superseded, so one parent's phone cannot clobber the other's
 Concurrency control is a condition on a write, not a lock: the root item's
 `rev` must still be the one the pull returned. A failed condition *is* the 412.
 Nothing is ever held while a phone thinks.
+
+## Redemption codes
+
+Codes are **given away, never sold** — press, schools, families who help us test.
+That is not a marketing preference, it is what keeps this endpoint legal in a
+Kids Category app: App Review 3.1.1 forbids unlocking paid functionality through
+anything but in-app purchase, and a code nobody paid for is not a purchase. The
+route takes no price, no payment token and no receipt, and there is no way to buy
+one. The day a code is sold, this becomes an alternative payment mechanism and
+the problem is the developer account, not the build.
+
+Mint them from a laptop, with your own credentials:
+
+```bash
+pnpm build
+node scripts/mint-codes.mjs --count 20 --label presse
+node scripts/mint-codes.mjs --count 1 --uses 30 --days 60 --label "ecole-jules-ferry"
+node scripts/mint-codes.mjs --count 5 --dry-run          # format check, writes nothing
+```
+
+**The codes are printed once and nowhere else.** Only their sha256 reaches
+DynamoDB, so the terminal output is the only copy that will ever exist. A dump of
+the table is then a list of hashes and counters rather than a list of free
+unlocks — and nobody, us included, can read a code back out. A lost code is
+reissued, not recovered.
+
+A code is twelve Crockford base32 symbols, eleven payload plus a check symbol:
+`7FQ4-M2XB-9KDB`. `O`/`I`/`L` are *mapped* to `0`/`1`/`1` rather than banned, so
+a parent who misreads a card is still right. Separators and case are decoration.
+
+The format is implemented twice — `src/codes/code.ts` and
+`apps/game-ios/Sources/ALCore/Licensing/RedemptionCode.swift` — and the two test
+suites share vectors. Drift means every minted code is refused on the device
+before it is ever sent, which produces no log line anywhere and looks exactly
+like "the codes don't work".
+
+Redemption is one conditional transaction, because the two ways to split it both
+lose: counter first and a burnt code buys nothing, grant first and one code
+unlocks the world. The three conditions *are* the rules — uses left, not lapsed,
+household not already granted — and the last is what makes a second attempt
+idempotent rather than wasteful.
+
+`GET /entitlement/{id}` exists for completeness and is not on the client's hot
+path: **the device writes the grant down once and never asks again.** That is
+invariant 11 taken to its conclusion — an outage, a bad deploy or a mistyped
+table name must not re-lock a family who redeemed six months ago. The honest
+cost: revocation only reaches codes that have not been spent yet.
+
+There is no rate limiter. Eleven payload symbols is 2^55, and the checksum kills
+31 of every 32 malformed guesses before they reach DynamoDB, so a guesser needs
+~2^54 round trips through API Gateway and pays for all of them. That is an
+entropy argument, not a rate limit — if codes ever become worth attacking, add a
+WAF rate rule on `/redeem`. `codes.malformed` is logged so a sweep is visible
+first.
 
 ## How a household is stored
 

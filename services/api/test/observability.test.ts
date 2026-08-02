@@ -6,6 +6,7 @@ import { InMemoryHouseholdStore } from "../src/household/store.js";
 import { MAX_CHILD_BYTES, type WireChild } from "../src/household/wire.js";
 import { captureLogs, householdRef, log, safePath } from "../src/log.js";
 import { InMemoryTelemetrySink } from "../src/telemetry/sink.js";
+import { InMemoryCodeStore } from "../src/codes/store.js";
 
 /* -------------------------------------------------------------------------- */
 /* What the logs may and may not say.                                          */
@@ -39,7 +40,7 @@ async function logged(fn: () => unknown) {
 }
 
 function app(households: HouseholdStore = new InMemoryHouseholdStore()) {
-  return buildApp({ households, telemetry: new InMemoryTelemetrySink() });
+  return buildApp({ households, telemetry: new InMemoryTelemetrySink(), codes: new InMemoryCodeStore() });
 }
 
 function child(id: string, extra: Record<string, string> = {}): WireChild {

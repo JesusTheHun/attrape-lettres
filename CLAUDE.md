@@ -16,11 +16,12 @@ apps/game-android/   the native app. Kotlin + Compose, a 5-module Gradle build.
                      complete, 1608 host tests, played on an emulator, never on
                      hardware.
 apps/backoffice/     not built.
-services/api/        Hono + Zod. Household sync (ETag/412) on DynamoDB and
-                     telemetry on S3. Ships as one Lambda behind an HTTP API;
-                     `infra/` is the whole deployment, and most of it is alarms,
-                     because both clients swallow every failure this service can
-                     produce. Built; see its README.
+services/api/        Hono + Zod. Household sync (ETag/412) on DynamoDB,
+                     redemption codes on a second table, telemetry on S3. Ships
+                     as one Lambda behind an HTTP API; `infra/` is the whole
+                     deployment, and most of it is alarms, because both clients
+                     swallow every failure this service can produce. Built; see
+                     its README.
 packages/            shared TS. Empty on purpose — see its README.
 ```
 

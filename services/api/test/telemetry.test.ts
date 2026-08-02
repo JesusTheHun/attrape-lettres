@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { buildApp } from "../src/app.js";
 import { InMemoryHouseholdStore } from "../src/household/store.js";
 import { InMemoryTelemetrySink } from "../src/telemetry/sink.js";
+import { InMemoryCodeStore } from "../src/codes/store.js";
 
 /* -------------------------------------------------------------------------- */
 /* The allowlist, tested where it actually protects the database.              */
@@ -15,7 +16,7 @@ import { InMemoryTelemetrySink } from "../src/telemetry/sink.js";
 
 function world() {
   const telemetry = new InMemoryTelemetrySink();
-  const app = buildApp({ households: new InMemoryHouseholdStore(), telemetry });
+  const app = buildApp({ households: new InMemoryHouseholdStore(), telemetry, codes: new InMemoryCodeStore() });
   return { app, telemetry };
 }
 
@@ -160,6 +161,7 @@ describe("telemetry — turned off", () => {
     const app = buildApp({
       households: new InMemoryHouseholdStore(),
       telemetry: nullTelemetrySink,
+      codes: new InMemoryCodeStore(),
     });
     const res = await app.fetch(
       post("/events", { v: "0.1.0", events: [{ event: "shop_opened", props: {} }] })

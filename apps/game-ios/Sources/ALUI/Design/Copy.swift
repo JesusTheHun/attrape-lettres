@@ -404,6 +404,40 @@ public enum Copy {
                 "Nous aider à améliorer le jeu — exercice, niveau, réussi ou non. Jamais le prénom de votre enfant."
 
             public static let backToGame = "Retour au jeu"
+
+            /// The door to the code field, under the two store controls. Quiet
+            /// on purpose: a code is the exception, buying is the path.
+            public static let haveACode = "J'ai un code"
+        }
+
+        /// The code step, behind the same gate as the price. Written for the
+        /// adult holding a card, so: plain, and it names what a code is for.
+        public enum Code {
+            public static let title = "Utiliser un code"
+            public static let body =
+                "Les codes sont offerts — presse, écoles, familles qui nous aident à tester. Ils débloquent le jeu sur tous vos appareils."
+            public static let placeholder = "XXXX-XXXX-XXXX"
+            public static let field = "Code à douze caractères"  // aria-label
+            public static let submit = "Valider"
+            /// The in-flight label — U+2026, one character. Same as the buy button.
+            public static let busy = "…"
+            public static let cancel = "Retour"
+        }
+
+        /// Redemption outcomes. Never an error state, and never a rebuke: a
+        /// parent typing a code off a card is doing us a favour.
+        public enum CodeNote {
+            public static let granted = "C'est débloqué. Merci !"
+            public static let already = "Ce foyer est déjà débloqué."
+            /// Covers both « no such code » and « the server said it was
+            /// malformed ». From the parent's chair they are the same thing.
+            public static let unknown = "Ce code n'existe pas. Vérifiez les caractères."
+            public static let exhausted = "Ce code a déjà servi."
+            public static let expired = "Ce code a expiré."
+            /// The fail-open answer. Says nothing happened, blames nobody, and
+            /// invites a retry — never « échec ».
+            public static let unreachable =
+                "Nous n'avons pas pu joindre le serveur. Réessayez plus tard, rien n'a changé."
         }
 
         /// Store outcomes. Never an error state: a failed purchase says what did

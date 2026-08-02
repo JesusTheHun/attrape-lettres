@@ -3,6 +3,7 @@ import { S3Client } from "@aws-sdk/client-s3";
 import { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 
 import type { Deps } from "./app.js";
+import { DynamoCodeStore } from "./codes/dynamo.js";
 import { DynamoHouseholdStore } from "./household/dynamo.js";
 import { S3TelemetrySink } from "./telemetry/s3.js";
 import { nullTelemetrySink } from "./telemetry/sink.js";
@@ -33,6 +34,13 @@ export class ConfigError extends Error {}
 
 export function wireFromEnv(env: NodeJS.ProcessEnv = process.env): Wiring {
   const table = env.HOUSEHOLD_TABLE;
+  /**
+   * Codes and grants. A separate table on purpose (`codes/dynamo.ts`), and
+   * DEFAULTED to `<households>-codes` rather than required: a deploy that
+   * forgets this variable must not take household sync down with it, and every
+   * environment that has one names it that way.
+   */
+  const codesTable = env.CODES_TABLE ?? (table ? `${table}-codes` : undefined);
   const bucket = env.TELEMETRY_BUCKET;
   /** Set to "0" for a deployment that wants sync without analytics. */
   const telemetry = env.TELEMETRY !== "0";
@@ -60,6 +68,7 @@ export function wireFromEnv(env: NodeJS.ProcessEnv = process.env): Wiring {
     deps: {
       households: new DynamoHouseholdStore(documents, table),
       telemetry: s3 ? new S3TelemetrySink(s3, bucket!) : nullTelemetrySink,
+      codes: new DynamoCodeStore(documents, codesTable!),
       openapi: true,
     },
     close: () => {

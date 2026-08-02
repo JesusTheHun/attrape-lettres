@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { buildApp } from "../src/app.js";
 import { InMemoryHouseholdStore } from "../src/household/store.js";
 import { InMemoryTelemetrySink } from "../src/telemetry/sink.js";
+import { InMemoryCodeStore } from "../src/codes/store.js";
 
 /* -------------------------------------------------------------------------- */
 /* The pull → merge → push loop, from the server's side.                       */
@@ -24,6 +25,7 @@ function app() {
   return buildApp({
     households: new InMemoryHouseholdStore(),
     telemetry: new InMemoryTelemetrySink(),
+    codes: new InMemoryCodeStore(),
   });
 }
 

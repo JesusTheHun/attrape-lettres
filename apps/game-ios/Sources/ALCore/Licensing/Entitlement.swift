@@ -75,32 +75,65 @@ public struct LicenseState: Equatable, Codable, Sendable {
      */
     public var clockHighWater: Int64
 
+    /**
+     * When a redemption code unlocked this family, per the SERVER's clock.
+     *
+     * Separate from `paid` on purpose, and the separation is not bookkeeping —
+     * the two have different owners and different failure modes. `paid` is the
+     * App Store's answer and can be revoked by Apple (a refund, a family
+     * removal), which is why it carries `verifiedAt` and a grace window. This
+     * one is our own answer to a code somebody typed, and it is **permanent
+     * once written**: no response from our endpoint may ever take it away.
+     *
+     * That is invariant 11 taken to its conclusion. Re-checking the grant on
+     * every launch would mean a server outage, a mistyped table name or a bad
+     * deploy could re-lock a family that redeemed a code six months ago, and
+     * there is no answer we could get over the network that is worth that risk.
+     * The cost is the honest one: a code, once redeemed, cannot be revoked on
+     * the devices that already have it. Revocation only reaches codes that have
+     * not been spent yet.
+     *
+     * nil in every licence written before this field existed, which is the
+     * whole migration — see the decoder below.
+     */
+    public var codeGrantedAt: Int64?
+
     public init(
         paid: Bool = false,
         verifiedAt: Int64? = nil,
         trialStartedAt: Int64? = nil,
-        clockHighWater: Int64 = 0
+        clockHighWater: Int64 = 0,
+        codeGrantedAt: Int64? = nil
     ) {
         self.paid = paid
         self.verifiedAt = verifiedAt
         self.trialStartedAt = trialStartedAt
         self.clockHighWater = clockHighWater
+        self.codeGrantedAt = codeGrantedAt
     }
 
     /// `BLANK_LICENSE`. NB: blank means *full trial*, i.e. the child plays.
     /// Every decode failure below degrades to this on purpose (R14 / invariant 11).
     public static let blank = LicenseState(
-        paid: false, verifiedAt: nil, trialStartedAt: nil, clockHighWater: 0)
+        paid: false, verifiedAt: nil, trialStartedAt: nil, clockHighWater: 0,
+        codeGrantedAt: nil)
 
     // MARK: - Codable, hand-written on both sides
 
     private enum CodingKeys: String, CodingKey {
-        case paid, verifiedAt, trialStartedAt, clockHighWater
+        case paid, verifiedAt, trialStartedAt, clockHighWater, codeGrantedAt
     }
 
     /// Synthesised `Encodable` uses `encodeIfPresent` for optionals and DROPS the
     /// key; `JSON.stringify` emits `"verifiedAt":null`. Written by hand so the
     /// blob stays byte-interchangeable with the PWA's.
+    ///
+    /// `codeGrantedAt` is the one field the PWA has never heard of, and it is
+    /// still safe in both directions: the PWA's `loadLicense` reads
+    /// `parsed.x ?? default` field by field and ignores anything else, and this
+    /// decoder does the same. The blob is no longer byte-IDENTICAL across the
+    /// two apps; it is still interchangeable, which is the property that
+    /// mattered (a family updating in place keeps their purchase).
     public func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(paid, forKey: .paid)
@@ -109,6 +142,9 @@ public struct LicenseState: Equatable, Codable, Sendable {
         if let trialStartedAt { try c.encode(trialStartedAt, forKey: .trialStartedAt) }
         else { try c.encodeNil(forKey: .trialStartedAt) }
         try c.encode(clockHighWater, forKey: .clockHighWater)
+        // Written only when there is one. An absent key and a null both decode
+        // to nil, so a licence that predates codes needs no migration at all.
+        if let codeGrantedAt { try c.encode(codeGrantedAt, forKey: .codeGrantedAt) }
     }
 
     /// Total and lenient, mirroring `loadLicense`'s `parsed.x ?? default`. A
@@ -124,6 +160,7 @@ public struct LicenseState: Equatable, Codable, Sendable {
         trialStartedAt = (try? c.decodeIfPresent(Int64.self, forKey: .trialStartedAt)) ?? nil
         clockHighWater =
             ((try? c.decodeIfPresent(Int64.self, forKey: .clockHighWater)) ?? nil) ?? 0
+        codeGrantedAt = (try? c.decodeIfPresent(Int64.self, forKey: .codeGrantedAt)) ?? nil
     }
 }
 
@@ -156,6 +193,18 @@ public func effectiveNow(_ state: LicenseState, _ now: Int64) -> Int64 {
  */
 public func entitlementOf(_ state: LicenseState, _ now: Int64) -> Entitlement {
     let t = effectiveNow(state, now)
+
+    // A redeemed code, BEFORE the store's own answer and before any staleness
+    // check. It carries no `verifiedAt` and no grace window because there is
+    // nothing to re-verify: our server said yes once, we wrote it down, and no
+    // later answer from us may take it back (`LicenseState.codeGrantedAt`).
+    //
+    // Above `paid` rather than below it only so that the cheapest branch that
+    // can answer `.paid` answers first; the two are indistinguishable from here
+    // on, which is deliberate — a family that redeemed a code is unlocked in
+    // exactly the same way as a family that paid, with the same screens and the
+    // same absence of a paywall.
+    if state.codeGrantedAt != nil { return .paid }
 
     if state.paid {
         let stale = state.verifiedAt.map { t - $0 > offlineGraceMs } ?? false

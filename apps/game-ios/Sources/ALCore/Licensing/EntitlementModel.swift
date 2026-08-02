@@ -80,6 +80,11 @@ public final class EntitlementModel {
     @ObservationIgnored private let store: PurchaseStore
     @ObservationIgnored private let persist: LicenseStore
     @ObservationIgnored private let time: TimeSource
+    @ObservationIgnored private let redemption: RedemptionTransport
+    /// The family's opaque sync id, minted on demand. A closure rather than a
+    /// `SyncClient` because licensing must not depend on sync: this file knows
+    /// there is a string, not where it comes from.
+    @ObservationIgnored private let household: () -> String?
     @ObservationIgnored private var inFlight: Task<Void, Never>?
     @ObservationIgnored private var priceFetched = false
 
@@ -97,10 +102,26 @@ public final class EntitlementModel {
     /// deadlock. Nothing in the app reads this.
     @ObservationIgnored private(set) var trialTask: Task<Void, Never>?
 
-    public init(store: PurchaseStore, persist: LicenseStore, time: TimeSource) {
+    /// - Parameters:
+    ///   - redemption: the code endpoint. Defaults to the one that answers
+    ///     `.unreachable`, so every existing caller — tests, previews, a build
+    ///     with no backend — behaves exactly as it did.
+    ///   - household: the family's sync id, or nil when there is none yet. The
+    ///     app passes a closure that MINTS one on demand: a family redeeming a
+    ///     code before they have ever paired still needs something to key the
+    ///     grant on.
+    public init(
+        store: PurchaseStore,
+        persist: LicenseStore,
+        time: TimeSource,
+        redemption: RedemptionTransport = UnavailableRedemptionTransport(),
+        household: @escaping () -> String? = { nil }
+    ) {
         self.store = store
         self.persist = persist
         self.time = time
+        self.redemption = redemption
+        self.household = household
         self.storeAvailable = store.available
         self.license = persist.load()
         self.onboarded = persist.loadOnboarded()
@@ -211,6 +232,44 @@ public final class EntitlementModel {
         let ok = await store.restore()
         await refresh()
         return ok
+    }
+
+    /**
+     * Spend a redemption code on this family.
+     *
+     * Three properties, and each of them is load-bearing:
+     *
+     *  1. **A malformed code never leaves the device.** `RedemptionCode.accept`
+     *     normalises and checks the checksum first, so a typo is answered
+     *     instantly and 31 of every 32 malformed guesses never reach the store.
+     *  2. **Only a grant writes anything.** `.unknown`, `.exhausted`, `.expired`
+     *     and `.unreachable` all leave the licence exactly as it was — a family
+     *     mid-trial keeps their days, a family already unlocked stays unlocked.
+     *  3. **The stamp is ours, not theirs.** The server's `grantedAt` is
+     *     recorded, but `withClock` still runs, so a server clock skewed into
+     *     the future cannot advance this device's high-water mark and shorten
+     *     somebody's trial.
+     *
+     * Returns the answer verbatim so the screen can say what happened. It never
+     * throws and it never fails closed (invariant 11).
+     */
+    public func redeem(_ raw: String) async -> RedemptionAnswer {
+        guard let code = RedemptionCode.accept(raw) else { return .unknown }
+        guard let household = household() else { return .unreachable }
+
+        let answer = await redemption.redeem(code: code, household: household)
+        guard let grantedAt = answer.grantedAt else { return answer }
+
+        // Serialise behind any refresh in flight, exactly as `beginTrial` does:
+        // both read-modify-write the licence across an await.
+        await inFlight?.value
+        var next = license
+        // `?? grantedAt` — a second redemption never moves an existing grant.
+        next.codeGrantedAt = license.codeGrantedAt ?? grantedAt
+        commit(withClock(next, time.nowMillis))
+        // So the paywall disappears without waiting for the next resume.
+        checkedAt = time.nowMillis
+        return answer
     }
 
     // NB: telemetry is deliberately NOT emitted here. `track("purchase_completed")`

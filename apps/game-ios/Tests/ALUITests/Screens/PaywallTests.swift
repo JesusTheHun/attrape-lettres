@@ -183,7 +183,11 @@ private func makeEntitlement(
             #expect(model.step == step, Comment(rawValue: "started at \(step.rawValue)"))
             _ = await spy.drain()
         }
-        #expect(PaywallStep.allCases.count == 3)
+        // child / gate / parent / code. The count is pinned so that adding a
+        // fifth layer forces somebody back into this test to say what the store
+        // buttons do from it — the failure mode being guarded is a state with
+        // no exit, and a new state is exactly where one appears.
+        #expect(PaywallStep.allCases.count == 4)
     }
 }
 

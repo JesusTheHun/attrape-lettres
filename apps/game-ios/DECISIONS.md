@@ -2367,3 +2367,142 @@ word « erreur » under a game that has no fail state.
 `CorrectionMail.address` — `corrections@attrape-lettres.app` — has to exist as
 a real mailbox before the build ships. It is one constant, and changing it costs
 a release, which is the honest price of a native binary.
+
+---
+
+## D61 — Codes are ours, and they can only ever turn the game on
+
+**« Support de code promotionnel », built as our own endpoint rather than as
+Apple's promo codes.**
+
+There were two products behind that requirement and they are not variants of
+each other.
+
+**Apple's own promo codes** would have been a day's work: a StoreKit sheet
+behind the parental gate, a real transaction, Family Sharing and restore for
+free, zero backend, zero 3.1.1 risk. And a hard annual cap of order a hundred
+per version, codes that lapse four weeks after minting, no Android, no web, and
+nothing testable off a physical device.
+
+**Our own codes** cost a table, a route, a format implemented twice and a new
+persisted field — and they work on all three products from one string, in any
+quantity, with our own expiry and usage rules, keyed on the household id that
+already exists. That is what was asked for, and it is what is here.
+
+### The rule that shapes everything else
+
+**A code can turn the game on. No answer from our server may turn it off.**
+
+`LicenseState.codeGrantedAt` is written once, by the one answer that grants, and
+after that it is permanent. There is no re-verification on launch, no grace
+window, no `verifiedAt`. `GET /entitlement/{id}` exists and the client does not
+call it.
+
+That is invariant 11 followed to its end. The alternative — re-checking a grant
+against the network — means a Lambda outage, a bad deploy or a mistyped table
+name can re-lock a family who redeemed six months ago, and there is no answer we
+could possibly get over the network worth that risk.
+
+The cost is real and is not hidden: **a redeemed code cannot be revoked on a
+device that already has it.** Revocation reaches only the uses that have not been
+spent. That was the honest downside of this option before it was chosen, and
+`RedemptionTests.refusalCannotRevoke` pins it as intended behaviour rather than
+leaving it for someone to "fix".
+
+Of the six answers the endpoint can give, exactly one writes anything. The other
+five — including `.unreachable`, which is every network failure, timeout and 5xx
+collapsed into one value — leave the licence byte-identical.
+`RedemptionTests.refusalsAreInert` runs all four refusals against a mid-trial
+family and asserts the whole `LicenseState` is unchanged.
+
+### Why it is not a payment endpoint, and must not become one
+
+App Review 3.1.1 forbids unlocking paid functionality through anything but
+in-app purchase. A code that is **given away** is not a purchase — nobody paid
+anything, here or anywhere — which is why `/redeem` takes no price, no payment
+token and no receipt, and why nothing sells one.
+
+The moment a code is sold, this endpoint is an alternative payment mechanism
+inside a Kids Category app, and that is an account-level problem rather than a
+rejected build. The route's header says so, the README says so, and the copy the
+parent reads says so: « Les codes sont offerts ».
+
+Apple's promo codes may not be sold either. The difference is that ours *could*
+be, which is the whole temptation, and the reason it is written down in three
+places.
+
+### The format, and why it exists twice
+
+Twelve Crockford base32 symbols — eleven payload, one check symbol —
+`7FQ4-M2XB-9KDB`. `O`, `I` and `L` are **mapped** to `0`, `1`, `1` rather than
+banned, so a parent who reads a card wrong is still right. Separators and case
+are decoration. `U` is out of the alphabet and deliberately not mapped: sending
+it to `V` would silently turn one valid-looking code into a different valid one.
+
+The checksum is not decoration. It turns the two commonest mistakes — one wrong
+symbol, two swapped — into an instant answer instead of a round trip and a
+refusal that reads as « votre code ne vaut rien ». It is also the cheap half of
+the brute-force defence: 31 of every 32 malformed guesses die on the device.
+
+There is no rate limiter, and the reason is arithmetic rather than optimism.
+Eleven symbols is 32^11 = 2^55; a guesser needs ~2^54 HTTPS round trips through
+API Gateway and pays for every one. If codes ever become worth attacking the
+answer is a WAF rate rule on `/redeem`, not a longer code — and `codes.malformed`
+is logged so a sweep is visible before it is expensive.
+
+`code.ts` and `RedemptionCode.swift` are the same algorithm written twice, with
+shared test vectors in both suites. There is no package between Swift and
+TypeScript here and inventing one for seven strings would be worse. What drift
+costs is the reason the vectors exist: every code we mint would be refused on the
+device before reaching the network — no failed request to count, no log line on
+either side, just "the codes don't work".
+
+### Storage
+
+Codes are stored **hashed**. A dump of the table is a list of sha256s and
+counters, not a list of free unlocks, and nobody with database access — us
+included — can read one back out. `scripts/mint-codes.mjs` prints them once and
+that terminal is the only copy. A lost code is reissued, not recovered.
+
+A **separate table** from households, which is not tidiness. The household store
+reads a partition with a Query and treats every non-root item as a child sidecar
+(`fromItems`); a grant row in that partition would be parsed as a child with a
+garbage id and pushed to the family's other devices. One CloudFormation resource
+removes the class of problem.
+
+Grants are keyed by household id, which is the credential model this service
+already has — whoever holds the id can read that family's roster, and now their
+grant. Nothing new is exposed, and a row is still one opaque uuid, one word and
+one integer. No account, no e-mail, no name.
+
+Redemption is **one conditional transaction**, because both ways of splitting it
+lose: counter first and a failed grant burns a code nobody got, grant first and a
+failed counter makes one code unlock the world. The three conditions are the
+business rules, and the third — the household must have no grant — is also what
+makes a second attempt idempotent rather than wasteful.
+
+### Where the field lives
+
+Behind the parental gate, one tap past the price, in its own step rather than
+beside the buy button. A text input next to a price invites everyone to go
+hunting for a code instead of paying, and codes are the exception here.
+
+It sits OUTSIDE the `storeAvailable` branch on purpose: a code needs no store at
+all, so a build where StoreKit never answered must still let a family redeem one.
+
+The field can only ever hold characters a code contains
+(`RedemptionCode.sanitiseInput`), so there is no "invalid character" state to
+render. « Valider » wakes up at twelve symbols and does **not** wait for the
+checksum — a dead button with no explanation is worse than a refusal that names
+the problem.
+
+### The household is minted on demand
+
+A family redeeming a code may never have paired two devices, so
+`PlatformEnvironment` passes `sync.householdId() ?? sync.createHousehold()`.
+Minting there costs nothing and means the unlock follows them to their other
+devices the moment they do pair — which was the point of choosing this option
+over Apple's.
+
+It is also why licensing now depends on sync existing. Only on the *id*, though:
+`EntitlementModel` takes a `() -> String?`, not a `SyncClient`.

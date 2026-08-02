@@ -10,6 +10,7 @@ import { captureLogs, formatLine } from "../src/log.js";
 import { S3TelemetrySink } from "../src/telemetry/s3.js";
 import { errorReport, eventProps } from "../src/telemetry/schema.js";
 import { InMemoryTelemetrySink } from "../src/telemetry/sink.js";
+import { InMemoryCodeStore } from "../src/codes/store.js";
 
 /* -------------------------------------------------------------------------- */
 /* The seam between the code and the stack, made executable.                   */
@@ -106,6 +107,7 @@ async function everyLine(): Promise<string[]> {
     const app = buildApp({
       households: new InMemoryHouseholdStore(),
       telemetry: new InMemoryTelemetrySink(),
+      codes: new InMemoryCodeStore(),
     });
 
     await app.fetch(new Request(url)); // 404
@@ -125,7 +127,7 @@ async function everyLine(): Promise<string[]> {
         throw new Error("ResourceNotFoundException");
       },
     };
-    await buildApp({ households: broken, telemetry: new InMemoryTelemetrySink() }).fetch(
+    await buildApp({ households: broken, telemetry: new InMemoryTelemetrySink(), codes: new InMemoryCodeStore() }).fetch(
       new Request(url)
     ); // 500
 
@@ -280,19 +282,40 @@ describe("the Athena tables still describe what the service writes", () => {
     expect(policy).toContain("s3:PutObject");
     expect(policy).toContain("dynamodb:Query");
     expect(policy).toContain("dynamodb:PutItem");
+
+    // Forbidden EVERYWHERE in the role, whatever the resource. Each of these
+    // would let a compromised function do something no request path needs:
+    // hand over the analytics, erase a child's progress, enumerate families, or
+    // log somewhere nobody set a retention on.
     for (const forbidden of [
       "s3:GetObject",
       "s3:DeleteObject",
       "s3:ListBucket",
       "dynamodb:DeleteItem",
-      "dynamodb:UpdateItem",
       "dynamodb:Scan",
-      "dynamodb:GetItem",
       "logs:CreateLogGroup",
       "*:*",
     ]) {
       expect(policy, `the function's role grants ${forbidden}`).not.toContain(forbidden);
     }
+
+    // GetItem and UpdateItem exist for the CODE table and only for it: the
+    // pre-flight read, the entitlement read, and the atomic bump of `redeemed`.
+    // Pointed at households they would be a way to read one family's roster a
+    // row at a time and to edit a child's counters in place, so the grant is
+    // asserted per policy rather than per role.
+    const named = (name: string) =>
+      policy.slice(policy.indexOf(`- PolicyName: ${name}`), policy.indexOf("PolicyName:", policy.indexOf(`- PolicyName: ${name}`) + 10));
+
+    const households = named("households");
+    expect(households).toContain("HouseholdTable.Arn");
+    expect(households).not.toContain("dynamodb:GetItem");
+    expect(households).not.toContain("dynamodb:UpdateItem");
+
+    const codes = named("codes");
+    expect(codes).toContain("CodeTable.Arn");
+    expect(codes).not.toContain("HouseholdTable");
+    expect(codes).not.toContain("dynamodb:Query");
   });
 });
 

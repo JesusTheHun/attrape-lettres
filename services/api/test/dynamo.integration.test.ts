@@ -12,6 +12,7 @@ import { DynamoHouseholdStore } from "../src/household/dynamo.js";
 import { MAX_CHILD_BYTES, wireChild } from "../src/household/wire.js";
 import type { WireChild, WireRoster } from "../src/household/wire.js";
 import { InMemoryTelemetrySink } from "../src/telemetry/sink.js";
+import { InMemoryCodeStore } from "../src/codes/store.js";
 
 /* -------------------------------------------------------------------------- */
 /* The ONLY tests here that touch a real DynamoDB.                            */
@@ -295,7 +296,7 @@ describe.skipIf(!ENDPOINT)("DynamoDB, for real", () => {
 
 describe.skipIf(!ENDPOINT)("the whole app, on a real store", () => {
   const app = () =>
-    buildApp({ households: store, telemetry: new InMemoryTelemetrySink() });
+    buildApp({ households: store, telemetry: new InMemoryTelemetrySink(), codes: new InMemoryCodeStore() });
 
   it("404 → create → pull → stale push is 412, end to end", async () => {
     const id = household();

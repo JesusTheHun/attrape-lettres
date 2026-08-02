@@ -1,5 +1,7 @@
 import { OpenAPIHono } from "@hono/zod-openapi";
 
+import { codeRoutes } from "./codes/routes.js";
+import type { CodeStore } from "./codes/store.js";
 import { householdRoutes } from "./household/routes.js";
 import type { HouseholdStore } from "./household/store.js";
 import { CHILD_TOO_LARGE, MAX_CHILD_BYTES } from "./household/wire.js";
@@ -23,6 +25,9 @@ import type { TelemetrySink } from "./telemetry/sink.js";
 export interface Deps {
   households: HouseholdStore;
   telemetry: TelemetrySink;
+  /** Redemption codes and the grants they produce. Its own table and its own
+   *  module: entitlement must not touch the sync path (see `codes/dynamo.ts`). */
+  codes: CodeStore;
   /** Serve the generated OpenAPI document. The native clients are hand-written
    *  against the frozen wire format, but an Android port will want this. */
   openapi?: boolean;
@@ -130,6 +135,7 @@ export function buildApp(deps: Deps): OpenAPIHono {
 
   app.route("/", householdRoutes(deps.households));
   app.route("/", telemetryRoutes(deps.telemetry));
+  app.route("/", codeRoutes(deps.codes));
 
   if (deps.openapi) {
     app.doc("/openapi.json", {

@@ -114,8 +114,6 @@ public final class PlatformEnvironment {
         self.purchases = purchases ?? StoreKitPurchaseStore.system()
 
         self.licenses = LicenseStore(kv)
-        self.entitlement = EntitlementModel(
-            store: self.purchases, persist: licenses, time: time)
 
         self.telemetry = Telemetry(
             endpoint: configuration.telemetryEndpoint,
@@ -126,12 +124,28 @@ public final class PlatformEnvironment {
         // Always constructed, exactly like the TS module always exists: it is
         // inert without an endpoint, and `enabled` is what the parent-facing
         // screen reads to say so out loud.
+        //
+        // BEFORE the entitlement model, which now needs it: a redemption code is
+        // keyed on the household, so licensing depends on sync existing. Only on
+        // the id, though — it takes a closure, not a `SyncClient`.
         let syncEndpoint = configuration.syncEndpoint
         let sync = SyncClient(
             kv: kv,
             transport: URLSessionSyncTransport(endpoint: { syncEndpoint }, session: session),
             endpoint: { syncEndpoint })
         self.sync = sync
+
+        self.entitlement = EntitlementModel(
+            store: self.purchases,
+            persist: licenses,
+            time: time,
+            redemption: URLSessionRedemptionTransport(
+                endpoint: { syncEndpoint }, session: session),
+            // MINTS one if the family has never paired. A grant has to be keyed
+            // on something, and the household id is the only opaque handle this
+            // product has; creating it here also means the unlock follows the
+            // family to their other devices the moment they do pair.
+            household: { sync.householdId() ?? sync.createHousehold() })
 
         // Constructing this migrates v3/v2/v1 forward if needed, synchronously —
         // UserDefaults needs no hydration gate, so there is nothing to await at

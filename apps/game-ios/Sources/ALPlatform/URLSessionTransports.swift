@@ -187,3 +187,106 @@ public struct URLSessionSyncTransport: SyncTransport {
         return request
     }
 }
+
+// MARK: - Redemption
+
+/**
+ * `RedemptionTransport` over `URLSession`: `POST {endpoint}/redeem`.
+ *
+ * Same session, same absence of headers, same absence of credentials as the two
+ * transports above. The body is two strings — the normalised code and the
+ * family's opaque household id — and nothing else. No account, no e-mail
+ * address, no device id, no child.
+ *
+ * **NOTHING IS THROWN.** `RedemptionTransport` is non-throwing on purpose
+ * (invariant 11): every network failure, timeout, 5xx and unrecognised status
+ * collapses to `.unreachable`, which the model reads as "nothing was learnt"
+ * and which changes nothing on the device. A store outage may not tell a family
+ * they are not unlocked.
+ *
+ * The four statuses that DO mean something are exactly the four the API
+ * documents. They are mapped positionally rather than by parsing the error body,
+ * so a change to the refusal shape cannot silently turn a refusal into a grant.
+ */
+public struct URLSessionRedemptionTransport: RedemptionTransport {
+    /// Long enough for a cold Lambda, short enough that a parent does not stare
+    /// at a spinner. A timeout is `.unreachable`, so overrunning costs nothing
+    /// but the wait.
+    public static let defaultTimeout: TimeInterval = 15
+
+    // `@Sendable`, unlike `URLSessionSyncTransport`'s: `RedemptionTransport`
+    // is a `Sendable` protocol, so the stored closure has to be too.
+    private let endpoint: @Sendable () -> String?
+    private let session: URLSession
+    private let timeout: TimeInterval
+
+    public init(
+        endpoint: @escaping @Sendable () -> String?,
+        session: URLSession = PrivateURLSession.make(),
+        timeout: TimeInterval = URLSessionRedemptionTransport.defaultTimeout
+    ) {
+        self.endpoint = endpoint
+        self.session = session
+        self.timeout = timeout
+    }
+
+    /// `${endpoint}/redeem` — plain concatenation, as `URLSessionSyncTransport`
+    /// does, so the path the server sees is the path we wrote.
+    static func url(endpoint: String) -> URL? {
+        URL(string: endpoint + "/redeem")
+    }
+
+    /// Internal so a test can assert on the bytes that would go out.
+    static func request(url: URL, code: String, household: String, timeout: TimeInterval)
+        -> URLRequest?
+    {
+        // Hand-encoded rather than through an encodable struct so that the
+        // payload is visible, in full, at the one place it is built. Two keys,
+        // both values already constrained: a code is twelve symbols from a
+        // 32-character alphabet, a household id is an opaque token.
+        let payload = ["code": code, "household": household]
+        guard let body = try? JSONSerialization.data(withJSONObject: payload) else { return nil }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "content-type")
+        request.httpBody = body
+        request.httpShouldHandleCookies = false
+        request.timeoutInterval = timeout
+        return request
+    }
+
+    public func redeem(code: String, household: String) async -> RedemptionAnswer {
+        guard let raw = endpoint(), !raw.isEmpty else { return .unreachable }
+        guard let url = Self.url(endpoint: raw),
+            let request = Self.request(
+                url: url, code: code, household: household, timeout: timeout)
+        else { return .unreachable }
+
+        guard
+            let (data, response) = try? await session.data(for: request),
+            let http = response as? HTTPURLResponse
+        else { return .unreachable }
+
+        switch http.statusCode {
+        case 200:
+            // `grantedAt` is the server's clock. A response we cannot read is
+            // NOT a refusal — the family may well have been granted, so the
+            // honest answer is "nothing was learnt" and the parent retries.
+            guard
+                let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                let at = object["grantedAt"] as? Int64 ?? (object["grantedAt"] as? NSNumber)?.int64Value
+            else { return .unreachable }
+            return .granted(at: at)
+        case 400, 404:
+            // 400 is a code this device thought was well-formed and the server
+            // did not; from a parent's chair that is the same as "no such code".
+            return .unknown
+        case 409:
+            return .exhausted
+        case 410:
+            return .expired
+        default:
+            return .unreachable
+        }
+    }
+}

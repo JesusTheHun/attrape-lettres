@@ -170,6 +170,40 @@ Resources:
       PointInTimeRecoverySpecification:
         PointInTimeRecoveryEnabled: true
 
+  # Redemption codes and the grants they produce.
+  #
+  # A SEPARATE TABLE from households, deliberately. The household store reads a
+  # partition with a Query and treats every non-root item as a child sidecar, so
+  # a grant row living in that partition would be parsed as a child with a
+  # garbage id and pushed to the family's other devices. One extra resource buys
+  # a hard wall between entitlement and sync.
+  #
+  # No sort key: every access is a point read or a point write on `pk`, which is
+  # either `code#<sha256>` or `grant#<householdId>`. Nothing is ever enumerated,
+  # so there is no index and no scan — and the role below cannot Scan anyway.
+  #
+  # Retained for the same reason as households: deleting it silently re-locks
+  # every family that redeemed a code, and since codes are stored hashed, nobody
+  # — including us — can reissue the ones already handed out.
+  CodeTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      # `<households>-codes`, which is also what `aws.ts` defaults to when
+      # CODES_TABLE is unset. The two spellings are coupled on purpose: a deploy
+      # that forgets the environment variable still finds the right table.
+      TableName: !Sub "${AWS::StackName}-households-codes"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+
   # Telemetry rows carry no device id, no household id and no session id, so
   # nothing here can be tied to a family — which is why this needs no retention
   # policy for privacy. The lifecycle rule below is a cost rule, nothing more.
@@ -260,6 +294,20 @@ Resources:
               - Effect: Allow
                 Action: [dynamodb:Query, dynamodb:PutItem]
                 Resource: !GetAtt HouseholdTable.Arn
+        - PolicyName: codes
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              # GetItem for the pre-flight and the entitlement read, PutItem for
+              # the grant, UpdateItem for the counter — the last two inside one
+              # TransactWriteItems. Still no DeleteItem and still no Scan: the
+              # function cannot revoke a family's grant, and it cannot list the
+              # code table to learn which hashes exist. Minting is a human with
+              # their own credentials running `scripts/mint-codes.mjs`, never
+              # this role.
+              - Effect: Allow
+                Action: [dynamodb:GetItem, dynamodb:PutItem, dynamodb:UpdateItem]
+                Resource: !GetAtt CodeTable.Arn
         - !If
           - TelemetryOn
           - PolicyName: telemetry
@@ -304,6 +352,7 @@ Resources:
       Environment:
         Variables:
           HOUSEHOLD_TABLE: !Ref HouseholdTable
+          CODES_TABLE: !Ref CodeTable
           TELEMETRY: !Ref TelemetryEnabled
           TELEMETRY_BUCKET: !If [TelemetryOn, !Ref TelemetryBucket, ""]
           # Trim the SDK's own logging; ours is the log that matters.
