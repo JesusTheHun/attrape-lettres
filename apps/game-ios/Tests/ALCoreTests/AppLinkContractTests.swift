@@ -130,12 +130,19 @@ struct ProjectWiringTests {
 
     @Test("both configurations sign with the enrolled team, automatically")
     func signingTeam() throws {
-        // 2YJBB225MB is the active Apple Developer enrolment. It is pinned
-        // because this is a setting Xcode REWRITES on its own: opening the
-        // project with a different team selected, or on a Mac that holds more
-        // than one signing identity, silently swaps it — and this Mac holds
-        // two (the other is 267VC765WT). The failure is not a build error, it
-        // is a build signed by the wrong entity, which surfaces at upload.
+        // 267VC765WT is the enrolment, under jonathan.massuchetti@dappit.fr.
+        // It is pinned because this is a setting Xcode REWRITES on its own:
+        // opening the project with another team selected, or on a Mac holding
+        // more than one signing identity, silently swaps it. The failure is
+        // not a build error — it is a build signed by the wrong entity, found
+        // at upload.
+        //
+        // It HAS already happened here. The project carried 2YJBB225MB from
+        // the day it was scaffolded: the free personal team of a different
+        // Apple ID, whose profiles live 7 days and which cannot enable iCloud
+        // at all. That team also registered `fr.dappit.attrape-lettres` by
+        // free provisioning, and App IDs are globally unique, so it locked the
+        // real team out of its own bundle identifier — see D59.
         //
         // `Automatic` for the same reason it always is: the alternative pins a
         // provisioning-profile UUID in the project file, and profiles expire.
@@ -151,7 +158,7 @@ struct ProjectWiringTests {
                 .filter { $0.trimmingCharacters(in: .whitespaces) == line }
                 .count
         }
-        #expect(settings("DEVELOPMENT_TEAM = 2YJBB225MB;") == 2)
+        #expect(settings("DEVELOPMENT_TEAM = 267VC765WT;") == 2)
         #expect(settings("CODE_SIGN_STYLE = Automatic;") == 2)
         #expect(
             !project.contains("PROVISIONING_PROFILE_SPECIFIER"),

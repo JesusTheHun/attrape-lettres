@@ -2219,3 +2219,60 @@ and ships a valid signed build with a blank home screen.
 
 Verified in the built Release binary: `Assets.car` carries `AppIcon-1024.png`
 and the shipped `Info.plist` carries `CFBundleIconName = AppIcon`.
+
+## D59 — The project was signed by the wrong Jonathan for three days
+
+`DEVELOPMENT_TEAM = 2YJBB225MB` had been in both build configurations since the
+repo was reshaped, and nothing questioned it: the project built, the tests
+passed, and the setting looked like a decision. It was not one. It is what Xcode
+writes when it picks a team for you, and the team it picked was the **free
+personal team of a different Apple ID** — the certificate for it is issued to
+`iletaitunefoisfenghuang@gmail.com`, not to the enrolment.
+
+Three signatures give a personal team away, and all three were readable locally
+before anything was asked of Apple:
+
+    TimeToLive    7        every profile it issues; a paid membership issues 365
+    TeamName      "Jonathan MASSUCHETTI (Personal Team)"   in Xcode's own error
+    capabilities  none     a personal team cannot enable iCloud, ever
+
+The third is what surfaced it. A device build refused with
+
+    error: Provisioning profile "…" doesn't include the iCloud capability.
+    error: … doesn't include the com.apple.developer.ubiquity-kvstore-identifier
+           entitlement.
+
+which reads as "enable a capability" and is really "you are not the team you
+think you are". Enabling it was never possible: that team has no portal.
+
+### The cost of three days
+
+The personal team did not merely fail to sign — it **registered the bundle
+identifier**. Free provisioning claims an App ID the first time it signs, App
+IDs are globally unique across all of Apple, and so `fr.dappit.attrape-lettres`
+became unavailable to its owner:
+
+    error: Failed Registering Bundle Identifier: The app identifier
+    "fr.dappit.attrape-lettres" cannot be registered to your development team
+    because it is not available.
+
+That error is the good one. It is Apple's server answering, which proves the
+enrolment authenticated and that everything except the name is in order. The
+name has to be released from the personal team's portal before the real team
+can take it.
+
+### Why the setting is now pinned by a test
+
+`AppLinkContractTests.signingTeam` asserts `267VC765WT` in both configurations,
+`CODE_SIGN_STYLE = Automatic`, and the absence of any
+`PROVISIONING_PROFILE_SPECIFIER`. Not defensive habit — this exact setting
+silently changed once already, and the class of failure it belongs to is the
+one this file exists for: a build that succeeds, signs, and is wrong. On a Mac
+holding identities for two teams, which this one does, Xcode needs no help to
+do it again.
+
+The lesson generalises past signing. `DEVELOPMENT_TEAM`, `CODE_SIGN_STYLE`,
+`ASSETCATALOG_COMPILER_APPICON_NAME` and `INFOPLIST_FILE` are all settings an
+IDE will write on your behalf, and every one of them can be wrong in a way that
+compiles. If a build setting has to hold a particular value for the app to be
+correct rather than merely to build, it belongs in that test.
