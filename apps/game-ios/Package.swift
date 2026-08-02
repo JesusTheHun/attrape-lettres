@@ -60,6 +60,15 @@ let package = Package(
             resources: [.process("Resources")],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
+        // `swift run IconForge` — bakes the app icon out of `AppIcon.swift`
+        // into both products. A tool, not a dependency: nothing links it, the
+        // Xcode target never sees it, and it exists so that the 1024 PNG in the
+        // asset catalog has a source that can be re-rendered.
+        .executableTarget(
+            name: "IconForge",
+            dependencies: ["ALUI"],
+            swiftSettings: [.swiftLanguageMode(.v5)]
+        ),
         .testTarget(
             name: "ALCoreTests",
             dependencies: ["ALCore"],

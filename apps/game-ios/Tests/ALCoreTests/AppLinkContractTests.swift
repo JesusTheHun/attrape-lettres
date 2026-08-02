@@ -128,6 +128,25 @@ struct ProjectWiringTests {
         #expect(!project.contains("GENERATE_INFOPLIST_FILE = YES"))
     }
 
+    @Test("the asset catalog's app icon is named, in both configurations")
+    func appIconNamed() throws {
+        // `Assets.xcassets` can hold a perfect 1024 icon and ship a blank home
+        // screen: without this setting Xcode compiles the catalog, injects no
+        // `CFBundleIconName`, and the build is valid, signed and iconless. The
+        // PNG itself is checked in `AppIconTests` (ALUITests); this is the wire
+        // between it and the bundle.
+        let project = try String(
+            contentsOf: URL(fileURLWithPath: #filePath)
+                .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+                .appendingPathComponent("App/AttrapeLettres.xcodeproj/project.pbxproj"),
+            encoding: .utf8
+        )
+        let named = project
+            .split(separator: "\n")
+            .filter { $0.trimmingCharacters(in: .whitespaces) == "ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;" }
+        #expect(named.count == 2, "the app icon is named in \(named.count) of 2 build configurations")
+    }
+
     @Test("the sync endpoint is set, or the whole app is inert")
     func endpointPresent() throws {
         let plist = body(try appFile("Info.plist"))
