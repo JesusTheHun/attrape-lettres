@@ -128,6 +128,37 @@ struct ProjectWiringTests {
         #expect(!project.contains("GENERATE_INFOPLIST_FILE = YES"))
     }
 
+    @Test("both configurations sign with the enrolled team, automatically")
+    func signingTeam() throws {
+        // 2YJBB225MB is the active Apple Developer enrolment. It is pinned
+        // because this is a setting Xcode REWRITES on its own: opening the
+        // project with a different team selected, or on a Mac that holds more
+        // than one signing identity, silently swaps it — and this Mac holds
+        // two (the other is 267VC765WT). The failure is not a build error, it
+        // is a build signed by the wrong entity, which surfaces at upload.
+        //
+        // `Automatic` for the same reason it always is: the alternative pins a
+        // provisioning-profile UUID in the project file, and profiles expire.
+        let project = try String(
+            contentsOf: URL(fileURLWithPath: #filePath)
+                .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+                .appendingPathComponent("App/AttrapeLettres.xcodeproj/project.pbxproj"),
+            encoding: .utf8
+        )
+        func settings(_ line: String) -> Int {
+            project
+                .split(separator: "\n")
+                .filter { $0.trimmingCharacters(in: .whitespaces) == line }
+                .count
+        }
+        #expect(settings("DEVELOPMENT_TEAM = 2YJBB225MB;") == 2)
+        #expect(settings("CODE_SIGN_STYLE = Automatic;") == 2)
+        #expect(
+            !project.contains("PROVISIONING_PROFILE_SPECIFIER"),
+            "a pinned profile has been added; it will expire and break the build for everyone"
+        )
+    }
+
     @Test("the asset catalog's app icon is named, in both configurations")
     func appIconNamed() throws {
         // `Assets.xcassets` can hold a perfect 1024 icon and ship a blank home
