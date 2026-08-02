@@ -1,25 +1,123 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  The same drawn A as apps/game-web/public/icon.svg, scaled 0.85 and recentred
-  so it sits inside the adaptive-icon safe zone (the launcher may mask anything
-  outside the centre 66/108 of the canvas). Same orange, same round caps.
+  ===========================================================================
+  THE MARK: a cream pick tile with an A on it, tilted, two flecks of confetti,
+  over the coral field.
+
+  The SOURCE is `CoralIcon` in
+  apps/game-ios/Sources/ALUI/AppIcon/AppIcon.swift; `swift run IconForge`
+  renders it into the iOS asset catalog and the PWA's PNGs, and no renderer in
+  this repo emits Android XML, so — exactly like apps/game-web/public/icon.svg —
+  this file is a hand-kept TRANSCRIPTION. Everything below is in the same
+  1024-unit space as the Swift, so the numbers travel one for one:
+
+      IconTile(paint: cream, glyph: "A", side: 560).rotationEffect(-7°)
+      corner radius = 560 × TileMetrics.cornerRadius / defaultSize.min = 170.4
+      face #FFF6EE, ink #4A2317 (= Palette.tileColors[0].ink)
+      IconFleck(1) 62×62 @ (−352, −300) rot 18,  #FFD54F, r = 62 × 0.34
+      IconFleck(2) 48×104 @ (350, −240) rot −24, #4FC3F7, r = 48 × 0.34
+
+  THE SCALE, 0.628, is the one number that is not the Swift's.
+
+  A launcher masks everything outside the centre 72 of these 108 dp and only
+  guarantees the centre 66 — 313 units here. Drawn 1:1 the tile filled 92 % of
+  the circle and the coral was a rim; that is not a calculation, it is what a
+  Pixel 7 showed. So the whole drawing is scaled until the OUTERMOST thing in it
+  sits exactly on the guarantee, which is the yellow fleck: its centre is 462.4
+  out and its own corner adds 35.1, so 313 / 497.5 = 0.629. That leaves the
+  tile 54 % of the visible width against 57 % on iOS — 6 % smaller, to buy the
+  confetti, which is a trade nobody can see and everybody would notice the other
+  way round.
+
+  TWO DIFFERENCES from the iOS render remain, both forced:
+
+  1. NO SOFT SHADOW. The tile casts two — a hard `0 8px` lip at 12 % black and
+     a blurred `0 12px 20px` at 14 %. A VectorDrawable has no blur, so only the
+     lip survives, translated in the TILE's frame (it is drawn before the
+     rotation, so it leans with the tile, which is what the PNG shows).
+
+  2. THE A IS DRAWN, NOT SET. iOS composes the glyph from SF Pro Rounded Black.
+     A VectorDrawable cannot lay out text at all, this app ships no font files
+     on purpose (Typography.kt), and an Apple system face has no business in a
+     Play binary either way. So the letter below is our own, in the round-capped
+     stroke style of icon.svg's original A — but proportioned to the shipped
+     mark, measured off AppIcon-1024.png rather than guessed:
+
+         glyph box   394.9 … 647.2 tall (252), 393.8 … 629.1 wide (235)
+         stems       66 wide, splayed 19.6° from vertical
+         crossbar    54 thick, centred at y = 571 (0.70 down the letter)
+
+     It is a transcription, not a trace: SF Rounded's slight stem flare and its
+     needle-sharp apex are not reproduced, and at 108 dp neither is visible.
+
+  (The PWA's maskable cut drops the confetti instead. It has no choice — it is a
+  full-bleed 512 PNG with no room to rescale the subject inside. Here the scale
+  is ours, so the flecks can be kept and moved inward with everything else.)
+  ===========================================================================
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
-    android:viewportWidth="512"
-    android:viewportHeight="512">
+    android:viewportWidth="1024"
+    android:viewportHeight="1024">
 
-    <path
-        android:pathData="M165.9,392 L256,120 L346.1,392"
-        android:strokeColor="#E8722C"
-        android:strokeWidth="41"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round" />
-    <path
-        android:pathData="M203.3,298.5 L308.7,298.5"
-        android:strokeColor="#E8722C"
-        android:strokeWidth="41"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round" />
+    <group
+        android:name="safeZone"
+        android:pivotX="512"
+        android:pivotY="512"
+        android:scaleX="0.628"
+        android:scaleY="0.628">
+
+        <!-- The flecks first: `CoralIcon` stacks them under the tile. -->
+        <group android:name="fleck1" android:pivotX="160" android:pivotY="212" android:rotation="18">
+            <path
+                android:pathData="M150.08,181 L169.92,181 A21.08,21.08 0 0 1 191,202.08 L191,221.92 A21.08,21.08 0 0 1 169.92,243 L150.08,243 A21.08,21.08 0 0 1 129,221.92 L129,202.08 A21.08,21.08 0 0 1 150.08,181 Z"
+                android:fillColor="#FFD54F" />
+        </group>
+        <group android:name="fleck2" android:pivotX="862" android:pivotY="272" android:rotation="-24">
+            <path
+                android:pathData="M854.32,220 L869.68,220 A16.32,16.32 0 0 1 886,236.32 L886,307.68 A16.32,16.32 0 0 1 869.68,324 L854.32,324 A16.32,16.32 0 0 1 838,307.68 L838,236.32 A16.32,16.32 0 0 1 854.32,220 Z"
+                android:fillColor="#4FC3F7" />
+        </group>
+
+        <group
+            android:name="tilt"
+            android:pivotX="512"
+            android:pivotY="512"
+            android:rotation="-7">
+
+            <!--
+              The lip: the same rounded rect, 26.8 lower. That is
+              8 × (560 / 92) × 0.55, the shadow offset `IconTile` scales with
+              the tile. Inside the tilt group, so it leans with the face.
+            -->
+            <group android:name="lip" android:translateY="26.8">
+                <path
+                    android:pathData="M402.4,232 L621.6,232 A170.4,170.4 0 0 1 792,402.4 L792,621.6 A170.4,170.4 0 0 1 621.6,792 L402.4,792 A170.4,170.4 0 0 1 232,621.6 L232,402.4 A170.4,170.4 0 0 1 402.4,232 Z"
+                    android:fillColor="#000000"
+                    android:fillAlpha="0.12" />
+            </group>
+
+            <!-- The face. Same path, unmoved. -->
+            <path
+                android:pathData="M402.4,232 L621.6,232 A170.4,170.4 0 0 1 792,402.4 L792,621.6 A170.4,170.4 0 0 1 621.6,792 L402.4,792 A170.4,170.4 0 0 1 232,621.6 L232,402.4 A170.4,170.4 0 0 1 402.4,232 Z"
+                android:fillColor="#FFF6EE" />
+
+            <!--
+              The A. Two stems meeting in a 36-wide flat apex (round joins put
+              the crown at y = 428 − 33 = 395), feet at y = 614 + 33 = 647.
+            -->
+            <path
+                android:pathData="M428,614 L494,428 L530,428 L596,614"
+                android:strokeColor="#4A2317"
+                android:strokeWidth="66"
+                android:strokeLineCap="round"
+                android:strokeLineJoin="round" />
+            <path
+                android:pathData="M448,571 L576,571"
+                android:strokeColor="#4A2317"
+                android:strokeWidth="54"
+                android:strokeLineCap="round" />
+        </group>
+    </group>
 </vector>

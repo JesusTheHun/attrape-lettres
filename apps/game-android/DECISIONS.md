@@ -404,3 +404,60 @@ which is `clamp(92px, 27vw, 150px)` at a 411 dp viewport.
 The general rule for this port: **anything that paints outside its border box
 needs `overdraw` before the first layer, or it is not on the screen.** No host
 test can see this one — `:ui` is asserted as data and rasterises nothing.
+
+## A20 — The launcher icon is a transcription, and the confetti sets its scale
+
+The mark's source is `CoralIcon` in
+`apps/game-ios/Sources/ALUI/AppIcon/AppIcon.swift` — a SwiftUI view built from
+the product's own tokens — and `swift run IconForge` renders it into the iOS
+asset catalog and the PWA's PNGs, where `AppIconTests` re-renders and diffs.
+Nothing renders Android XML, so `app/src/main/res/drawable/ic_launcher_*.xml`
+are typed by hand, like `apps/game-web/public/icon.svg` before them, in the same
+1024-unit space so the numbers travel one for one.
+
+**The scale, 0.628, is the only number that is not the Swift's, and it is not a
+taste.** A launcher masks everything outside the centre 72 of the 108 dp canvas
+and guarantees only the centre 66 — 313 units here. Transcribed 1:1, a tile that
+is 57 % of the iOS square became 92 % of the visible circle with the coral
+reduced to a rim; that was measured on a Pixel 7, not predicted. So the whole
+drawing is scaled until the outermost thing in it sits exactly on the guarantee.
+That thing is the yellow fleck: 462.4 out plus 35.1 of its own corner, and
+313 / 497.5 = 0.629.
+
+**The confetti stays.** The PWA's `AppIconMaskableView` drops it, and the
+reflex was to copy that — but the PWA has no choice: `icon-maskable-512.png` is
+full-bleed with no room to move the subject inward, and flecks 497 out of 512
+cannot fit a 0.4-radius safe zone. Here the scale is ours. Keeping them costs
+6 % of tile size (54 % of the visible width against iOS's 57 %), which is a
+trade nobody can see and everybody would notice the other way round.
+
+Two things could not travel:
+
+**The soft shadow.** The tile casts a hard `0 8px` lip at 12 % black and a
+blurred `0 12px 20px` at 14 %. A VectorDrawable has no blur, so only the lip
+survives — translated inside the tilt group, so it leans with the tile.
+
+**The letter.** iOS sets the A in SF Pro Rounded Black. A VectorDrawable cannot
+lay out text at all, this app ships no font files on purpose (`Typography.kt`
+says why), and an Apple system face has no business in a Play binary either way.
+So the A is drawn — round-capped strokes, the style of `icon.svg`'s original —
+but proportioned to the shipped mark rather than guessed: the glyph box, the
+stem width, the splay and the crossbar height were all measured off
+`AppIcon-1024.png` and are reproduced within about 4 %. A transcription, not a
+trace: the flare and the needle apex of the real face are not in it.
+
+The themed layer (Android 13+) is its own drawable and has to be. The system
+discards the colours and tints by alpha, so the foreground — a cream tile with
+a dark letter on it — comes back as a featureless blob. `ic_launcher_monochrome`
+is the letter alone, at 1.75, filling the safe zone rather than matching iOS,
+because a themed icon has no field of its own to leave a margin in.
+
+`LauncherIconContractTest` parses the geometry back out of the files rather than
+restating it: the corner radius must equal the product's own
+`cornerRadius / defaultSize.min` ratio, the palette hexes must still be
+`Palette`'s and `ConfettiSystem.COLORS`', the themed layer must not be the
+foreground, no raster may appear in `res/` — the Android 12+ splash screen blows
+the icon up to about 160 dp, and every layer being a vector is what keeps that
+sharp — and the drawing must reach the 313-unit guarantee and not pass it. That
+last one is checked in BOTH directions on purpose: over it, a launcher we do not
+own crops the confetti; under it, somebody has quietly shrunk the mark.

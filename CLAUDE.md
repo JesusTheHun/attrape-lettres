@@ -13,7 +13,8 @@ apps/game-ios/       the native app. SwiftPM package + a thin Xcode wrapper.
                      Has its OWN ARCHITECTURE.md and DECISIONS.md.
 apps/game-android/   the native app. Kotlin + Compose, a 5-module Gradle build.
                      Has its OWN ARCHITECTURE.md and DECISIONS.md. Feature
-                     complete, 1599 host tests, never yet run on a device.
+                     complete, 1608 host tests, played on an emulator, never on
+                     hardware.
 apps/backoffice/     not built.
 services/api/        Hono + Zod. Household sync (ETag/412) on DynamoDB and
                      telemetry on S3. Ships as one Lambda behind an HTTP API;
@@ -219,9 +220,17 @@ These are why the game feels alive to a child. Changing them silently will regre
 `icon-192`/`icon-512`/`apple-touch-icon`/`icon-maskable-512`. Forget the re-bake
 and `AppIconTests` fails: it compares the committed PNG against a fresh render.
 `--sheet <dir>` renders every candidate masked as iOS masks it, at 300, 60 and
-29 pt — judge there, not at 1024. `public/icon.svg` is transcribed by hand (no
-renderer here emits SVG) and is the only icon that can drift. D58 has the rest,
-including why the confetti sits exactly where it does.
+29 pt — judge there, not at 1024. D58 has the rest, including why the confetti
+sits exactly where it does.
+
+Two icons are NOT baked and can drift, because no renderer here emits their
+format: `public/icon.svg` and Android's three `ic_launcher_*.xml`. Both are hand
+transcriptions in the same 1024-unit space, so the numbers copy across. Android's
+also drops the blurred shadow, draws its own A (a VectorDrawable cannot set type,
+and this app ships no fonts) and scales the whole composition by 0.628, which is
+what puts the outermost fleck exactly on the 66 dp an adaptive icon guarantees.
+Its A20 explains each, and `LauncherIconContractTest` parses the geometry back
+out of the files so a palette change cannot leave the icon behind.
 
 **Add a word:** append to `LETTER_WORDS` or `SYLLABLE_WORDS` in `content.ts`. For
 syllable words, author the split. That's it — pools derive automatically.

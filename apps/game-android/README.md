@@ -87,23 +87,26 @@ clip") runs on a machine that has never staged the audio.
 | `:ui` — the 9 exercise engines and their 3 models | done — `:ui` now **409 tests**, 58 classes |
 | `:ui` — router, hub, shop, dashboard, roster, the three adult screens | done — `:ui` now **765 tests**, 131 classes |
 | `:app` — `AppGraph`, lifecycle, the real adapters behind `RootView` | done — **25 tests**, 2 classes |
+| `:app` — the launcher icon, transcribed from the iOS mark | done — **9 tests**, 1 class |
 
-1599 host tests, none skipped, and the app now runs its own UI rather than a
+1608 host tests, none skipped, and the app now runs its own UI rather than a
 placeholder. `:core` is complete except for the sync client's ETag/412 retry loop
 and household identity, which wait on the API contract (A7).
 Everything the game computes — every ladder, every round builder, the economy, the
 migrations, the merge, the entitlement state machine — is ported and tested on the
 host, as is everything it draws.
 
-What 1599 green tests do not prove, and nothing here proves yet: **not one pixel
-has ever been produced.** `SvgCanvas` records a draw list that is heavily tested
-and `SvgRender` replays it into Compose untested; every `:ui` spec is asserted as
-data, with no composition and no frame clock anywhere in the suite. **Nothing has
-run on a device or an emulator** — audio latency, whether the keyboard covers
-« Ton prénom », whether the consent card wraps rather than truncates, and the
-central invariant-1 claim that `awaitFirstDown` resumes inside pointer dispatch
-before recomposition are all device-only facts. The app assembles, installs and
-should open; nobody has watched it.
+What 1608 green tests do not prove: **they produce no pixels.** `SvgCanvas`
+records a draw list that is heavily tested and `SvgRender` replays it into
+Compose untested; every `:ui` spec is asserted as data, with no composition and
+no frame clock anywhere in the suite. It has now been played on an emulator
+(`pnpm android:emulator`), which is where the drawing was first seen to work and
+where A19 was caught — a green build that had never once drawn the tile's
+highlight ring. Still device-only, still unproven: audio latency, whether the
+keyboard covers « Ton prénom », whether the consent card wraps rather than
+truncates, and the central invariant-1 claim that `awaitFirstDown` resumes inside
+pointer dispatch before recomposition. **No hardware, ever** — an emulator is not
+a phone about audio or about touch.
 
 Two absences are deliberate. Billing: no Play Billing dependency is taken and
 `:app` wires the stub, so nothing can be bought — which points the right way for

@@ -1,5 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The icon.svg gradient: warm cream at the top, cool sky at the bottom. -->
+<!--
+  The coral field, edge to edge — `CoralIcon.field` in
+  apps/game-ios/Sources/ALUI/AppIcon/AppIcon.swift, which is the SOURCE of this
+  mark for all three products:
+
+      HexGradient(degrees: 180, [
+          HexStop(Palette.tileColors[0].bg.hex, 0.0),  // #FF8A65, the pick tile's coral
+          HexStop("#E8722C", 1.0),                     // the web icon's deeper orange
+      ])
+
+  180° in CSS terms is top to bottom, which is what startY=0 / endY=108 says
+  here. This is the WHOLE background layer on purpose: an adaptive background is
+  a field, not a composition, because the launcher may parallax it independently
+  of the foreground and anything with a subject in it would slide apart.
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
@@ -14,9 +28,8 @@
                 android:endX="0"
                 android:endY="108"
                 android:type="linear">
-                <item android:offset="0" android:color="#FFE7C9" />
-                <item android:offset="0.5" android:color="#FFEFD6" />
-                <item android:offset="1" android:color="#DCEFFB" />
+                <item android:offset="0" android:color="#FF8A65" />
+                <item android:offset="1" android:color="#E8722C" />
             </gradient>
         </aapt:attr>
     </path>

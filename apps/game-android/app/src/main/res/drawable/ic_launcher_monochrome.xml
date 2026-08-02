@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The themed icon (Android 13+). The system throws away these colours and tints
+  the drawable with the wallpaper palette, so a monochrome layer is a SILHOUETTE
+  and nothing else — which is why it cannot be the foreground: that one is a
+  cream tile with the letter cut into it by contrast alone, and tinted flat it
+  would come out as a featureless rounded blob.
+
+  So the themed mark is the letter itself, the same drawn A as
+  ic_launcher_foreground.xml at the same −7° tilt, scaled 1.75 about its own
+  centre (512, 521 — the A sits a little below the tile's centre, as set type
+  does). Its furthest point is a foot cap, 158.3 from that centre, which the
+  scale and the 9-unit drop put at 286 of the 313 units an adaptive icon
+  guarantees: about 65 % of the visible circle, which is what an icon with no
+  field of its own has to fill to read at all.
+
+  It is NOT scaled by the foreground's 0.667. That number exists to leave the
+  tile its coral margin; here there is no tile and no margin to leave.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="1024"
+    android:viewportHeight="1024">
+
+    <group
+        android:name="fill"
+        android:pivotX="512"
+        android:pivotY="521"
+        android:scaleX="1.75"
+        android:scaleY="1.75">
+
+        <group
+            android:name="tilt"
+            android:pivotX="512"
+            android:pivotY="521"
+            android:rotation="-7">
+
+            <path
+                android:pathData="M428,614 L494,428 L530,428 L596,614"
+                android:strokeColor="#000000"
+                android:strokeWidth="66"
+                android:strokeLineCap="round"
+                android:strokeLineJoin="round" />
+            <path
+                android:pathData="M448,571 L576,571"
+                android:strokeColor="#000000"
+                android:strokeWidth="54"
+                android:strokeLineCap="round" />
+        </group>
+    </group>
+</vector>

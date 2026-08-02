@@ -21,7 +21,7 @@ packages/         shared TypeScript — empty on purpose
 `apps/game-web`, `apps/game-ios` and `apps/game-android` are independent
 implementations of the same game. They are not a shared core with three shells:
 each port was written against the web app line by line, and host tests are what
-hold them in agreement — ~1450 on iOS, 1599 on Android. What they genuinely share is the baked
+hold them in agreement — ~1450 on iOS, 1608 on Android. What they genuinely share is the baked
 voice-over — 845 clips that live once, in `apps/game-web/src/vo/clips/`,
 hard-linked into each app's bundle at build time and never committed twice.
 
