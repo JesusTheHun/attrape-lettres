@@ -183,13 +183,13 @@ These are why the game feels alive to a child. Changing them silently will regre
   to it, even if it is later deselected.
 - **The trial is Apple's own mechanism.** Guideline 3.1.1 allows a
   time-based trial before a full unlock via a price-0 non-consumable named
-  `"14-day Trial"`; its StoreKit `purchaseDate` is the clock, because it is
+  `"7-day Trial"`; its StoreKit `purchaseDate` is the clock, because it is
   signed and survives a reinstall. Play has no price-0 IAP, so Android keeps a
   local stamp through Auto Backup. Terms must be disclosed BEFORE the trial
   starts — that is `Onboarding.tsx`, which is why it also carries the consent
   checkbox (unticked; pre-ticked consent has been invalid since CJEU Planet49).
 - **The two platforms are NOT symmetric on family.** iOS: switch Family Sharing
-  on for the €9.99 non-consumable in App Store Connect — six people, free, no
+  on for the €11.99 non-consumable in App Store Connect — six people, free, no
   code. Google Play Family Library explicitly does not share in-app purchases,
   ever; Android restores per Google account only. Any copy promising "toute la
   famille" belongs to the app that can keep the promise — it lives in the iOS

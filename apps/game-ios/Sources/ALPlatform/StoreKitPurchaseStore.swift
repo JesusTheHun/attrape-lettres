@@ -108,19 +108,30 @@ public struct StoreKitPurchaseStore: PurchaseStore {
 
     private let facade: any AppStoreFacade
     private let unlockID: String
+    private let earlyID: String
     private let trialID: String
     private let timeout: TimeInterval
 
     public init(
         facade: any AppStoreFacade,
         unlockID: String = productUnlock,
+        earlyID: String = productUnlockEarly,
         trialID: String = productTrial,
         timeout: TimeInterval = StoreKitPurchaseStore.defaultTimeout
     ) {
         self.facade = facade
         self.unlockID = unlockID
+        self.earlyID = earlyID
         self.trialID = trialID
         self.timeout = timeout
+    }
+
+    /// **Both unlocks are the unlock.** Same content, two prices, and a family
+    /// that took the early-adopter one owns the game exactly as much as one that
+    /// paid full. Reading only `unlockID` here would lock out every early
+    /// adopter at their next launch — invariant 11, from the inside.
+    private func isUnlock(_ productID: String) -> Bool {
+        productID == unlockID || productID == earlyID
     }
 
     /// There is a purchase path on this build.
@@ -157,7 +168,7 @@ public struct StoreKitPurchaseStore: PurchaseStore {
 
     private func scan() async throws -> StoreSnapshot {
         let entitlements = try await facade.currentEntitlements()
-        let paid = entitlements.contains { $0.productID == unlockID && !$0.isRevoked }
+        let paid = entitlements.contains { isUnlock($0.productID) && !$0.isRevoked }
         // The trial's purchaseDate is signed by Apple and survives a reinstall;
         // a revoked one is still evidence the fortnight was started.
         let trialStartedAt = entitlements
@@ -195,13 +206,13 @@ public struct StoreKitPurchaseStore: PurchaseStore {
         }
     }
 
-    /// Buy the unlock. `true` only on a verified transaction.
-    public func purchase() async -> Bool {
+    /// Buy the unlock at `tier`. `true` only on a verified transaction.
+    public func purchase(_ tier: UnlockTier) async -> Bool {
         do {
             // No timeout: the purchase sheet is modal and a parent may take
             // minutes (Ask to Buy, a password, a re-auth). Timing that out would
             // cancel a purchase in flight, which is worse than waiting.
-            let outcome = try await facade.purchase(unlockID)
+            let outcome = try await facade.purchase(productID(tier))
             if case .verified = outcome { return true }
             return false
         } catch {
@@ -223,19 +234,29 @@ public struct StoreKitPurchaseStore: PurchaseStore {
             let entitlements = try await withStoreTimeout(timeout) {
                 try await self.facade.currentEntitlements()
             }
-            return entitlements.contains { $0.productID == unlockID && !$0.isRevoked }
+            return entitlements.contains { isUnlock($0.productID) && !$0.isRevoked }
         } catch {
             return false
         }
     }
 
-    /// Localised price. `nil` on any failure; the screens fall back to
-    /// `UNLOCK_PRICE_EUR` → "9,99 €".
-    public func priceLabel() async -> String? {
+    /// Localised price for `tier`. `nil` on any failure; the screens fall back
+    /// to the tier's own constant → "11,99 €" or "2,99 €".
+    public func priceLabel(_ tier: UnlockTier) async -> String? {
+        let id = productID(tier)
         do {
-            return try await withStoreTimeout(timeout) { try await self.facade.displayPrice(self.unlockID) }
+            return try await withStoreTimeout(timeout) { try await self.facade.displayPrice(id) }
         } catch {
             return nil
+        }
+    }
+
+    /// The injected ids win over the tier's defaults, so a test can point both
+    /// products somewhere else without the tier smuggling a global back in.
+    private func productID(_ tier: UnlockTier) -> String {
+        switch tier {
+        case .standard: return unlockID
+        case .early: return earlyID
         }
     }
 }

@@ -9,14 +9,14 @@
 /* Onboarding.tsx is that disclosure; this file is the clock.                   */
 /* -------------------------------------------------------------------------- */
 
-export const TRIAL_DAYS = 14;
+export const TRIAL_DAYS = 7;
 export const DAY_MS = 24 * 60 * 60 * 1000;
 export const TRIAL_MS = TRIAL_DAYS * DAY_MS;
 
 /** Price in euros, TTC. Displayed copy lives in the screens; this is the truth. */
-export const UNLOCK_PRICE_EUR = 9.99;
+export const UNLOCK_PRICE_EUR = 11.99;
 
-export const PRODUCT_TRIAL = "fr.dappit.attrapelettres.trial14";
+export const PRODUCT_TRIAL = "fr.dappit.attrapelettres.trial7";
 export const PRODUCT_UNLOCK = "fr.dappit.attrapelettres.unlock";
 
 /**

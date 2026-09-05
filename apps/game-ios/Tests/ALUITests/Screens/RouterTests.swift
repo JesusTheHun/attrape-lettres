@@ -367,9 +367,9 @@ private struct DeadStore: PurchaseStore {
     var available: Bool { false }
     func refresh() async -> StoreSnapshot { .unreachable }
     func beginTrial() async -> Int64? { nil }
-    func purchase() async -> Bool { false }
+    func purchase(_ tier: UnlockTier) async -> Bool { false }
     func restore() async -> Bool { false }
-    func priceLabel() async -> String? { nil }
+    func priceLabel(_ tier: UnlockTier) async -> String? { nil }
 }
 
 #if canImport(AppKit) || canImport(UIKit)

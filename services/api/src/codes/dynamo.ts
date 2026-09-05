@@ -108,11 +108,13 @@ export class DynamoCodeStore implements CodeStore {
     // transaction remains the authority on whether a use is actually spent.
     const row = (await this.client.send(
       new GetCommand({ TableName: this.table, Key: { pk: codeKey(hash) } })
-    )) as { Item?: { expiresAt: number | null } };
+    )) as { Item?: { expiresAt: number | null; kind?: Grant["kind"] } };
     if (!row.Item) return { ok: false, reason: "unknown" };
     if (row.Item.expiresAt !== null && now >= row.Item.expiresAt) {
       return { ok: false, reason: "expired" };
     }
+    // Rows minted before `kind` existed are unlocks; that is what they bought.
+    const kind: Grant["kind"] = row.Item.kind === "discount" ? "discount" : "unlock";
 
     try {
       await this.client.send(
@@ -135,10 +137,25 @@ export class DynamoCodeStore implements CodeStore {
             {
               Put: {
                 TableName: this.table,
-                Item: { pk: grantKey(household), kind: "unlock", grantedAt: now },
-                // One grant per family. This is what makes a second redemption
+                Item: { pk: grantKey(household), kind, grantedAt: now },
+                // One grant per family — what makes a second redemption
                 // idempotent instead of wasteful.
-                ConditionExpression: "attribute_not_exists(pk)",
+                //
+                // With one exception, and it only ever moves upward: a free
+                // `unlock` may overwrite a `discount`, because a family who
+                // redeemed an early-adopter code and is later handed a press
+                // code would otherwise be told "already", keep an eligibility
+                // to PAY, and have no way to accept the free one. The reverse
+                // is refused by the same expression: a discount can never land
+                // on a household that is already unlocked, so no code can
+                // downgrade a family into paying.
+                ConditionExpression:
+                  kind === "unlock"
+                    ? "attribute_not_exists(pk) OR kind = :discount"
+                    : "attribute_not_exists(pk)",
+                ...(kind === "unlock"
+                  ? { ExpressionAttributeValues: { ":discount": "discount" } }
+                  : {}),
               },
             },
           ],
@@ -165,6 +182,6 @@ export class DynamoCodeStore implements CodeStore {
       throw error;
     }
 
-    return { ok: true, grant: { kind: "unlock", grantedAt: now }, fresh: true };
+    return { ok: true, grant: { kind, grantedAt: now }, fresh: true };
   }
 }

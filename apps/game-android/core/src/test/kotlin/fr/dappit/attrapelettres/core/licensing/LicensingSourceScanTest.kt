@@ -135,7 +135,7 @@ class LicensingSourceScanTest {
      * The two platforms are NOT symmetric on family, and this is the scan that
      * keeps the difference honest.
      *
-     * iOS switches Family Sharing on for the €9.99 non-consumable in App Store
+     * iOS switches Family Sharing on for the €11.99 non-consumable in App Store
      * Connect: six people, free, native — so the iOS app's copy can promise the
      * whole household and keep the promise. Google Play Family Library
      * explicitly does not share in-app purchases, ever; Android restores per

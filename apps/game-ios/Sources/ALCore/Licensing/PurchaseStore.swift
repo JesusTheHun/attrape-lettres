@@ -7,12 +7,14 @@
 /* Kids Category guideline 1.3 ("may not send personally identifiable           */
 /* information or device information to third parties").                        */
 /*                                                                             */
-/* Two products, both non-consumable:                                           */
-/*   trial14  price 0, named "14-day Trial" per App Review 3.1.1. iOS only —    */
-/*            Play has no price-0 IAP, so Android keeps a local stamp.          */
-/*   unlock   €9.99, FAMILY SHARING ON in App Store Connect (6 people, free,    */
-/*            native). Play Family Library does NOT share IAPs, so on Android   */
-/*            this restores per Google account only — see CLAUDE.md § Native.   */
+/* Three products, all non-consumable:                                           */
+/*   trial7        price 0, named "7-day Trial" per App Review 3.1.1. iOS only  */
+/*                 — Play has no price-0 IAP, so Android keeps a local stamp.   */
+/*   unlock        €11.99, FAMILY SHARING ON in App Store Connect (6 people,    */
+/*                 free, native). Play Family Library does NOT share IAPs, so   */
+/*                 on Android this restores per Google account only.            */
+/*   unlock.early  €2.99, Family Sharing ON too. Offered only to a family that  */
+/*                 redeemed a `discount` code; identical content.               */
 /* -------------------------------------------------------------------------- */
 //
 // Port of `src/licensing/store.ts`.
@@ -20,6 +22,41 @@
 // D4: **ALCore must never import StoreKit.** The whole point of the seam is that
 // `swift test` runs the entitlement machine on a Mac with no store, no network
 // and no signing. The real adapter is `ALPlatform/StoreKitPurchaseStore` (W17).
+
+/**
+ * Which unlock a family is being offered.
+ *
+ * Two non-consumables, same content, different price. StoreKit has no coupon
+ * for a one-time purchase — offer codes are subscriptions only — so an
+ * early-adopter price has to BE a product. The redemption code decides which
+ * one the paywall shows; Apple takes the money either way, which is what keeps
+ * guideline 3.1.1 satisfied.
+ *
+ * `.early` is unreachable without a redeemed `discount` code
+ * (`LicenseState.discountGrantedAt`), and both count as paid — see
+ * `StoreKitPurchaseStore.scan`, where forgetting the second one would lock out
+ * every family that took the cheaper price (invariant 11).
+ */
+public enum UnlockTier: String, Equatable, Sendable, CaseIterable {
+    case standard
+    case early
+
+    /// The product id this tier buys.
+    public var productID: String {
+        switch self {
+        case .standard: return productUnlock
+        case .early: return productUnlockEarly
+        }
+    }
+
+    /// The fallback price shown when the store has not answered.
+    public var fallbackPriceEur: Double {
+        switch self {
+        case .standard: return unlockPriceEur
+        case .early: return earlyPriceEur
+        }
+    }
+}
 
 public struct StoreSnapshot: Equatable, Sendable {
     /// The unlock is owned by this Apple Account / Google account.
@@ -92,14 +129,15 @@ public protocol PurchaseStore: Sendable {
      */
     func beginTrial() async -> Int64?
 
-    /// Buy the unlock. `true` once the store confirms.
-    func purchase() async -> Bool
+    /// Buy the unlock, at the tier the family is entitled to be offered.
+    /// `true` once the store confirms.
+    func purchase(_ tier: UnlockTier) async -> Bool
 
     /// Re-apply prior purchases. Apple requires this control to exist.
     func restore() async -> Bool
 
-    /// Localised price from the store ("9,99 €"), or nil when unreachable.
-    func priceLabel() async -> String?
+    /// Localised price from the store ("11,99 €"), or nil when unreachable.
+    func priceLabel(_ tier: UnlockTier) async -> String?
 }
 
 /**
@@ -122,9 +160,9 @@ public struct StubPurchaseStore: PurchaseStore {
     public var available: Bool { true }
     public func refresh() async -> StoreSnapshot { .unreachable }
     public func beginTrial() async -> Int64? { nil }
-    public func purchase() async -> Bool { false }
+    public func purchase(_ tier: UnlockTier) async -> Bool { false }
     public func restore() async -> Bool { false }
-    public func priceLabel() async -> String? { nil }
+    public func priceLabel(_ tier: UnlockTier) async -> String? { nil }
 }
 
 #if DEBUG
@@ -148,7 +186,7 @@ public struct StubPurchaseStore: PurchaseStore {
             paid: Bool = false,
             trialStartedAt: Int64? = nil,
             reachable: Bool = true,
-            price: String? = "9,99 €"
+            price: String? = "11,99 €"
         ) {
             self.available = available
             self.paid = paid
@@ -161,8 +199,9 @@ public struct StubPurchaseStore: PurchaseStore {
             StoreSnapshot(paid: paid, trialStartedAt: trialStartedAt, reachable: reachable)
         }
         public func beginTrial() async -> Int64? { trialStartedAt }
-        public func purchase() async -> Bool { paid }
+        public func purchase(_ tier: UnlockTier) async -> Bool { paid }
         public func restore() async -> Bool { paid }
-        public func priceLabel() async -> String? { price }
+        /// One label for both tiers: a preview is checking layout, not pricing.
+        public func priceLabel(_ tier: UnlockTier) async -> String? { price }
     }
 #endif

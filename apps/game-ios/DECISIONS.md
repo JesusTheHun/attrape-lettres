@@ -2542,3 +2542,68 @@ team, because the two failed together and for one reason: settings Xcode is
 free to rewrite. And unlike the team, this one is permanent — an App ID cannot
 be changed after the first release. A build with a different string in that
 line is a different app, with no path back to the first one's users.
+
+## D63 — An early-adopter price is a second product, because Apple sells no coupons
+
+Seven days of trial, then €11.99, and a code that gives early adopters €2.99.
+The first two are constants. The third has no mechanism behind it: **StoreKit
+has no discount for a one-time purchase.** Offer codes, promotional offers and
+introductory offers are auto-renewable subscriptions only; App Store promo codes
+are 100 % off or nothing; a price schedule moves the price for a whole
+storefront, not for one family. Nothing takes a coupon at the point of sale.
+
+So the discount has to *be* a product. `fr.dappit.attrapelettres.unlock.early`
+is the same content at €2.99, Family Sharing on, and it is unreachable unless
+`LicenseState.discountGrantedAt` is set — which only `/redeem` writes.
+
+### The split that keeps 3.1.1 satisfied
+
+Our rail decides **who is eligible**. Apple still takes **the money**.
+
+    code  ──POST /redeem──>  kind: "discount"  ──>  discountGrantedAt
+                                                          ↓
+                                            paywall offers .early (€2.99)
+                                                          ↓
+                                              StoreKit purchase, as always
+
+That is the whole reason this is not the thing D61 forbids. A `discount` code is
+still given away and still buys nothing by itself; the family pays the App
+Store, at an App Store price, through the normal sheet. The day a code is *sold*
+the argument collapses — identically to D61, and for the same guideline.
+
+### Why `discountGrantedAt` is not `codeGrantedAt`
+
+They look like the same field and they are opposites. `codeGrantedAt` unlocks
+the game forever and is never re-checked. `discountGrantedAt` unlocks **a
+price**, and `entitlementOf` deliberately never reads it — a family holding one
+is still on their trial, still expires, still has to buy. Writing the wrong one
+of the two hands the game to everyone holding a €2.99 code, permanently, with no
+way back (D61: a written grant cannot be revoked on a device that already has
+it). `RedemptionModelTests.discountDoesNotUnlock` and
+`discountDoesNotReopenAnExpiredTrial` are the two tests standing on that.
+
+### Both products are the unlock
+
+`StoreKitPurchaseStore.scan` tests `isUnlock(_:)`, not `productID == unlockID`.
+An adapter that checks only the standard id compiles, ships, and locks out every
+family that took the cheaper price at their next launch — invariant 11 breached
+from the inside, by us, rather than by a flaky network.
+`StoreKitEarlyTierTests` pins it, `restore()` included.
+
+### Grants move upward only
+
+One grant per household still holds, with one exception: a free `unlock` may
+overwrite a `discount`. Without it, a family who redeemed an early-adopter code
+and is later handed a press code is told « déjà » and keeps an eligibility to
+*pay*. The reverse is refused by the same condition, so no code can ever
+downgrade an unlocked family into paying.
+
+### What is not built
+
+Android and the web have no redemption UI at all, so both are unchanged beyond
+the two constants. When Android gets one, Play has the same hole — promo codes
+there are 100 % off too — and the same second-SKU answer applies.
+
+Review notes will have to explain the two prices and ship a demo code, because a
+€9 gap between two live SKUs for identical content is exactly what guideline
+2.3.1 asks about.

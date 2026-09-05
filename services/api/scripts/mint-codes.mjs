@@ -4,7 +4,7 @@ import { randomInt } from "node:crypto";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
 
-import { codeHash, format, mint } from "../dist/codes/code.js";
+import { codeHash, format, mint } from "../dist/src/codes/code.js";
 
 /* -------------------------------------------------------------------------- */
 /* Mint redemption codes.                                                      */
@@ -12,6 +12,7 @@ import { codeHash, format, mint } from "../dist/codes/code.js";
 /*     pnpm build                                                              */
 /*     node scripts/mint-codes.mjs --count 20 --label presse                   */
 /*     node scripts/mint-codes.mjs --count 1 --uses 30 --days 60 --label ecole */
+/*     node scripts/mint-codes.mjs --count 50 --kind discount --label early    */
 /*                                                                             */
 /* THE CODES ARE PRINTED ONCE, HERE, AND NOWHERE ELSE. Only their sha256 goes  */
 /* into DynamoDB, so this output is the only copy that will ever exist — save  */
@@ -39,6 +40,16 @@ const count = Number(arg("count", "10"));
 const uses = Number(arg("uses", "1"));
 /** Days until the code lapses. 0 means it never does. */
 const days = Number(arg("days", "0"));
+/**
+ * What the code buys. `unlock` gives the game away; `discount` gives only the
+ * right to buy it at the early-adopter price, through in-app purchase.
+ *
+ * Spelled out rather than defaulted quietly, because the two are handed to
+ * different people and the mistake is one-way: a batch minted `unlock` by
+ * accident is a batch of free games, and a spent code cannot be revoked on a
+ * device that already holds it (D61).
+ */
+const kind = arg("kind", "unlock");
 const label = arg("label", "");
 const table = arg("table", process.env.CODES_TABLE ?? "attrape-api-households-codes");
 const dryRun = process.argv.includes("--dry-run");
@@ -49,6 +60,10 @@ if (!Number.isInteger(count) || count < 1 || count > 500) {
 }
 if (!Number.isInteger(uses) || uses < 1) {
   console.error("--uses must be a positive integer");
+  process.exit(1);
+}
+if (kind !== "unlock" && kind !== "discount") {
+  console.error(`--kind must be "unlock" or "discount", not "${kind}"`);
   process.exit(1);
 }
 
@@ -72,7 +87,7 @@ for (const code of codes) {
         TableName: table,
         Item: {
           pk: `code#${codeHash(code)}`,
-          kind: "unlock",
+          kind,
           maxRedemptions: uses,
           redeemed: 0,
           expiresAt,
@@ -88,7 +103,7 @@ for (const code of codes) {
 }
 
 console.error(
-  `\n${codes.length} code(s), ${uses} use(s) each, `
+  `\n${codes.length} ${kind} code(s), ${uses} use(s) each, `
     + `${expiresAt ? new Date(expiresAt).toISOString().slice(0, 10) : "no expiry"}`
     + `${label ? `, label "${label}"` : ""}`
     + `${dryRun ? " — DRY RUN, nothing written" : ` → ${table}`}`

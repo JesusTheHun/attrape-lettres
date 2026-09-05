@@ -34,9 +34,9 @@ private struct FakeStore: PurchaseStore {
 
     func refresh() async -> StoreSnapshot { snapshot }
     func beginTrial() async -> Int64? { trialStart }
-    func purchase() async -> Bool { purchaseResult }
+    func purchase(_ tier: UnlockTier) async -> Bool { purchaseResult }
     func restore() async -> Bool { restoreResult }
-    func priceLabel() async -> String? { price }
+    func priceLabel(_ tier: UnlockTier) async -> String? { price }
 }
 
 /// A store that runs a hook *inside* the await, so a test can look at the model
@@ -48,7 +48,7 @@ private final class HookedStore: PurchaseStore, @unchecked Sendable {
 
     func refresh() async -> StoreSnapshot { .unreachable }
     func beginTrial() async -> Int64? { nil }
-    func purchase() async -> Bool {
+    func purchase(_ tier: UnlockTier) async -> Bool {
         await duringPurchase?()
         return result
     }
@@ -56,7 +56,7 @@ private final class HookedStore: PurchaseStore, @unchecked Sendable {
         await duringPurchase?()
         return result
     }
-    func priceLabel() async -> String? { nil }
+    func priceLabel(_ tier: UnlockTier) async -> String? { nil }
 }
 
 /// A `Telemetry` posting into a `RecordingTransport`, with consent granted so
@@ -422,8 +422,11 @@ private func makeEntitlement(
     /// `${PRICE} €`. The number comes from the entitlement module, never from a
     /// literal in the screen.
     @Test func theFallbackPriceIsBuiltFromTheEntitlementConstant() {
-        #expect(unlockPriceEur == 9.99)
-        #expect(paywallPrice(nil) == "9,99 €")
+        #expect(unlockPriceEur == 11.99)
+        #expect(paywallPrice(nil) == "11,99 €")
+        // The early-adopter product is a second price, reached the same way.
+        #expect(earlyPriceEur == 2.99)
+        #expect(paywallPrice(nil, fallback: UnlockTier.early.fallbackPriceEur) == "2,99 €")
         // …and it is genuinely computed: a different price formats the same way.
         #expect(paywallPrice(nil, fallback: 4.5) == "4,50 €")
         #expect(paywallPrice(nil, fallback: 12) == "12,00 €")
@@ -567,9 +570,11 @@ private func makeEntitlement(
             ),
             ("no purchase path at all", FakeStore(available: false)),
         ]
-        // Every offset stays inside BOTH the 14-day offline grace and the 14-day
-        // trial, which is the region the claim is about.
-        let offsets: [Int64] = [0, dayMs, 7 * dayMs, 13 * dayMs, 14 * dayMs - 1]
+        // Every offset stays inside BOTH the offline grace and the trial, which
+        // is the region the claim is about. The trial is the shorter of the two,
+        // so it sets the ceiling — derived, not typed, because it has moved once
+        // already (14 days → 7).
+        let offsets: [Int64] = [0, dayMs, trialMs / 2, trialMs - dayMs, trialMs - 1]
         let licenses: [(String, LicenseState)] = [
             ("paid, just confirmed", LicenseState(paid: true, verifiedAt: t0)),
             ("paid, never confirmed", LicenseState(paid: true, verifiedAt: nil)),
@@ -713,7 +718,7 @@ private func makeEntitlement(
         await entitlement.refresh()
         #expect(entitlement.storeAvailable == false)
         #expect(canPlay(entitlement.entitlement))
-        #expect(paywallPrice(entitlement.priceLabel) == "9,99 €")
+        #expect(paywallPrice(entitlement.priceLabel) == "11,99 €")
     }
 }
 

@@ -42,10 +42,16 @@ const redeemBody = z
   .strict()
   .openapi({ example: { code: "7FQ4-M2XB-9KDW", household: "5c1f0c8e-2b2a-4a1e-9a0e-9b1a2c3d4e5f" } });
 
-/** What a device is told. No code, no counters, nothing about other families. */
+/**
+ * What a device is told. No code, no counters, nothing about other families.
+ *
+ * `kind` is the whole answer: `unlock` turns the game on, `discount` only makes
+ * the cheaper in-app purchase available. The server never names a product id —
+ * SKUs are a client concern and differ per platform.
+ */
 const grantBody = z
   .object({
-    kind: z.literal("unlock"),
+    kind: z.enum(["unlock", "discount"]),
     grantedAt: z.number().int().min(0),
   })
   .openapi({ example: { kind: "unlock", grantedAt: 1_760_000_000_000 } });

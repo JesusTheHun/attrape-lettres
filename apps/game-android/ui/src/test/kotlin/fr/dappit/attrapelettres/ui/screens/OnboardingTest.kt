@@ -129,7 +129,7 @@ class OnboardingPlanTest {
     @Test
     fun `the fallback price is UNLOCK_PRICE_EUR with a French comma`() {
         val plan = OnboardingPlan(storeAvailable = true, priceLabel = null)
-        assertEquals("9,99 €", plan.price)
+        assertEquals("11,99 €", plan.price)
         assertEquals(Copy.fallbackPriceLabel(UNLOCK_PRICE_EUR), plan.price)
         assertFalse(plan.price.contains("."))
     }
@@ -164,8 +164,8 @@ class OnboardingPlanTest {
     }
 
     @Test
-    fun `the default day count is TRIAL_DAYS, which is 14`() {
-        assertEquals(14, TRIAL_DAYS)
+    fun `the default day count is TRIAL_DAYS, which is 7`() {
+        assertEquals(7, TRIAL_DAYS)
         assertEquals(
             Copy.Onboarding.startTrial(TRIAL_DAYS),
             OnboardingPlan(storeAvailable = true, priceLabel = null).buttonTitle,
@@ -255,7 +255,7 @@ class OnboardingConsentTest {
         val world = AdultWorld(consent = true)
         startOnboarding(analytics = true, world.telemetry, world.entitlement)
         val wire = world.probe.drain()
-        assertTrue(wire.contains("\"daysLeft\":14"), wire)
+        assertTrue(wire.contains("\"daysLeft\":$TRIAL_DAYS"), wire)
         assertFalse(wire.contains("Léa"))
         assertFalse(wire.contains("name"))
     }
@@ -304,7 +304,7 @@ class OnboardingTrialTest {
             storeAvailable = world.entitlement.storeAvailable,
             priceLabel = world.entitlement.priceLabel,
         )
-        assertEquals("9,99 €", plan.price)
+        assertEquals("11,99 €", plan.price)
     }
 
     /** No store at all — this build's shipping shape. Still playing. */

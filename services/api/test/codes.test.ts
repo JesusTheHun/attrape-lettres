@@ -276,6 +276,51 @@ describe("POST /redeem", () => {
     expect(text).not.toContain(HOUSEHOLD);
     expect(text).toContain("codes.redeemed");
   });
+
+  /* -- the second kind ------------------------------------------------------*/
+  //
+  // A discount code hands out an ELIGIBILITY TO PAY, never the game. The server
+  // cannot enforce that — only the client can — so what these pin is the one
+  // thing the server owes: the kind it answers with, and the fact that no code
+  // can move a family from unlocked back to paying.
+
+  it("answers `discount` for a discount code, and never `unlock`", async () => {
+    const codes = new InMemoryCodeStore();
+    const code = await seed(codes, { kind: "discount" });
+
+    const res = await app(codes).fetch(post({ code: format(code), household: HOUSEHOLD }));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ kind: "discount" });
+  });
+
+  it("lets a free unlock replace a discount — a press code after an early one", async () => {
+    const codes = new InMemoryCodeStore();
+    const early = await seed(codes, { kind: "discount" }, 7);
+    const press = await seed(codes, { kind: "unlock" }, 9);
+
+    await app(codes).fetch(post({ code: format(early), household: HOUSEHOLD }));
+    const res = await app(codes).fetch(post({ code: format(press), household: HOUSEHOLD }));
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ kind: "unlock" });
+    // And it stuck: the family is unlocked, not merely eligible to buy.
+    expect(await codes.grant(HOUSEHOLD)).toMatchObject({ kind: "unlock" });
+  });
+
+  it("cannot downgrade an unlocked family into paying", async () => {
+    const codes = new InMemoryCodeStore();
+    const press = await seed(codes, { kind: "unlock" }, 7);
+    const early = await seed(codes, { kind: "discount" }, 9);
+
+    await app(codes).fetch(post({ code: format(press), household: HOUSEHOLD }));
+    const res = await app(codes).fetch(post({ code: format(early), household: HOUSEHOLD }));
+
+    // Succeeds, spends nothing, and still says unlock: the family already has
+    // everything the discount code could sell them.
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ kind: "unlock" });
+    expect(await codes.grant(HOUSEHOLD)).toMatchObject({ kind: "unlock" });
+  });
 });
 
 describe("GET /entitlement/{id}", () => {

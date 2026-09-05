@@ -4,7 +4,7 @@ import App from "./App";
 import { ProfileProvider } from "./hooks/useProfile";
 import { EntitlementProvider } from "./licensing/useEntitlement";
 import { __setPurchaseStore, type PurchaseStore } from "./licensing/store";
-import { DAY_MS, TRIAL_MS } from "./licensing/entitlement";
+import { DAY_MS, TRIAL_DAYS, TRIAL_MS } from "./licensing/entitlement";
 import { hasConsent } from "./telemetry";
 
 /* -------------------------------------------------------------------------- */
@@ -127,20 +127,20 @@ describe("first launch", () => {
   it("does not opt the family into analytics by accident", async () => {
     await view();
     expect(screen.getByRole("checkbox")).not.toBeChecked(); // Planet49
-    fireEvent.click(screen.getByRole("button", { name: /Commencer les 14 jours/ }));
+    fireEvent.click(screen.getByRole("button", { name: new RegExp(`Commencer les ${TRIAL_DAYS} jours`) }));
     expect(hasConsent()).toBe(false);
   });
 
   it("records consent when the parent actually ticks the box", async () => {
     await view();
     fireEvent.click(screen.getByRole("checkbox"));
-    fireEvent.click(screen.getByRole("button", { name: /Commencer les 14 jours/ }));
+    fireEvent.click(screen.getByRole("button", { name: new RegExp(`Commencer les ${TRIAL_DAYS} jours`) }));
     expect(hasConsent()).toBe(true);
   });
 
   it("hands over to the child once the trial starts", async () => {
     await view();
-    fireEvent.click(screen.getByRole("button", { name: /Commencer les 14 jours/ }));
+    fireEvent.click(screen.getByRole("button", { name: new RegExp(`Commencer les ${TRIAL_DAYS} jours`) }));
     // Empty roster ⇒ the welcome screen asks for a first name.
     expect(screen.getByText(/Comment tu t'appelles/)).toBeInTheDocument();
   });
@@ -154,7 +154,9 @@ describe("during the trial", () => {
 
   it("counts the days down for the parent, on the hub", async () => {
     await view();
-    expect(screen.getByText("Essai gratuit — 11 jours restants")).toBeInTheDocument();
+    expect(
+      screen.getByText(`Essai gratuit — ${TRIAL_DAYS - 3} jours restants`)
+    ).toBeInTheDocument();
   });
 
   it("lets the child straight into a level", async () => {

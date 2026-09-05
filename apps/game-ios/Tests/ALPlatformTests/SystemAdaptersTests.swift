@@ -262,7 +262,7 @@ struct PlatformEnvironmentTests {
         let env = makeEnvironment()
         await env.entitlement.refresh()
         #expect(canPlay(env.entitlement.entitlement))
-        #expect(env.entitlement.entitlement == .trial(daysLeft: 14, endsAt: 1_700_000_000_000 + trialMs))
+        #expect(env.entitlement.entitlement == .trial(daysLeft: trialDays, endsAt: 1_700_000_000_000 + trialMs))
     }
 
     @Test("there is no store observation to start off-device")

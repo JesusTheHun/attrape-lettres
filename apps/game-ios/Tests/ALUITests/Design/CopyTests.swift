@@ -564,9 +564,10 @@ struct CopyTests {
     func priceLabel() {
         #expect(Copy.fallbackPriceLabel(4.99) == "4,99 €")
         #expect(Copy.fallbackPriceLabel(5) == "5,00 €")
-        // `UNLOCK_PRICE_EUR` is 9.99 in `licensing/entitlement.ts`, so the
-        // shipped fallback reads « 9,99 € ».
-        #expect(Copy.fallbackPriceLabel(unlockPriceEur) == "9,99 €")
+        // `UNLOCK_PRICE_EUR` is 11.99, so the shipped fallback reads « 11,99 € »
+        // — and the early-adopter product's is « 2,99 € ».
+        #expect(Copy.fallbackPriceLabel(unlockPriceEur) == "11,99 €")
+        #expect(Copy.fallbackPriceLabel(earlyPriceEur) == "2,99 €")
         #expect(!Copy.fallbackPriceLabel(4.99).contains("."))
     }
 }

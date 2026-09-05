@@ -61,9 +61,9 @@ private final class ScriptedStore: PurchaseStore, @unchecked Sendable {
         }
     }
     func beginTrial() async -> Int64? { sync { _trialDate } }
-    func purchase() async -> Bool { sync { _purchaseResult } }
+    func purchase(_ tier: UnlockTier) async -> Bool { sync { _purchaseResult } }
     func restore() async -> Bool { sync { _restoreResult } }
-    func priceLabel() async -> String? { sync { _price } }
+    func priceLabel(_ tier: UnlockTier) async -> String? { sync { _price } }
 }
 
 /// A store whose `refresh()` parks until the test opens the gate. Lets the
@@ -107,9 +107,9 @@ private final class GatedStore: PurchaseStore, @unchecked Sendable {
         return StoreSnapshot(paid: true, trialStartedAt: nil, reachable: true)
     }
     func beginTrial() async -> Int64? { nil }
-    func purchase() async -> Bool { false }
+    func purchase(_ tier: UnlockTier) async -> Bool { false }
     func restore() async -> Bool { false }
-    func priceLabel() async -> String? { nil }
+    func priceLabel(_ tier: UnlockTier) async -> String? { nil }
 }
 
 /// Deterministic chaos: mostly unreachable, occasionally a real answer, never a
@@ -138,9 +138,9 @@ private final class ChaosPurchaseStore: PurchaseStore, @unchecked Sendable {
         return .unreachable
     }
     func beginTrial() async -> Int64? { nil }
-    func purchase() async -> Bool { false }
+    func purchase(_ tier: UnlockTier) async -> Bool { false }
     func restore() async -> Bool { false }
-    func priceLabel() async -> String? { nil }
+    func priceLabel(_ tier: UnlockTier) async -> String? { nil }
 }
 
 /// Awaits `beginTrial()`'s follow-up task.

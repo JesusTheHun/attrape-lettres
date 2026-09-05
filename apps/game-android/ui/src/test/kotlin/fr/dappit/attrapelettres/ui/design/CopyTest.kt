@@ -738,7 +738,7 @@ class CopyTest {
     fun `the fallback price label is French-formatted`() {
         assertEquals("4,99 €", Copy.fallbackPriceLabel(4.99))
         assertEquals("5,00 €", Copy.fallbackPriceLabel(5.0))
-        assertEquals("9,99 €", Copy.fallbackPriceLabel(UNLOCK_PRICE_EUR))
+        assertEquals("11,99 €", Copy.fallbackPriceLabel(UNLOCK_PRICE_EUR))
         assertFalse(Copy.fallbackPriceLabel(4.99).contains("."))
     }
 

@@ -20,12 +20,26 @@ import Foundation
 /* can turn the game on and no answer from this endpoint can turn it off.       */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * What a code bought.
+ *
+ * `unlock` is the game, free and permanent. `discount` is NOT the game: it is
+ * the right to buy it at the early-adopter price, and the family still pays
+ * Apple. Keeping the two apart in the type is what stops a €2.99 code from
+ * being read as a grant somewhere down the call chain — the mistake would give
+ * the game away, and a written grant cannot be taken back (D61).
+ */
+public enum GrantKind: String, Equatable, Sendable {
+    case unlock
+    case discount
+}
+
 /// What the server said. Deliberately closed and deliberately small.
 public enum RedemptionAnswer: Equatable, Sendable {
-    /// Unlocked, as of this instant (epoch ms, the SERVER's clock).
-    case granted(at: Int64)
+    /// Granted, as of this instant (epoch ms, the SERVER's clock).
+    case granted(GrantKind, at: Int64)
     /// The family already held a grant. Same effect, and the code kept its uses.
-    case already(at: Int64)
+    case already(GrantKind, at: Int64)
     /// No such code. A typo that happened to pass the checksum, or an old card.
     case unknown
     /// Every use of this code is spent.
@@ -37,8 +51,12 @@ public enum RedemptionAnswer: Equatable, Sendable {
 }
 
 extension RedemptionAnswer {
-    /// The two answers that unlock. Written once so no screen has to remember
-    /// that `already` is a success.
+    /// The two answers the server accepted. Written once so no screen has to
+    /// remember that `already` is a success.
+    ///
+    /// NB: accepted is not unlocked — a `discount` is one of these and unlocks
+    /// nothing. Screens that mean "can the child play now" must ask the
+    /// entitlement, never this.
     public var isGrant: Bool {
         switch self {
         case .granted, .already: return true
@@ -49,7 +67,15 @@ extension RedemptionAnswer {
     /// When the grant started, for the two cases that carry one.
     public var grantedAt: Int64? {
         switch self {
-        case .granted(let at), .already(let at): return at
+        case .granted(_, let at), .already(_, let at): return at
+        case .unknown, .exhausted, .expired, .unreachable: return nil
+        }
+    }
+
+    /// What was granted, for the two cases that carry a kind.
+    public var kind: GrantKind? {
+        switch self {
+        case .granted(let kind, _), .already(let kind, _): return kind
         case .unknown, .exhausted, .expired, .unreachable: return nil
         }
     }

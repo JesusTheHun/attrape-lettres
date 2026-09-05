@@ -23,7 +23,7 @@ private struct StoreFailure: Error, Equatable {
 private struct ScriptedFacade: AppStoreFacade {
     var entitlements: Result<[StoreEntitlement], StoreFailure> = .success([])
     var available: Result<Bool, StoreFailure> = .success(true)
-    var price: Result<String?, StoreFailure> = .success("9,99 €")
+    var price: Result<String?, StoreFailure> = .success("11,99 €")
     var purchaseOutcome: Result<PurchaseOutcome, StoreFailure> = .success(.userCancelled)
     var syncOutcome: Result<Void, StoreFailure> = .success(())
     /// Seconds to stall every call — the flat-network case.
@@ -61,9 +61,52 @@ private let unlockRevoked = StoreEntitlement(
     productID: productUnlock, purchasedAtMillis: 1_700_000_000_000, isRevoked: true)
 private let trialBought = StoreEntitlement(
     productID: productTrial, purchasedAtMillis: 1_699_000_000_000)
+private let earlyOwned = StoreEntitlement(
+    productID: productUnlockEarly, purchasedAtMillis: 1_700_000_000_000)
+private let earlyRevoked = StoreEntitlement(
+    productID: productUnlockEarly, purchasedAtMillis: 1_700_000_000_000, isRevoked: true)
 
 private func store(_ facade: ScriptedFacade, timeout: TimeInterval = 10) -> StoreKitPurchaseStore {
     StoreKitPurchaseStore(facade: facade, timeout: timeout)
+}
+
+/// Two products, one entitlement. An early adopter paid — less, but they paid —
+/// and every path that asks "is this family paid?" has to say yes for both. The
+/// adapter reading only `productUnlock` compiles, ships, and locks out everyone
+/// who took the cheaper price at their next launch (invariant 11).
+@Suite("StoreKitPurchaseStore — the early-adopter product is the unlock")
+struct StoreKitEarlyTierTests {
+
+    @Test("owning the early-adopter product is paid")
+    func earlyCountsAsPaid() async {
+        let snap = await store(ScriptedFacade(entitlements: .success([earlyOwned]))).refresh()
+        #expect(snap.paid)
+        #expect(snap.reachable)
+    }
+
+    @Test("a revoked early-adopter purchase is not paid — a refund is a refund")
+    func revokedEarlyIsNotPaid() async {
+        let snap = await store(
+            ScriptedFacade(entitlements: .success([earlyRevoked]), available: .success(true))
+        ).refresh()
+        #expect(!snap.paid)
+    }
+
+    @Test("restore re-applies an early-adopter purchase too")
+    func restoreFindsEarly() async {
+        let ok = await store(ScriptedFacade(entitlements: .success([earlyOwned]))).restore()
+        #expect(ok)
+    }
+
+    @Test("each tier buys and prices its own product id")
+    func tierPicksTheProduct() async {
+        #expect(UnlockTier.standard.productID == productUnlock)
+        #expect(UnlockTier.early.productID == productUnlockEarly)
+        // And the fallbacks cannot cross: showing €11.99 to an early adopter
+        // whose store call failed would be the expensive direction of wrong.
+        #expect(UnlockTier.standard.fallbackPriceEur == unlockPriceEur)
+        #expect(UnlockTier.early.fallbackPriceEur == earlyPriceEur)
+    }
 }
 
 @Suite("StoreKitPurchaseStore — refresh never fails closed")
@@ -200,14 +243,14 @@ struct StoreKitOtherCallsTests {
     func purchaseMapping() async {
         let ok = await store(
             ScriptedFacade(purchaseOutcome: .success(.verified(purchasedAtMillis: 1)))
-        ).purchase()
+        ).purchase(.standard)
         #expect(ok == true)
 
         for outcome: Result<PurchaseOutcome, StoreFailure> in [
             .success(.userCancelled), .success(.pending), .success(.unverified),
             .success(.unavailable), .failure(StoreFailure(reason: "boom")),
         ] {
-            let value = await store(ScriptedFacade(purchaseOutcome: outcome)).purchase()
+            let value = await store(ScriptedFacade(purchaseOutcome: outcome)).purchase(.standard)
             #expect(value == false, Comment(rawValue: "\(outcome) must not read as bought"))
         }
     }
@@ -248,15 +291,15 @@ struct StoreKitOtherCallsTests {
 
     @Test("priceLabel passes the store's own formatting through, nil on failure")
     func priceMapping() async {
-        let label = await store(ScriptedFacade(price: .success("9,99 €"))).priceLabel()
-        #expect(label == "9,99 €")
+        let label = await store(ScriptedFacade(price: .success("11,99 €"))).priceLabel(.standard)
+        #expect(label == "11,99 €")
 
         let broken = await store(
             ScriptedFacade(price: .failure(StoreFailure(reason: "boom")))
-        ).priceLabel()
+        ).priceLabel(.standard)
         #expect(broken == nil)
 
-        let stalled = await store(ScriptedFacade(stall: 30), timeout: 0.05).priceLabel()
+        let stalled = await store(ScriptedFacade(stall: 30), timeout: 0.05).priceLabel(.standard)
         #expect(stalled == nil)
     }
 }
@@ -346,7 +389,7 @@ struct StoreKitLockoutTests {
 
             let (entitlement, license) = await MainActor.run { (model.entitlement, model.license) }
             #expect(
-                entitlement == .trial(daysLeft: 11, endsAt: Self.t0 - 3 * dayMs + trialMs),
+                entitlement == .trial(daysLeft: trialDays - 3, endsAt: Self.t0 - 3 * dayMs + trialMs),
                 Comment(rawValue: "\(mode.name) moved a running trial to \(entitlement)"))
             #expect(
                 license.trialStartedAt == Self.t0 - 3 * dayMs,
@@ -376,9 +419,9 @@ struct StoreKitLockoutTests {
         let s = StoreKitPurchaseStore(facade: UnavailableAppStoreFacade())
         #expect(await s.refresh() == .unreachable)
         #expect(await s.beginTrial() == nil)
-        #expect(await s.purchase() == false)
+        #expect(await s.purchase(.standard) == false)
         #expect(await s.restore() == false)
-        #expect(await s.priceLabel() == nil)
+        #expect(await s.priceLabel(.standard) == nil)
         #expect(s.available == true)
     }
 }

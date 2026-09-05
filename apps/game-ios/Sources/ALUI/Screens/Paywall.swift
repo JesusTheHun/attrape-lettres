@@ -258,11 +258,22 @@ public final class PaywallModel {
         busy = false
 
         switch answer {
-        case .granted:
+        case .granted(.unlock, _):
             note = Copy.Paywall.CodeNote.granted
             code = ""
-        case .already:
+        case .granted(.discount, _):
+            // The price on screen has already moved to `.early` — `redeem`
+            // re-fetched it before returning. The note says what is still owed,
+            // because "activé" alone reads as "unlocked" to a tired parent.
+            note = Copy.Paywall.CodeNote.discountGranted(
+                price: paywallPrice(
+                    entitlement.priceLabel, fallback: entitlement.unlockTier.fallbackPriceEur))
+            code = ""
+        case .already(.unlock, _):
             note = Copy.Paywall.CodeNote.already
+            code = ""
+        case .already(.discount, _):
+            note = Copy.Paywall.CodeNote.alreadyDiscount
             code = ""
         case .unknown:
             note = Copy.Paywall.CodeNote.unknown
@@ -371,8 +382,12 @@ public struct PaywallView: View {
     /// injected one wins so a test or a preview can watch it.
     private var telemetry: Telemetry { injectedTelemetry ?? Telemetry.shared }
 
-    /// `priceLabel ?? `${PRICE} €``.
-    private var price: String { paywallPrice(entitlement.priceLabel) }
+    /// `priceLabel ?? `${PRICE} €`` — for whichever product this family is
+    /// offered, so the fallback cannot show €11.99 to an early adopter whose
+    /// store call failed.
+    private var price: String {
+        paywallPrice(entitlement.priceLabel, fallback: entitlement.unlockTier.fallbackPriceEur)
+    }
 
     public var body: some View {
         content
@@ -455,6 +470,16 @@ public struct PaywallView: View {
                 .lineSpacing(
                     Typography.lineSpacing(
                         size: Typography.Size.base, ratio: Typography.LineHeight.snug))
+
+            // Why the number is lower than the one on the card, the website or
+            // whatever brought them here. Only ever shown to a family that
+            // redeemed a discount code, so it cannot advertise a price nobody
+            // can reach.
+            if entitlement.unlockTier == .early {
+                Text(verbatim: Copy.Paywall.Parent.earlyPrice)
+                    .font(Typography.rounded(Typography.Size.sm, Typography.Weight.bold))
+                    .foregroundStyle(Palette.inkProse.color)
+            }
 
             if entitlement.storeAvailable {
                 greenButton(model.busy ? Copy.Paywall.Parent.busy : Copy.Paywall.Parent.buy(price: price)) {

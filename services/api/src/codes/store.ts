@@ -26,9 +26,18 @@
 /* gets `already` and the code keeps its remaining uses.                        */
 /* -------------------------------------------------------------------------- */
 
-/** What a code buys. One kind today; the column exists so a second is a value,
- *  not a migration. */
-export type GrantKind = "unlock";
+/**
+ * What a code buys.
+ *
+ *   unlock    the game, permanently, for nothing. Press, schools, testers.
+ *   discount  NOT the game — the right to buy it at the early-adopter price.
+ *             The device still pays, through in-app purchase, which is what
+ *             keeps this side of guideline 3.1.1: we hand out an eligibility,
+ *             Apple takes the money. A discount code on its own unlocks
+ *             nothing, and a client that treated it as a grant would be giving
+ *             the game away.
+ */
+export type GrantKind = "unlock" | "discount";
 
 export interface CodeRow {
   /** `codeHash(normalised)` — never the code. */
@@ -105,8 +114,13 @@ export class InMemoryCodeStore implements CodeStore {
       return { ok: false, reason: "expired" };
     }
 
-    // Already unlocked: succeed, spend nothing.
-    if (existing) return { ok: true, grant: existing, fresh: false };
+    // Already granted: succeed, spend nothing. The one exception moves upward
+    // only — a free `unlock` replaces a `discount`, so a family who redeemed an
+    // early-adopter code can still accept a press code later. A discount never
+    // lands on an unlocked family, so nothing can downgrade one into paying.
+    if (existing && !(row.kind === "unlock" && existing.kind === "discount")) {
+      return { ok: true, grant: existing, fresh: false };
+    }
 
     if (row.redeemed >= row.maxRedemptions) return { ok: false, reason: "exhausted" };
 

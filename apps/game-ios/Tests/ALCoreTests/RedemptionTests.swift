@@ -67,10 +67,10 @@ struct RedemptionModelTests {
 
     @Test("a grant is written, persisted, and unlocks immediately")
     func granted() async {
-        let (model, persist, _, _) = makeModel(answer: .granted(at: t0 + 5))
+        let (model, persist, _, _) = makeModel(answer: .granted(.unlock, at: t0 + 5))
         let answer = await model.redeem(goodCode)
 
-        #expect(answer == .granted(at: t0 + 5))
+        #expect(answer == .granted(.unlock, at: t0 + 5))
         #expect(model.license.codeGrantedAt == t0 + 5)
         #expect(persist.load().codeGrantedAt == t0 + 5)
         // No resume, no relaunch: the paywall has to go now.
@@ -79,7 +79,7 @@ struct RedemptionModelTests {
 
     @Test("`already` unlocks too — it is a success, not a refusal")
     func already() async {
-        let (model, _, _, _) = makeModel(answer: .already(at: t0 - 90 * dayMs))
+        let (model, _, _, _) = makeModel(answer: .already(.unlock, at: t0 - 90 * dayMs))
         let answer = await model.redeem(goodCode)
 
         #expect(answer.isGrant)
@@ -87,10 +87,73 @@ struct RedemptionModelTests {
         #expect(model.entitlement == .paid)
     }
 
+    /* -- the discount kind ----------------------------------------------------*/
+    //
+    // The whole risk of the second kind in one place: a €2.99 code must move the
+    // PRICE and nothing else. If any of these three flip, everyone holding an
+    // early-adopter code owns the game for free — permanently, because a written
+    // grant is never re-checked (D61).
+
+    @Test("a discount code does not unlock — it only moves the price")
+    func discountDoesNotUnlock() async {
+        let midTrial = LicenseState(trialStartedAt: t0)
+        let (model, persist, _, _) = makeModel(
+            answer: .granted(.discount, at: t0 + 5), licence: midTrial)
+
+        let answer = await model.redeem(goodCode)
+
+        #expect(answer == .granted(.discount, at: t0 + 5))
+        // The eligibility is written…
+        #expect(model.license.discountGrantedAt == t0 + 5)
+        #expect(persist.load().discountGrantedAt == t0 + 5)
+        #expect(model.unlockTier == .early)
+        // …and the grant is NOT.
+        #expect(model.license.codeGrantedAt == nil)
+        #expect(persist.load().codeGrantedAt == nil)
+        // Still on the trial they were on: a discount buys no play time either.
+        #expect(model.entitlement == .trial(daysLeft: trialDays, endsAt: t0 + trialMs))
+    }
+
+    @Test("a discount code cannot rescue an expired trial — the parent still pays")
+    func discountDoesNotReopenAnExpiredTrial() async {
+        let expired = LicenseState(trialStartedAt: t0 - trialMs - dayMs)
+        let (model, _, _, _) = makeModel(answer: .granted(.discount, at: t0), licence: expired)
+
+        _ = await model.redeem(goodCode)
+
+        #expect(model.entitlement == .expired)
+        #expect(!canPlay(model.entitlement))
+        #expect(model.unlockTier == .early)
+    }
+
+    @Test("`already` on a discount is still only a discount")
+    func alreadyDiscount() async {
+        let (model, _, _, _) = makeModel(answer: .already(.discount, at: t0 - dayMs))
+        let answer = await model.redeem(goodCode)
+
+        #expect(answer.isGrant)
+        #expect(answer.kind == .discount)
+        #expect(model.license.codeGrantedAt == nil)
+        #expect(model.entitlement != .paid)
+    }
+
+    @Test("a free unlock still wins after a discount was already redeemed")
+    func unlockAfterDiscount() async {
+        let eligible = LicenseState(trialStartedAt: t0, discountGrantedAt: t0 - dayMs)
+        let (model, _, _, _) = makeModel(answer: .granted(.unlock, at: t0), licence: eligible)
+
+        _ = await model.redeem(goodCode)
+
+        #expect(model.entitlement == .paid)
+        // The eligibility stays behind it, harmlessly: nothing reads it once the
+        // family is paid, and unwriting it would be a second thing to get wrong.
+        #expect(model.license.discountGrantedAt == t0 - dayMs)
+    }
+
     @Test("a second redemption never moves an existing grant")
     func grantIsNotMoved() async {
         let existing = LicenseState(codeGrantedAt: t0 - dayMs)
-        let (model, _, _, _) = makeModel(answer: .granted(at: t0 + 999), licence: existing)
+        let (model, _, _, _) = makeModel(answer: .granted(.unlock, at: t0 + 999), licence: existing)
         _ = await model.redeem(goodCode)
         #expect(model.license.codeGrantedAt == t0 - dayMs)
     }
@@ -131,7 +194,7 @@ struct RedemptionModelTests {
 
     @Test("a malformed code never leaves the device")
     func checksumGate() async {
-        let (model, _, recorder, _) = makeModel(answer: .granted(at: t0))
+        let (model, _, recorder, _) = makeModel(answer: .granted(.unlock, at: t0))
         // Right length and alphabet, wrong check symbol.
         let bad = "0123456789AA" == goodCode ? "0123456789AB" : "0123456789AA"
         let answer = await model.redeem(bad)
@@ -143,7 +206,7 @@ struct RedemptionModelTests {
 
     @Test("the normalised code is what goes on the wire")
     func sendsNormalised() async {
-        let (model, _, recorder, _) = makeModel(answer: .granted(at: t0))
+        let (model, _, recorder, _) = makeModel(answer: .granted(.unlock, at: t0))
         _ = await model.redeem(RedemptionCode.format(goodCode).lowercased())
         #expect(await recorder.last?.code == goodCode)
         #expect(await recorder.last?.household == "house-1")
@@ -151,7 +214,7 @@ struct RedemptionModelTests {
 
     @Test("no household means nothing is sent, and nothing is learnt")
     func noHousehold() async {
-        let (model, _, recorder, _) = makeModel(answer: .granted(at: t0), household: nil)
+        let (model, _, recorder, _) = makeModel(answer: .granted(.unlock, at: t0), household: nil)
         let answer = await model.redeem(goodCode)
         #expect(answer == .unreachable)
         #expect(await recorder.count == 0)
@@ -164,7 +227,7 @@ struct RedemptionModelTests {
     @Test("a skewed server clock cannot shorten a trial")
     func serverClockIsNotOurs() async {
         let year: Int64 = 365 * dayMs
-        let (model, _, _, _) = makeModel(answer: .granted(at: t0 + year))
+        let (model, _, _, _) = makeModel(answer: .granted(.unlock, at: t0 + year))
         _ = await model.redeem(goodCode)
         #expect(model.license.codeGrantedAt == t0 + year)
         #expect(model.license.clockHighWater == t0)

@@ -28,12 +28,12 @@ package fr.dappit.attrapelettres.core.licensing
 // conformance: this file stays free of kotlinx.serialization, and LicenseStore
 // owns the JSON on both directions. See the note on `LicenseState` below.
 
-const val TRIAL_DAYS = 14
+const val TRIAL_DAYS = 7
 const val DAY_MS = 24L * 60L * 60L * 1000L
 const val TRIAL_MS = TRIAL_DAYS * DAY_MS
 
 /** Price in euros, TTC. Displayed copy lives in the screens; this is the truth. */
-const val UNLOCK_PRICE_EUR = 9.99
+const val UNLOCK_PRICE_EUR = 11.99
 
 /**
  * The two product identifiers, shared with the iOS app on purpose (A4): the
@@ -45,7 +45,7 @@ const val UNLOCK_PRICE_EUR = 9.99
  * stay diffable. Google Play has no price-0 in-app product, so nothing on
  * Android ever asks for it — see `LicenseState.trialStartedAt`.
  */
-const val PRODUCT_TRIAL = "fr.dappit.attrapelettres.trial14"
+const val PRODUCT_TRIAL = "fr.dappit.attrapelettres.trial7"
 const val PRODUCT_UNLOCK = "fr.dappit.attrapelettres.unlock"
 
 /**

@@ -4,7 +4,7 @@
 /*                                                                             */
 /* The model Apple wrote a rule for (App Review 3.1.1): a non-subscription app  */
 /* may run a free time-based trial before a full unlock, via a price-0          */
-/* non-consumable named "14-day Trial", provided the duration, what stops       */
+/* non-consumable named "7-day Trial", provided the duration, what stops        */
 /* working, and the eventual charge are all disclosed BEFORE the trial starts.  */
 /* Onboarding is that disclosure; this file is the clock.                       */
 /* -------------------------------------------------------------------------- */
@@ -17,17 +17,29 @@
 // arithmetic is byte-identical to the TypeScript's and the persisted blob stays
 // interchangeable with the PWA's. There is no clock read anywhere in this
 // directory — `now` is always a parameter, and `EntitlementModel` takes an
-// injected `TimeSource` (D6). An unverifiable 14-day grace is an unverified one.
+// injected `TimeSource` (D6). An unverifiable grace window is an unverified one.
 
-public let trialDays = 14
+public let trialDays = 7
 public let dayMs: Int64 = 24 * 60 * 60 * 1000
 public let trialMs: Int64 = Int64(trialDays) * dayMs
 
 /// Price in euros, TTC. Displayed copy lives in the screens; this is the truth.
-public let unlockPriceEur = 9.99
+public let unlockPriceEur = 11.99
 
-public let productTrial = "fr.dappit.attrapelettres.trial14"
+/**
+ * The early-adopter price, reached only through a `discount` redemption code.
+ *
+ * It is a SECOND non-consumable, not a discount applied to the first: StoreKit
+ * has no coupon for a one-time purchase, and offer codes exist for
+ * subscriptions only. So the code decides who is eligible and Apple still takes
+ * the money — which is what keeps this inside App Review 3.1.1. Nothing is ever
+ * sold outside the App Store, here or anywhere in this app.
+ */
+public let earlyPriceEur = 2.99
+
+public let productTrial = "fr.dappit.attrapelettres.trial7"
 public let productUnlock = "fr.dappit.attrapelettres.unlock"
+public let productUnlockEarly = "fr.dappit.attrapelettres.unlock.early"
 
 /**
  * How long a "paid" verdict survives without the store confirming it again.
@@ -45,6 +57,7 @@ public let offlineGraceMs: Int64 = 14 * dayMs
 // value behind each pair.
 public let TRIAL_DAYS = trialDays
 public let UNLOCK_PRICE_EUR = unlockPriceEur
+public let EARLY_PRICE_EUR = earlyPriceEur
 
 public struct LicenseState: Equatable, Codable, Sendable {
     /// The store says the unlock is owned by this Apple Account / Google account.
@@ -98,30 +111,47 @@ public struct LicenseState: Equatable, Codable, Sendable {
      */
     public var codeGrantedAt: Int64?
 
+    /**
+     * When a `discount` code was redeemed — an ELIGIBILITY TO PAY, not a grant.
+     *
+     * This field unlocks nothing, and `entitlementOf` deliberately never reads
+     * it. All it does is let the paywall offer the early-adopter product instead
+     * of the standard one; the family still buys, through StoreKit, and only
+     * that purchase makes them paid. A screen that treated this like
+     * `codeGrantedAt` would hand the game to everyone holding a €2.99 code.
+     *
+     * Written once, like the grant beside it, and for the same reason: no answer
+     * from our server may take away something a family already has.
+     */
+    public var discountGrantedAt: Int64?
+
     public init(
         paid: Bool = false,
         verifiedAt: Int64? = nil,
         trialStartedAt: Int64? = nil,
         clockHighWater: Int64 = 0,
-        codeGrantedAt: Int64? = nil
+        codeGrantedAt: Int64? = nil,
+        discountGrantedAt: Int64? = nil
     ) {
         self.paid = paid
         self.verifiedAt = verifiedAt
         self.trialStartedAt = trialStartedAt
         self.clockHighWater = clockHighWater
         self.codeGrantedAt = codeGrantedAt
+        self.discountGrantedAt = discountGrantedAt
     }
 
     /// `BLANK_LICENSE`. NB: blank means *full trial*, i.e. the child plays.
     /// Every decode failure below degrades to this on purpose (R14 / invariant 11).
     public static let blank = LicenseState(
         paid: false, verifiedAt: nil, trialStartedAt: nil, clockHighWater: 0,
-        codeGrantedAt: nil)
+        codeGrantedAt: nil, discountGrantedAt: nil)
 
     // MARK: - Codable, hand-written on both sides
 
     private enum CodingKeys: String, CodingKey {
         case paid, verifiedAt, trialStartedAt, clockHighWater, codeGrantedAt
+        case discountGrantedAt
     }
 
     /// Synthesised `Encodable` uses `encodeIfPresent` for optionals and DROPS the
@@ -145,6 +175,7 @@ public struct LicenseState: Equatable, Codable, Sendable {
         // Written only when there is one. An absent key and a null both decode
         // to nil, so a licence that predates codes needs no migration at all.
         if let codeGrantedAt { try c.encode(codeGrantedAt, forKey: .codeGrantedAt) }
+        if let discountGrantedAt { try c.encode(discountGrantedAt, forKey: .discountGrantedAt) }
     }
 
     /// Total and lenient, mirroring `loadLicense`'s `parsed.x ?? default`. A
@@ -161,6 +192,8 @@ public struct LicenseState: Equatable, Codable, Sendable {
         clockHighWater =
             ((try? c.decodeIfPresent(Int64.self, forKey: .clockHighWater)) ?? nil) ?? 0
         codeGrantedAt = (try? c.decodeIfPresent(Int64.self, forKey: .codeGrantedAt)) ?? nil
+        discountGrantedAt =
+            (try? c.decodeIfPresent(Int64.self, forKey: .discountGrantedAt)) ?? nil
     }
 }
 

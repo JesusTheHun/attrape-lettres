@@ -63,8 +63,14 @@ Mint them from a laptop, with your own credentials:
 pnpm build
 node scripts/mint-codes.mjs --count 20 --label presse
 node scripts/mint-codes.mjs --count 1 --uses 30 --days 60 --label "ecole-jules-ferry"
+node scripts/mint-codes.mjs --count 50 --kind discount --label early-adopter
 node scripts/mint-codes.mjs --count 5 --dry-run          # format check, writes nothing
 ```
+
+`--kind` is what a code buys: `unlock` (the default) gives the game away;
+`discount` gives only the right to buy it at the early-adopter price, through
+in-app purchase. Neither is ever sold — see D61 for why that sentence is load-
+bearing rather than decorative.
 
 **The codes are printed once and nowhere else.** Only their sha256 reaches
 DynamoDB, so the terminal output is the only copy that will ever exist. A dump of

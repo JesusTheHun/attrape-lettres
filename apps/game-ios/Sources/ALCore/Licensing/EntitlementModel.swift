@@ -86,7 +86,10 @@ public final class EntitlementModel {
     /// there is a string, not where it comes from.
     @ObservationIgnored private let household: () -> String?
     @ObservationIgnored private var inFlight: Task<Void, Never>?
-    @ObservationIgnored private var priceFetched = false
+    /// Which tier `priceLabel` was fetched for, or nil when it never has been.
+    /// Not a `Bool`, because redeeming a discount code mid-session changes the
+    /// tier and the screen must not keep showing the price of the other product.
+    @ObservationIgnored private var pricedTier: UnlockTier?
 
     /// `beginTrial()`'s follow-up task, kept only so a test can await it.
     ///
@@ -170,13 +173,15 @@ public final class EntitlementModel {
         let now = time.nowMillis
         checkedAt = now
 
-        if priceFetched {
+        let tier = unlockTier
+        if pricedTier == tier {
             let snap = await store.refresh()
             commit(applySnapshot(license, snap, now))
         } else {
-            // Fetched once, in parallel with the first refresh, and never again.
-            priceFetched = true
-            async let label = store.priceLabel()
+            // Fetched in parallel with the refresh, once per tier: at boot, and
+            // again the one time a discount code moves the family to `.early`.
+            pricedTier = tier
+            async let label = store.priceLabel(tier)
             async let snapshot = store.refresh()
             let (fetchedLabel, snap) = await (label, snapshot)
             priceLabel = fetchedLabel
@@ -218,9 +223,23 @@ public final class EntitlementModel {
         }
     }
 
-    /// Buy the unlock. Refreshes only on success.
+    /**
+     * Which product this family is offered.
+     *
+     * `.early` only ever comes from a redeemed `discount` code. It is read from
+     * the licence rather than held as its own state so that a reinstall, a
+     * rollback or a second device reading the same blob all agree — and so that
+     * there is exactly one thing to forge, which is a persisted timestamp the
+     * store still refuses to sell against.
+     */
+    public var unlockTier: UnlockTier {
+        license.discountGrantedAt != nil ? .early : .standard
+    }
+
+    /// Buy the unlock, at whichever tier this family is entitled to be offered.
+    /// Refreshes only on success.
     public func purchase() async -> Bool {
-        let ok = await store.purchase()
+        let ok = await store.purchase(unlockTier)
         if ok { await refresh() }
         return ok
     }
@@ -258,17 +277,28 @@ public final class EntitlementModel {
         guard let household = household() else { return .unreachable }
 
         let answer = await redemption.redeem(code: code, household: household)
-        guard let grantedAt = answer.grantedAt else { return answer }
+        guard let grantedAt = answer.grantedAt, let kind = answer.kind else { return answer }
 
         // Serialise behind any refresh in flight, exactly as `beginTrial` does:
         // both read-modify-write the licence across an await.
         await inFlight?.value
         var next = license
-        // `?? grantedAt` — a second redemption never moves an existing grant.
-        next.codeGrantedAt = license.codeGrantedAt ?? grantedAt
+        switch kind {
+        case .unlock:
+            // `?? grantedAt` — a second redemption never moves an existing grant.
+            next.codeGrantedAt = license.codeGrantedAt ?? grantedAt
+        case .discount:
+            // NOT a grant. This buys the right to see the early-adopter price
+            // and nothing else: the family is still on their trial, and still
+            // has to purchase. Writing `codeGrantedAt` here would hand the game
+            // to everyone holding a €2.99 code, permanently and irreversibly.
+            next.discountGrantedAt = license.discountGrantedAt ?? grantedAt
+        }
         commit(withClock(next, time.nowMillis))
-        // So the paywall disappears without waiting for the next resume.
+        // So the paywall disappears without waiting for the next resume — or, for
+        // a discount, so it re-prices without one.
         checkedAt = time.nowMillis
+        if kind == .discount { await refresh() }
         return answer
     }
 

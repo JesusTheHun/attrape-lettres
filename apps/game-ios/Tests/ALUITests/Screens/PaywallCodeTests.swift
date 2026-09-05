@@ -27,9 +27,9 @@ private struct SilentStore: PurchaseStore {
     var available = true
     func refresh() async -> StoreSnapshot { .unreachable }
     func beginTrial() async -> Int64? { nil }
-    func purchase() async -> Bool { false }
+    func purchase(_ tier: UnlockTier) async -> Bool { false }
     func restore() async -> Bool { false }
-    func priceLabel() async -> String? { nil }
+    func priceLabel(_ tier: UnlockTier) async -> String? { nil }
 }
 
 private struct FixedRedemption: RedemptionTransport {
@@ -112,7 +112,7 @@ struct PaywallCodeOutcomeTests {
     @Test("a grant says so, clears the field and unlocks")
     func granted() async {
         let model = PaywallModel(step: .code)
-        let money = entitlement(.granted(at: t0))
+        let money = entitlement(.granted(.unlock, at: t0))
         model.type(goodCode)
 
         await model.submitCode(entitlement: money)
@@ -129,7 +129,7 @@ struct PaywallCodeOutcomeTests {
     @Test("« déjà débloqué » is a success, not a refusal")
     func already() async {
         let model = PaywallModel(step: .code)
-        let money = entitlement(.already(at: t0 - dayMs))
+        let money = entitlement(.already(.unlock, at: t0 - dayMs))
         model.type(goodCode)
 
         await model.submitCode(entitlement: money)

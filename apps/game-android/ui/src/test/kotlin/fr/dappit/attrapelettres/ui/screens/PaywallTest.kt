@@ -139,7 +139,7 @@ class PaywallLayerTest {
         assertEquals("Je suis un adulte", Copy.Paywall.Child.I_AM_AN_ADULT)
         assertEquals("Débloquer Attrape-Lettres", Copy.Paywall.Parent.TITLE)
         // U+2014 em dash on the buy button.
-        assertEquals("Débloquer — 9,99 €", Copy.Paywall.Parent.buy(PRICE))
+        assertEquals("Débloquer — 11,99 €", Copy.Paywall.Parent.buy(PRICE))
         assertEquals(
             "L'achat n'a pas abouti. Rien n'a été débité.",
             Copy.Paywall.Note.PURCHASE_FAILED,
@@ -159,7 +159,7 @@ class PaywallLayerTest {
 
     @Test
     fun `the fallback price is built from the licensing constant`() {
-        assertEquals("9,99 €", paywallPrice(null))
+        assertEquals("11,99 €", paywallPrice(null))
         assertEquals(Copy.fallbackPriceLabel(UNLOCK_PRICE_EUR), paywallPrice(null))
         assertEquals("4,99 €", paywallPrice(null, fallbackEur = 4.99))
     }

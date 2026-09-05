@@ -40,10 +40,11 @@ struct TrialClockTests {
     @Test("counts down from the start date")
     func countsDown() {
         let s = license(trialStartedAt: T0)
-        #expect(daysLeft(entitlementOf(s, T0)) == 14)
-        #expect(daysLeft(entitlementOf(s, T0 + 3 * dayMs)) == 11)
-        // 13.5 days: the ceil boundary that must round UP to a last day.
-        #expect(daysLeft(entitlementOf(s, T0 + Int64(13.5 * Double(dayMs)))) == 1)
+        #expect(daysLeft(entitlementOf(s, T0)) == trialDays)
+        #expect(daysLeft(entitlementOf(s, T0 + 3 * dayMs)) == trialDays - 3)
+        // Half a day short of the end: the ceil boundary that must round UP to a
+        // last day rather than down to zero.
+        #expect(daysLeft(entitlementOf(s, T0 + trialMs - dayMs / 2)) == 1)
     }
 
     @Test("expires the instant the fortnight is up, not a moment before")
@@ -63,20 +64,19 @@ struct TrialClockTests {
 
     @Test("ignores a device clock wound backwards")
     func ignoresRewind() {
-        // Day 10 of the trial, then someone sets the date back a year.
-        let s = withClock(license(trialStartedAt: T0), T0 + 10 * dayMs)
-        #expect(effectiveNow(s, T0 - 365 * dayMs) == T0 + 10 * dayMs)
-        #expect(daysLeft(entitlementOf(s, T0 - 365 * dayMs)) == 4)
+        // Day 5 of the trial, then someone sets the date back a year.
+        let s = withClock(license(trialStartedAt: T0), T0 + 5 * dayMs)
+        #expect(effectiveNow(s, T0 - 365 * dayMs) == T0 + 5 * dayMs)
+        #expect(daysLeft(entitlementOf(s, T0 - 365 * dayMs)) == trialDays - 5)
     }
 
     @Test("speaks French to the parent, and says the last day plainly")
     func speaksFrench() {
         #expect(
             trialNotice(entitlementOf(license(trialStartedAt: T0), T0 + 3 * dayMs))
-                == "Essai gratuit — 11 jours restants")
+                == "Essai gratuit — \(trialDays - 3) jours restants")
         #expect(
-            trialNotice(
-                entitlementOf(license(trialStartedAt: T0), T0 + Int64(13.5 * Double(dayMs))))
+            trialNotice(entitlementOf(license(trialStartedAt: T0), T0 + trialMs - dayMs / 2))
                 == "Dernier jour d'essai")
         #expect(trialNotice(.paid) == nil)
     }
@@ -153,14 +153,14 @@ struct ApplySnapshotTests {
 
     @Test("takes the EARLIEST trial start, so reinstalling buys nothing")
     func earliestTrialStartWins() {
-        // Local stamp says today; StoreKit's signed receipt says twelve days ago.
+        // Local stamp says today; StoreKit's signed receipt says five days ago.
         let s = license(trialStartedAt: T0)
         let after = applySnapshot(
             s,
-            StoreSnapshot(paid: false, trialStartedAt: T0 - 12 * dayMs, reachable: true),
+            StoreSnapshot(paid: false, trialStartedAt: T0 - 5 * dayMs, reachable: true),
             T0)
-        #expect(after.trialStartedAt == T0 - 12 * dayMs)
-        #expect(daysLeft(entitlementOf(after, T0)) == 2)
+        #expect(after.trialStartedAt == T0 - 5 * dayMs)
+        #expect(daysLeft(entitlementOf(after, T0)) == trialDays - 5)
     }
 
     @Test("keeps the local stamp when the platform cannot prove one (Android)")

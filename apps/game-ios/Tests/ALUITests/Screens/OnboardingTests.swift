@@ -14,7 +14,7 @@ import ALCore
 /* code under test proves nothing.                                             */
 /*                                                                             */
 /* ```tsx                                                                       */
-/* const PRICE = UNLOCK_PRICE_EUR.toFixed(2).replace(".", ",");   // "9,99"     */
+/* const PRICE = UNLOCK_PRICE_EUR.toFixed(2).replace(".", ",");   // "11,99"    */
 /* const scope = ios ? "pour toute la famille" : "sur vos appareils";           */
 /* const [analytics, setAnalytics] = useState(false);                           */
 /*                                                                              */
@@ -53,9 +53,9 @@ private let tsConsentBody =
     "On reçoit seulement : quel exercice, quel niveau, réussi ou non. Jamais le prénom "
     + "de votre enfant, jamais rien qui l'identifie. Vous pouvez changer d'avis à tout moment."
 
-/// `TRIAL_DAYS = 14` and `UNLOCK_PRICE_EUR = 9.99` in `licensing/entitlement.ts`.
-private let tsTrialDays = 14
-private let tsFallbackPrice = "9,99 €"
+/// `TRIAL_DAYS = 7` and `UNLOCK_PRICE_EUR = 11.99` in `licensing/entitlement.ts`.
+private let tsTrialDays = 7
+private let tsFallbackPrice = "11,99 €"
 
 // MARK: - emphasisRuns
 
@@ -68,24 +68,24 @@ struct EmphasisRunsTests {
 
     @Test("the runs concatenate back to the sentence, unchanged")
     func lossless() {
-        let full = tsTrialParagraph(days: 14, price: tsFallbackPrice, scope: tsScopeIOS)
-        let runs = emphasisRuns(full, bold: ["14 jours", tsFallbackPrice])
+        let full = tsTrialParagraph(days: tsTrialDays, price: tsFallbackPrice, scope: tsScopeIOS)
+        let runs = emphasisRuns(full, bold: ["\(tsTrialDays) jours", tsFallbackPrice])
         #expect(flatten(runs) == full)
     }
 
     @Test("exactly the TSX's two spans are bold, and nothing else is")
     func boldSpans() {
         // `<strong>{TRIAL_DAYS} jours</strong>` and `<strong>{priceLabel ?? …}</strong>`.
-        let full = tsTrialParagraph(days: 14, price: tsFallbackPrice, scope: tsScopeIOS)
-        let runs = emphasisRuns(full, bold: ["14 jours", tsFallbackPrice])
-        #expect(runs.filter(\.bold).map(\.text) == ["14 jours", tsFallbackPrice])
+        let full = tsTrialParagraph(days: tsTrialDays, price: tsFallbackPrice, scope: tsScopeIOS)
+        let runs = emphasisRuns(full, bold: ["\(tsTrialDays) jours", tsFallbackPrice])
+        #expect(runs.filter(\.bold).map(\.text) == ["\(tsTrialDays) jours", tsFallbackPrice])
     }
 
     @Test("runs come back in document order even when the needles are listed backwards")
     func documentOrder() {
-        let full = tsTrialParagraph(days: 14, price: tsFallbackPrice, scope: tsScopeIOS)
-        let forwards = emphasisRuns(full, bold: ["14 jours", tsFallbackPrice])
-        let backwards = emphasisRuns(full, bold: [tsFallbackPrice, "14 jours"])
+        let full = tsTrialParagraph(days: tsTrialDays, price: tsFallbackPrice, scope: tsScopeIOS)
+        let forwards = emphasisRuns(full, bold: ["\(tsTrialDays) jours", tsFallbackPrice])
+        let backwards = emphasisRuns(full, bold: [tsFallbackPrice, "\(tsTrialDays) jours"])
         #expect(forwards == backwards)
     }
 
@@ -161,9 +161,9 @@ struct OnboardingPlanTests {
     func storeAvailable() {
         let plan = OnboardingPlan(storeAvailable: true, priceLabel: nil)
         #expect(plan.paragraphs.count == 2)
-        #expect(text(plan, 0) == tsTrialParagraph(days: 14, price: tsFallbackPrice, scope: tsScopeIOS))
-        #expect(text(plan, 1) == tsPauseParagraph(days: 14))
-        #expect(plan.buttonTitle == "Commencer les 14 jours")
+        #expect(text(plan, 0) == tsTrialParagraph(days: tsTrialDays, price: tsFallbackPrice, scope: tsScopeIOS))
+        #expect(text(plan, 1) == tsPauseParagraph(days: tsTrialDays))
+        #expect(plan.buttonTitle == "Commencer les \(tsTrialDays) jours")
     }
 
     @Test("the terms disclose duration, what stops, and the charge — App Review 3.1.1")
@@ -172,7 +172,7 @@ struct OnboardingPlanTests {
         // that renders above the button.
         let plan = OnboardingPlan(storeAvailable: true, priceLabel: nil)
         let all = plan.paragraphs.map { $0.map(\.text).joined() }.joined(separator: " ")
-        #expect(all.contains("14 jours"))            // duration
+        #expect(all.contains("\(tsTrialDays) jours"))       // duration
         #expect(all.contains("se mettent en pause"))  // what stops working
         #expect(all.contains(tsFallbackPrice))        // the eventual charge
     }
@@ -183,15 +183,15 @@ struct OnboardingPlanTests {
         // string everywhere it appears, including inside the bold run.
         let plan = OnboardingPlan(storeAvailable: true, priceLabel: "£8.99")
         #expect(plan.price == "£8.99")
-        #expect(text(plan, 0) == tsTrialParagraph(days: 14, price: "£8.99", scope: tsScopeIOS))
-        #expect(plan.paragraphs[0].filter(\.bold).map(\.text) == ["14 jours", "£8.99"])
+        #expect(text(plan, 0) == tsTrialParagraph(days: tsTrialDays, price: "£8.99", scope: tsScopeIOS))
+        #expect(plan.paragraphs[0].filter(\.bold).map(\.text) == ["\(tsTrialDays) jours", "£8.99"])
         #expect(!text(plan, 0).contains(tsFallbackPrice))
     }
 
     @Test("the fallback price is UNLOCK_PRICE_EUR.toFixed(2) with a French comma")
     func fallbackPrice() {
-        // 9.99 → "9.99" → "9,99", plus " €".
-        #expect(OnboardingPlan(storeAvailable: true, priceLabel: nil).price == "9,99 €")
+        // 11.99 → "11.99" → "11,99", plus " €".
+        #expect(OnboardingPlan(storeAvailable: true, priceLabel: nil).price == tsFallbackPrice)
         // The two-decimal fix matters: a round price must still show its cents.
         #expect(
             OnboardingPlan(storeAvailable: true, priceLabel: nil, priceEUR: 5).price == "5,00 €")
@@ -236,7 +236,7 @@ struct OnboardingPlanTests {
 
     @Test("scope: Family Sharing on iOS, per-device elsewhere")
     func scope() {
-        // Apple's Family Sharing really does cover the household on the €9,99
+        // Apple's Family Sharing really does cover the household on the €11,99
         // non-consumable; Play's Family Library does not share IAPs, so the two
         // strings are different promises and must not be unified.
         let apple = OnboardingPlan(storeAvailable: true, priceLabel: nil, scope: tsScopeIOS)
@@ -397,7 +397,10 @@ struct StartOnboardingTests {
                 Comment(rawValue: "trial_started must carry daysLeft alone; found \(key)"))
         }
         // The app version rides the envelope; nothing else does.
-        #expect(json == "{\"v\":\"1.2.3\",\"events\":[{\"event\":\"trial_started\",\"props\":{\"daysLeft\":14}}]}")
+        #expect(
+            json
+                == "{\"v\":\"1.2.3\",\"events\":[{\"event\":\"trial_started\",\"props\":{\"daysLeft\":\(tsTrialDays)}}]}"
+        )
     }
 
     @Test("a second Commencer cannot re-start the clock")

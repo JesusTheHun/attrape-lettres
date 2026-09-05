@@ -276,7 +276,13 @@ public struct URLSessionRedemptionTransport: RedemptionTransport {
                 let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                 let at = object["grantedAt"] as? Int64 ?? (object["grantedAt"] as? NSNumber)?.int64Value
             else { return .unreachable }
-            return .granted(at: at)
+            // An unrecognised kind reads as `discount`, which is the one that
+            // costs nothing to be wrong about: the parent is offered a price
+            // instead of being handed the game. Defaulting the other way would
+            // let a future server value, or a typo, unlock every device that
+            // asked.
+            let kind = GrantKind(rawValue: object["kind"] as? String ?? "") ?? .discount
+            return .granted(kind, at: at)
         case 400, 404:
             // 400 is a code this device thought was well-formed and the server
             // did not; from a parent's chair that is the same as "no such code".

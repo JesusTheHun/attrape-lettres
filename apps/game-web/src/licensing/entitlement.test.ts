@@ -29,9 +29,10 @@ describe("trial clock", () => {
 
   it("counts down from the start date", () => {
     const s = license({ trialStartedAt: T0 });
-    expect(entitlementOf(s, T0)).toMatchObject({ status: "trial", daysLeft: 14 });
-    expect(entitlementOf(s, T0 + 3 * DAY_MS)).toMatchObject({ daysLeft: 11 });
-    expect(entitlementOf(s, T0 + 13.5 * DAY_MS)).toMatchObject({ daysLeft: 1 });
+    expect(entitlementOf(s, T0)).toMatchObject({ status: "trial", daysLeft: TRIAL_DAYS });
+    expect(entitlementOf(s, T0 + 3 * DAY_MS)).toMatchObject({ daysLeft: TRIAL_DAYS - 3 });
+    // Half a day short of the end: the ceil boundary that rounds UP to a last day.
+    expect(entitlementOf(s, T0 + TRIAL_MS - DAY_MS / 2)).toMatchObject({ daysLeft: 1 });
   });
 
   it("expires the instant the fortnight is up, not a moment before", () => {
@@ -48,16 +49,18 @@ describe("trial clock", () => {
 
   it("ignores a device clock wound backwards", () => {
     // Day 10 of the trial, then someone sets the date back a year.
-    const s = withClock(license({ trialStartedAt: T0 }), T0 + 10 * DAY_MS);
-    expect(effectiveNow(s, T0 - 365 * DAY_MS)).toBe(T0 + 10 * DAY_MS);
-    expect(entitlementOf(s, T0 - 365 * DAY_MS)).toMatchObject({ daysLeft: 4 });
+    const s = withClock(license({ trialStartedAt: T0 }), T0 + 5 * DAY_MS);
+    expect(effectiveNow(s, T0 - 365 * DAY_MS)).toBe(T0 + 5 * DAY_MS);
+    expect(entitlementOf(s, T0 - 365 * DAY_MS)).toMatchObject({ daysLeft: TRIAL_DAYS - 5 });
   });
 
   it("speaks French to the parent, and says the last day plainly", () => {
     expect(trialNotice(entitlementOf(license({ trialStartedAt: T0 }), T0 + 3 * DAY_MS))).toBe(
-      "Essai gratuit — 11 jours restants"
+      `Essai gratuit — ${TRIAL_DAYS - 3} jours restants`
     );
-    expect(trialNotice(entitlementOf(license({ trialStartedAt: T0 }), T0 + 13.5 * DAY_MS))).toBe(
+    expect(
+      trialNotice(entitlementOf(license({ trialStartedAt: T0 }), T0 + TRIAL_MS - DAY_MS / 2))
+    ).toBe(
       "Dernier jour d'essai"
     );
     expect(trialNotice({ status: "paid" })).toBeNull();
@@ -117,11 +120,14 @@ describe("applySnapshot — what the store is allowed to change", () => {
     const s = license({ trialStartedAt: T0 });
     const after = applySnapshot(
       s,
-      { paid: false, trialStartedAt: T0 - 12 * DAY_MS, reachable: true },
+      { paid: false, trialStartedAt: T0 - 5 * DAY_MS, reachable: true },
       T0
     );
-    expect(after.trialStartedAt).toBe(T0 - 12 * DAY_MS);
-    expect(entitlementOf(after, T0)).toMatchObject({ status: "trial", daysLeft: 2 });
+    expect(after.trialStartedAt).toBe(T0 - 5 * DAY_MS);
+    expect(entitlementOf(after, T0)).toMatchObject({
+      status: "trial",
+      daysLeft: TRIAL_DAYS - 5,
+    });
   });
 
   it("keeps the local stamp when the platform cannot prove one (Android)", () => {

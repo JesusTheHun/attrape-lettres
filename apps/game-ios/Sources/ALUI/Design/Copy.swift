@@ -221,8 +221,8 @@ public enum Copy {
         public static let scopeIOS = "pour toute la famille"
         public static let scopeOther = "sur vos appareils"
 
-        /// « Attrape-Lettres est gratuit pendant 14 jours. Ensuite, un achat
-        /// unique de 4,99 € débloque tout pour toute la famille, pour toujours.
+        /// « Attrape-Lettres est gratuit pendant 7 jours. Ensuite, un achat
+        /// unique de 11,99 € débloque tout pour toute la famille, pour toujours.
         /// Pas d'abonnement, pas de publicité, rien à acheter dans le jeu. »
         ///
         /// The `<strong>` runs in the TSX are emphasis only; the sentence is one
@@ -408,14 +408,23 @@ public enum Copy {
             /// The door to the code field, under the two store controls. Quiet
             /// on purpose: a code is the exception, buying is the path.
             public static let haveACode = "J'ai un code"
+
+            /// Shown above the buy button once a `discount` code is redeemed, so
+            /// the parent can see WHY the price dropped before they pay. Without
+            /// it the cheaper number looks like a mistake, and a parent who
+            /// suspects a mistake does not buy.
+            public static let earlyPrice = "Prix early adopter — merci d'être là si tôt."
         }
 
         /// The code step, behind the same gate as the price. Written for the
         /// adult holding a card, so: plain, and it names what a code is for.
         public enum Code {
             public static let title = "Utiliser un code"
+            /// Two kinds of code, and the sentence has to be true of both
+            /// without turning the paywall into a treasure hunt: « offerts »
+            /// stays, because neither kind is ever sold (D61).
             public static let body =
-                "Les codes sont offerts — presse, écoles, familles qui nous aident à tester. Ils débloquent le jeu sur tous vos appareils."
+                "Les codes sont offerts — presse, écoles, familles qui nous aident à tester. Selon le code, ils débloquent le jeu ou donnent le prix early adopter."
             public static let placeholder = "XXXX-XXXX-XXXX"
             public static let field = "Code à douze caractères"  // aria-label
             public static let submit = "Valider"
@@ -429,6 +438,16 @@ public enum Copy {
         public enum CodeNote {
             public static let granted = "C'est débloqué. Merci !"
             public static let already = "Ce foyer est déjà débloqué."
+
+            /// A discount code did NOT unlock anything, and the note must not
+            /// let a parent believe it did — they still have to buy, and finding
+            /// that out at the next launch instead of now would be a betrayal.
+            public static func discountGranted(price: String) -> String {
+                "Votre prix early adopter est activé : \(price). Il reste à l'acheter ci-dessous."
+            }
+
+            public static let alreadyDiscount =
+                "Votre prix early adopter est déjà activé."
             /// Covers both « no such code » and « the server said it was
             /// malformed ». From the parent's chair they are the same thing.
             public static let unknown = "Ce code n'existe pas. Vérifiez les caractères."

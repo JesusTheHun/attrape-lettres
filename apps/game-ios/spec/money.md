@@ -23,7 +23,7 @@ below.
 
 | File | Lines | What it actually does |
 |---|---:|---|
-| `src/licensing/entitlement.ts` | 120 | **Pure.** Constants (`TRIAL_DAYS` 14, `DAY_MS`, `TRIAL_MS`, `UNLOCK_PRICE_EUR` 9.99, `PRODUCT_TRIAL`, `PRODUCT_UNLOCK`, `OFFLINE_GRACE_MS` = 14 days). `LicenseState` (4 fields). `BLANK_LICENSE`. `Entitlement` discriminated union (4 cases). `effectiveNow` (monotonic clock). `entitlementOf` (the state machine). `canPlay`. `withClock`. `trialNotice` (the only French in the module). No storage, no store, no clock — `now` is always a parameter. |
+| `src/licensing/entitlement.ts` | 120 | **Pure.** Constants (`TRIAL_DAYS` 7, `DAY_MS`, `TRIAL_MS`, `UNLOCK_PRICE_EUR` 11.99, `EARLY_PRICE_EUR` 2.99, `PRODUCT_TRIAL`, `PRODUCT_UNLOCK`, `PRODUCT_UNLOCK_EARLY`, `OFFLINE_GRACE_MS` = 14 days). `LicenseState` (6 fields). `BLANK_LICENSE`. `Entitlement` discriminated union (4 cases). `effectiveNow` (monotonic clock). `entitlementOf` (the state machine). `canPlay`. `withClock`. `trialNotice` (the only French in the module). No storage, no store, no clock — `now` is always a parameter. |
 | `src/licensing/entitlement.test.ts` | 137 | 13 tests, all with a fixed `T0 = 1_700_000_000_000`. Covers the trial countdown, the expiry boundary, clock rewind, the French copy, the paid-beats-trial rule, the offline grace window, "never expires a paid family that was never verified", and 6 `applySnapshot` cases. **This file is the executable half of invariant 11 and must survive the port test-for-test.** |
 | `src/licensing/store.ts` | 150 | The IAP seam. `StoreSnapshot { paid, trialStartedAt, reachable }`, the `UNREACHABLE` constant, the `PurchaseStore` interface (6 members), a `webStore` that reports `paid: true` unconditionally, a `nativeStore` **stub** that reports `UNREACHABLE` for everything, a `Capacitor.isNativePlatform()` selector wrapped in try/catch, and a test override setter. No payment vendor anywhere — the only names in the file are Apple and Google. |
 | `src/licensing/useEntitlement.tsx` | 173 | The React provider. Exports the **pure** `applySnapshot(state, snapshot, now)` (which the entitlement tests import), `EntitlementAPI`, `EntitlementProvider`, `useEntitlement`. Owns: initial load from `persist`, a `checkedAt` timestamp that the entitlement is computed against, refresh-on-mount, refresh-on-resume via `@capacitor/app` `appStateChange`, `beginTrial` (local stamp first, authoritative date second), `purchase`, `restore`, and the price label fetch. |
@@ -323,7 +323,7 @@ value, and no caller can forget. The fail-open mapping is fixed and normative:
 | `beginTrial()` — any error, cancel | `nil` (the local stamp stands) |
 | `purchase()` — any error, cancel, `.pending`, `.unverified` | `false` |
 | `restore()` — any error | `false` (the model still refreshes; see § 4.2) |
-| `priceLabel()` — any error | `nil` (the screen falls back to the hard-coded `"9,99 €"`) |
+| `priceLabel(_:)` — any error | `nil` (the screen falls back to the tier's own constant → `"11,99 €"` / `"2,99 €"`) |
 
 Three conformances ship:
 
@@ -840,8 +840,9 @@ Products, per App Review 3.1.1 and Kids Category 1.3:
 
 | id | type | price | note |
 |---|---|---|---|
-| `fr.dappit.attrapelettres.trial14` | non-consumable | **0** | must be **named "14-day Trial"** in App Store Connect. Its StoreKit `purchaseDate` is the clock, because it is signed by Apple and survives a reinstall. iOS only — Play has no price-0 IAP. |
-| `fr.dappit.attrapelettres.unlock` | non-consumable | €9.99 | **Family Sharing ON** in App Store Connect: six people, free, native. |
+| `fr.dappit.attrapelettres.trial7` | non-consumable | **0** | must be **named "7-day Trial"** in App Store Connect. Its StoreKit `purchaseDate` is the clock, because it is signed by Apple and survives a reinstall. iOS only — Play has no price-0 IAP. |
+| `fr.dappit.attrapelettres.unlock` | non-consumable | €11.99 | **Family Sharing ON** in App Store Connect: six people, free, native. |
+| `fr.dappit.attrapelettres.unlock.early` | non-consumable | €2.99 | Same content, early-adopter price. **Family Sharing ON** too. Offered only to a family holding `LicenseState.discountGrantedAt`, i.e. one that redeemed a `discount` code. StoreKit has no coupon for a one-time purchase — offer codes are subscriptions only — so the discount has to BE a product. Both ids count as paid in `scan()`; reading only the first locks out every early adopter. |
 
 ### 5.1 `refresh()` — and the sharpest hazard in this port
 
@@ -937,8 +938,8 @@ stamp stands.
 ### 5.6 `priceLabel()`
 
 `Product.products(for: [PRODUCT_UNLOCK]).first?.displayPrice` — already localised and
-already formatted `"9,99 €"` in a French storefront. `nil` on any failure; the screens
-fall back to `UNLOCK_PRICE_EUR.formatted` → `"9,99 €"`.
+already formatted `"11,99 €"` in a French storefront. `nil` on any failure; the screens
+fall back to the tier's own constant → `"11,99 €"`, or `"2,99 €"` for `.early`.
 
 ### 5.7 What must **not** appear in this file
 

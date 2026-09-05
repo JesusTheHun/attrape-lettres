@@ -41,10 +41,11 @@ class TrialClockTest {
     @Test
     fun `counts down from the start date`() {
         val s = license(trialStartedAt = T0)
-        assertEquals(14, daysLeft(entitlementOf(s, T0)))
-        assertEquals(11, daysLeft(entitlementOf(s, T0 + 3 * DAY_MS)))
-        // 13.5 days: the ceil boundary that must round UP to a last day.
-        assertEquals(1, daysLeft(entitlementOf(s, T0 + (13.5 * DAY_MS).toLong())))
+        assertEquals(TRIAL_DAYS, daysLeft(entitlementOf(s, T0)))
+        assertEquals(TRIAL_DAYS - 3, daysLeft(entitlementOf(s, T0 + 3 * DAY_MS)))
+        // Half a day short of the end: the ceil boundary that must round UP to a
+        // last day rather than down to zero.
+        assertEquals(1, daysLeft(entitlementOf(s, T0 + TRIAL_MS - DAY_MS / 2)))
     }
 
     @Test
@@ -64,21 +65,21 @@ class TrialClockTest {
     @Test
     fun `ignores a device clock wound backwards`() {
         // Day 10 of the trial, then someone sets the date back a year.
-        val s = withClock(license(trialStartedAt = T0), T0 + 10 * DAY_MS)
-        assertEquals(T0 + 10 * DAY_MS, effectiveNow(s, T0 - 365 * DAY_MS))
-        assertEquals(4, daysLeft(entitlementOf(s, T0 - 365 * DAY_MS)))
+        val s = withClock(license(trialStartedAt = T0), T0 + 5 * DAY_MS)
+        assertEquals(T0 + 5 * DAY_MS, effectiveNow(s, T0 - 365 * DAY_MS))
+        assertEquals(TRIAL_DAYS - 5, daysLeft(entitlementOf(s, T0 - 365 * DAY_MS)))
     }
 
     @Test
     fun `speaks French to the parent, and says the last day plainly`() {
         assertEquals(
-            "Essai gratuit — 11 jours restants",
+            "Essai gratuit — ${TRIAL_DAYS - 3} jours restants",
             trialNotice(entitlementOf(license(trialStartedAt = T0), T0 + 3 * DAY_MS)),
         )
         assertEquals(
             "Dernier jour d'essai",
             trialNotice(
-                entitlementOf(license(trialStartedAt = T0), T0 + (13.5 * DAY_MS).toLong()),
+                entitlementOf(license(trialStartedAt = T0), T0 + TRIAL_MS - DAY_MS / 2),
             ),
         )
         assertNull(trialNotice(Entitlement.Paid))
@@ -167,11 +168,11 @@ class ApplySnapshotTest {
         val s = license(trialStartedAt = T0)
         val after = applySnapshot(
             s,
-            StoreSnapshot(paid = false, trialStartedAt = T0 - 12 * DAY_MS, reachable = true),
+            StoreSnapshot(paid = false, trialStartedAt = T0 - 5 * DAY_MS, reachable = true),
             T0,
         )
-        assertEquals(T0 - 12 * DAY_MS, after.trialStartedAt)
-        assertEquals(2, daysLeft(entitlementOf(after, T0)))
+        assertEquals(T0 - 5 * DAY_MS, after.trialStartedAt)
+        assertEquals(TRIAL_DAYS - 5, daysLeft(entitlementOf(after, T0)))
     }
 
     @Test

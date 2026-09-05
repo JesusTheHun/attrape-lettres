@@ -1,51 +1,63 @@
 {
-  "identifier" : "AL000001",
-  "nonRenewingSubscriptions" : [
-  ],
-  "products" : [
+  "identifier": "AL000001",
+  "nonRenewingSubscriptions": [],
+  "products": [
     {
-      "displayPrice" : "0.00",
-      "familyShareable" : false,
-      "internalID" : "AL000010",
-      "localizations" : [
+      "displayPrice": "0.00",
+      "familyShareable": false,
+      "internalID": "AL000010",
+      "localizations": [
         {
-          "description" : "Quatorze jours pour essayer tous les jeux.",
-          "displayName" : "Essai 14 jours",
-          "locale" : "fr_FR"
+          "description": "Sept jours pour essayer tous les jeux.",
+          "displayName": "Essai 7 jours",
+          "locale": "fr_FR"
         }
       ],
-      "productID" : "fr.dappit.attrapelettres.trial14",
-      "referenceName" : "14-day Trial",
-      "type" : "NonConsumable"
+      "productID": "fr.dappit.attrapelettres.trial7",
+      "referenceName": "7-day Trial",
+      "type": "NonConsumable"
     },
     {
-      "displayPrice" : "9.99",
-      "familyShareable" : true,
-      "internalID" : "AL000011",
-      "localizations" : [
+      "displayPrice": "11.99",
+      "familyShareable": true,
+      "internalID": "AL000011",
+      "localizations": [
         {
-          "description" : "Tous les jeux, pour toujours. Un seul achat.",
-          "displayName" : "Attrape-Lettres en entier",
-          "locale" : "fr_FR"
+          "description": "Tous les jeux, pour toujours. Un seul achat.",
+          "displayName": "Attrape-Lettres en entier",
+          "locale": "fr_FR"
         }
       ],
-      "productID" : "fr.dappit.attrapelettres.unlock",
-      "referenceName" : "Full unlock",
-      "type" : "NonConsumable"
+      "productID": "fr.dappit.attrapelettres.unlock",
+      "referenceName": "Full unlock",
+      "type": "NonConsumable"
+    },
+    {
+      "displayPrice": "2.99",
+      "familyShareable": true,
+      "internalID": "AL000012",
+      "localizations": [
+        {
+          "description": "Tous les jeux, pour toujours. Prix early adopter.",
+          "displayName": "Attrape-Lettres en entier — early adopter",
+          "locale": "fr_FR"
+        }
+      ],
+      "productID": "fr.dappit.attrapelettres.unlock.early",
+      "referenceName": "Full unlock (early adopter)",
+      "type": "NonConsumable"
     }
   ],
-  "settings" : {
-    "_askToBuyEnabled" : false,
-    "_billingIssuesEnabled" : false,
-    "_storeKitErrors" : [
-    ],
-    "_storefront" : "FRA",
-    "_timeRate" : 0
+  "settings": {
+    "_askToBuyEnabled": false,
+    "_billingIssuesEnabled": false,
+    "_storeKitErrors": [],
+    "_storefront": "FRA",
+    "_timeRate": 0
   },
-  "subscriptionGroups" : [
-  ],
-  "version" : {
-    "major" : 4,
-    "minor" : 0
+  "subscriptionGroups": [],
+  "version": {
+    "major": 4,
+    "minor": 0
   }
 }
