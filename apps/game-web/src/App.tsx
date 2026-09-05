@@ -221,7 +221,10 @@ export default function App() {
             {ex.match && <span className="text-sm text-[#9A7A5A]">· {MATCH_HINT[ex.match]}</span>}
             {ex.hint && <span className="text-sm text-[#9A7A5A]">· {ex.hint}</span>}
           </div>
-          <div className="grid grid-cols-5 gap-2">
+          {/* Row gap is wider than the column gap: the reward pill overhangs each
+              tile's top edge by 8px, so a plain gap-2 would let a second row's
+              pills touch the tiles above. */}
+          <div className="grid grid-cols-5 gap-x-2 gap-y-4">
             {Array.from({ length: ex.levelCount }, (_, i) => i + 1).map((lvl) => {
               const pts = preview(ex.id, lvl);
               // First clear is the jackpot (10) — a big gold star pill; repeats
