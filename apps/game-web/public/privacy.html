@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Attrape-Lettres — Politique de confidentialité</title>
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    margin: 0 auto; padding: 2rem 1.25rem 6rem; max-width: 44rem;
+    font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  h1 { font-size: 1.6rem; line-height: 1.25; margin: 0 0 .25rem; }
+  h2 { font-size: 1.15rem; margin: 2.25rem 0 .5rem; }
+  h3 { font-size: 1rem; margin: 1.5rem 0 .35rem; }
+  .sub { opacity: .65; margin: 0 0 2rem; font-size: .95rem; }
+  table { border-collapse: collapse; width: 100%; margin: .75rem 0; font-size: .95rem; }
+  th, td { text-align: left; vertical-align: top; padding: .5rem .6rem; border-bottom: 1px solid rgba(128,128,128,.3); }
+  th { font-weight: 600; }
+  code { font-size: .9em; padding: .1em .3em; background: rgba(128,128,128,.15); border-radius: 3px; }
+  ul { padding-left: 1.2rem; }
+  li { margin: .3rem 0; }
+  hr { border: 0; border-top: 1px solid rgba(128,128,128,.3); margin: 4rem 0; }
+  .box { border: 1px solid rgba(128,128,128,.4); border-radius: 8px; padding: .9rem 1rem; margin: 1rem 0; }
+  footer { margin-top: 3rem; font-size: .9rem; opacity: .7; }
+  a { color: inherit; }
+</style>
+</head>
+<body>
+
+<h1>Politique de confidentialité</h1>
+<p class="sub">Attrape-Lettres — application iOS, Android et web.<br>
+Version du 6 septembre 2026.</p>
+
+<div class="box">
+  <strong>En bref.</strong> Attrape-Lettres est un jeu de lecture pour enfants d'environ six ans.
+  Le prénom de votre enfant ne quitte <em>jamais</em> l'appareil. Nous ne créons aucun compte,
+  n'affichons aucune publicité, n'utilisons aucun outil de mesure d'audience tiers et ne vendons
+  ni ne partageons aucune donnée. Sur un appareil dont le parent n'a ni activé la synchronisation
+  ni accepté les statistiques, <strong>l'application n'envoie rien du tout</strong>, hormis un
+  éventuel rapport d'erreur technique anonyme.
+</div>
+
+<h2>1. Qui est responsable du traitement</h2>
+<p>
+  Attrape-Lettres est édité par <strong>DappIT</strong>, société par actions simplifiée unipersonnelle
+  (SASU) de droit français.
+</p>
+<ul>
+  <li>Siège social&nbsp;: 34B rue des Fontaines, 92310 Sèvres, France</li>
+  <li>SIRET&nbsp;: 843 391 129 00023</li>
+  <li>Numéro de TVA intracommunautaire&nbsp;: FR82843391129</li>
+  <li>Directeur de la publication&nbsp;: Jonathan Massuchetti</li>
+  <li>Contact&nbsp;: <a href="mailto:contact@dappit.fr">contact@dappit.fr</a></li>
+</ul>
+
+<h2>2. Ce que l'application ne fait jamais</h2>
+<ul>
+  <li>Aucun compte, aucune inscription, aucune adresse e-mail demandée à l'utilisateur.</li>
+  <li>Aucune publicité, aucun identifiant publicitaire, aucun pistage inter-applications.</li>
+  <li>Aucun outil de mesure d'audience tiers (ni Google Analytics, ni Firebase, ni équivalent) et
+      aucun kit de développement (SDK) tiers de collecte&nbsp;: les statistiques décrites au §3.2
+      sont envoyées à notre propre serveur, ou ne sont pas envoyées.</li>
+  <li>Aucune transmission du prénom de l'enfant. Il est stocké uniquement sur l'appareil&nbsp;; le
+      code qui prépare les données de synchronisation le retire, et notre serveur <em>refuse</em>
+      un envoi qui le contiendrait.</li>
+  <li>Aucune géolocalisation, aucun accès aux contacts, aux photos, au micro ni au carnet d'adresses.</li>
+  <li>Aucun contenu généré par l'utilisateur, aucune fonction sociale, aucun lien vers un réseau social.</li>
+  <li>Aucune revente, aucun partage à des fins commerciales ou publicitaires.</li>
+</ul>
+
+<h2>3. Les données que nous traitons</h2>
+
+<h3>3.1 Progression du jeu (synchronisation entre appareils)</h3>
+<p>
+  Par défaut, toute la progression reste sur l'appareil. Elle n'est envoyée à notre serveur que si
+  un parent a explicitement relié deux appareils, soit en scannant un code QR depuis les réglages
+  parents, soit — entre appareils partageant le même identifiant Apple — via le stockage
+  clé-valeur iCloud d'Apple.
+</p>
+<p>Dans ce cas, et seulement dans ce cas, sont envoyés&nbsp;:</p>
+<table>
+  <tr><th>Donnée</th><th>Nature</th></tr>
+  <tr><td>Identifiant de foyer</td><td>Jeton aléatoire opaque, créé sur l'appareil. Ne désigne personne.</td></tr>
+  <tr><td>Identifiant d'enfant</td><td>Jeton aléatoire opaque. Un enfant du foyer, sans dire lequel.</td></tr>
+  <tr><td>Identifiants d'appareil</td><td>Jetons aléatoires opaques, servant à fusionner les compteurs.</td></tr>
+  <tr><td>Compteurs de jeu</td><td>Nombres entiers&nbsp;: étoiles gagnées, étoiles dépensées, parties terminées par exercice et par niveau.</td></tr>
+  <tr><td>Personnalisation</td><td>Mascotte choisie, couleurs, accessoires achetés dans la boutique du jeu.</td></tr>
+  <tr><td>Horodatages</td><td>Dates techniques de dernière modification, pour départager deux appareils.</td></tr>
+</table>
+<p>
+  <strong>Ne sont jamais envoyés&nbsp;:</strong> le prénom de l'enfant, son âge, sa date de naissance,
+  aucune photo, aucun texte libre.
+</p>
+<p>Base légale&nbsp;: exécution du service demandé par le parent (article 6.1.b du RGPD).</p>
+
+<h3>3.2 Statistiques d'usage — <em>désactivées par défaut</em></h3>
+<p>
+  Une case à cocher, présentée au parent à l'installation et <strong>non pré-cochée</strong>, propose
+  de nous transmettre des statistiques anonymes. Si elle reste décochée, rien n'est envoyé. Elle est
+  révocable à tout moment depuis les réglages parents, derrière le contrôle parental.
+</p>
+<p>Si elle est cochée, chaque envoi contient exclusivement&nbsp;:</p>
+<ul>
+  <li>un nom d'événement pris dans une liste fermée de onze valeurs (par exemple
+      <code>session_completed</code>, <code>paywall_shown</code>)&nbsp;;</li>
+  <li>l'identifiant d'un exercice, pris dans une liste fermée&nbsp;;</li>
+  <li>des nombres entiers&nbsp;: niveau, nombre de manches, réussites, points, coût d'un article,
+      stade de la mascotte, jours restants d'essai&nbsp;;</li>
+  <li>la version de l'application.</li>
+</ul>
+<p>
+  Il n'existe <strong>aucun champ de texte libre</strong> et <strong>aucun identifiant</strong> dans ce
+  format&nbsp;: ni identifiant d'appareil, ni identifiant de foyer, ni identifiant d'enfant. Deux envois
+  ne peuvent pas être rattachés l'un à l'autre. Ces données sont anonymes, et non simplement
+  pseudonymisées. Notre serveur applique la même liste fermée et rejette tout champ qu'elle ne
+  nomme pas.
+</p>
+<p>Base légale&nbsp;: consentement du parent (article 6.1.a du RGPD).</p>
+
+<h3>3.3 Rapports d'erreur technique</h3>
+<p>
+  Lorsque l'application rencontre une anomalie, elle peut nous envoyer un rapport technique&nbsp;:
+  la version de l'application, l'endroit du code concerné, le message d'erreur et la pile d'appels,
+  tous tronqués. Aucun état du jeu n'y est joint&nbsp;: le rapport ne contient pas la liste des
+  enfants, donc pas leur prénom.
+</p>
+<p>
+  Ces rapports ne sont <strong>pas</strong> soumis à la case du §3.2, et nous le disons franchement&nbsp;:
+  c'est le seul moyen d'apprendre qu'une panne empêche de jouer les familles qui ont refusé les
+  statistiques. Ils ne contiennent aucun identifiant.
+</p>
+<p>Base légale&nbsp;: intérêt légitime à maintenir l'application en état de marche (article 6.1.f du RGPD).</p>
+
+<h3>3.4 Achats et période d'essai</h3>
+<p>
+  Les achats sont réalisés par l'App Store d'Apple ou Google Play. Nous ne voyons ni votre moyen de
+  paiement, ni votre nom, ni votre adresse&nbsp;: ces informations sont traitées par Apple ou Google
+  selon leur propre politique de confidentialité, et ne nous parviennent pas. Sur iOS, la durée
+  d'essai est mesurée à partir de la date d'achat signée par Apple, lue localement sur l'appareil.
+</p>
+
+<h3>3.5 Codes de réduction et codes cadeaux</h3>
+<p>
+  Si un parent saisit un code, nous conservons l'empreinte cryptographique (SHA-256) du code —
+  jamais le code lui-même —, l'identifiant de foyer opaque et un compteur d'utilisations. Rien
+  d'autre. Ces codes sont distribués gratuitement&nbsp;; ils ne sont jamais vendus et ne constituent
+  pas un moyen de paiement.
+</p>
+
+<h2>4. Adresses IP et journaux techniques</h2>
+<p>
+  Notre serveur ne journalise pas les adresses IP&nbsp;: aucun journal d'accès n'est activé sur notre
+  passerelle. Comme pour toute connexion à Internet, notre hébergeur traite techniquement l'adresse
+  IP le temps d'acheminer la requête, en qualité de sous-traitant, sans la conserver pour notre
+  compte. Nos journaux applicatifs contiennent des identifiants opaques et des codes de statut,
+  et sont supprimés au bout de 30 jours.
+</p>
+
+<h2>5. Hébergement, sécurité, destinataires</h2>
+<ul>
+  <li><strong>Où&nbsp;:</strong> Amazon Web Services, région Europe (Paris), <code>eu-west-3</code>, en France.
+      Aucun transfert hors de l'Union européenne.</li>
+  <li><strong>Sous-traitant&nbsp;:</strong> Amazon Web Services EMEA SARL, 38 avenue John F. Kennedy, L-1855 Luxembourg, pour le seul hébergement.</li>
+  <li><strong>Chiffrement&nbsp;:</strong> en transit par TLS (HTTPS obligatoire), au repos par
+      chiffrement du stockage.</li>
+  <li><strong>Destinataires&nbsp;:</strong> personne d'autre. Aucune donnée n'est transmise à un
+      annonceur, un courtier en données, ni un partenaire commercial.</li>
+</ul>
+
+<h2>6. Durées de conservation</h2>
+<table>
+  <tr><th>Donnée</th><th>Durée</th></tr>
+  <tr><td>Progression synchronisée d'un foyer</td><td>Conservée tant que le foyer existe, et supprimée sur demande (§7).</td></tr>
+  <tr><td>Statistiques d'usage anonymes</td><td>400 jours, puis suppression automatique.</td></tr>
+  <tr><td>Rapports d'erreur</td><td>400 jours, puis suppression automatique.</td></tr>
+  <tr><td>Journaux applicatifs</td><td>30 jours.</td></tr>
+  <tr><td>Empreintes de codes</td><td>Tant que le code est valable.</td></tr>
+</table>
+
+<h2>7. Vos droits</h2>
+<p>
+  Vous disposez d'un droit d'accès, de rectification, d'effacement, de limitation, d'opposition et
+  de portabilité, ainsi que du droit de retirer votre consentement à tout moment. Le retrait du
+  consentement aux statistiques se fait en une touche, dans les réglages parents&nbsp;: il est aussi
+  simple à retirer qu'à donner.
+</p>
+<p>
+  <strong>Une précision honnête sur l'accès et l'effacement.</strong> Nous ne détenons aucune
+  information permettant de vous identifier&nbsp;: nous ne pouvons donc pas retrouver vos données à
+  partir de votre nom ou de votre adresse e-mail. Pour exercer ces droits sur une progression
+  synchronisée, joignez à votre demande le lien de partage du foyer (réglages parents →
+  ajout d'un appareil → partager), qui contient l'identifiant opaque du foyer. Les statistiques du
+  §3.2 étant anonymes, elles ne peuvent par construction être ni retrouvées ni supprimées
+  individuellement&nbsp;: c'est la contrepartie de leur anonymat.
+</p>
+<p>
+  Écrivez à <a href="mailto:contact@dappit.fr">contact@dappit.fr</a>. Réponse
+  sous un mois. Vous pouvez également introduire une réclamation auprès de la CNIL
+  (<a href="https://www.cnil.fr">www.cnil.fr</a>).
+</p>
+
+<h2>8. Enfants</h2>
+<p>
+  L'application est conçue pour des enfants&nbsp;; elle est traitée comme telle de bout en bout. En
+  France, l'âge du consentement numérique est fixé à 15 ans&nbsp;: les choix décrits ici sont donc
+  toujours ceux du parent, et les écrans qui les portent sont volontairement écrits pour un adulte
+  et placés derrière un contrôle parental (une opération arithmétique). Aucun prix, aucun achat et
+  aucun lien externe n'est accessible à un enfant sans franchir ce contrôle.
+</p>
+
+<h2>9. Modifications</h2>
+<p>
+  Toute évolution de cette politique sera publiée sur cette page avec une nouvelle date. Un
+  changement portant sur la nature des données collectées sera signalé dans l'application.
+</p>
+
+<hr>
+
+<h1 lang="en">Privacy Policy</h1>
+<p class="sub" lang="en">Attrape-Lettres — iOS, Android and web application.<br>
+Effective 6 September 2026. The French text above prevails in case of discrepancy.</p>
+
+<div class="box" lang="en">
+  <strong>In short.</strong> Attrape-Lettres is a reading game for children of about six. Your child's
+  first name <em>never</em> leaves the device. There are no accounts, no advertising, no third-party
+  analytics, and nothing is sold or shared. On a device where the parent has neither enabled
+  sync nor accepted analytics, <strong>the app sends nothing at all</strong>, apart from an
+  occasional anonymous technical error report.
+</div>
+
+<h2 lang="en">1. Controller</h2>
+<p lang="en">
+  Attrape-Lettres is published by <strong>DappIT</strong>, a société par actions simplifiée
+  unipersonnelle (SASU) under French law.
+</p>
+<ul lang="en">
+  <li>Registered address: 34B rue des Fontaines, 92310 Sèvres, France</li>
+  <li>Registration (SIRET): 843 391 129 00023</li>
+  <li>VAT number: FR82843391129</li>
+  <li>Publication director: Jonathan Massuchetti</li>
+  <li>Contact: <a href="mailto:contact@dappit.fr">contact@dappit.fr</a></li>
+</ul>
+
+<h2 lang="en">2. What the app never does</h2>
+<ul lang="en">
+  <li>No accounts, no sign-up, no e-mail address requested.</li>
+  <li>No advertising, no advertising identifier, no cross-app tracking.</li>
+  <li>No third-party analytics or collection SDK of any kind. The statistics in §3.2 go to our own
+      server, or they are not sent.</li>
+  <li>The child's first name is never transmitted. It is stored on the device only; the sync code
+      strips it, and our server <em>rejects</em> any upload that contains it.</li>
+  <li>No location, contacts, photos, microphone or address book access.</li>
+  <li>No user-generated content, no social features, no links to social networks.</li>
+  <li>No sale or sharing of data for commercial or advertising purposes.</li>
+</ul>
+
+<h2 lang="en">3. Data we process</h2>
+
+<h3 lang="en">3.1 Game progress (multi-device sync)</h3>
+<p lang="en">
+  By default all progress stays on the device. It is sent to our server only if a parent has
+  explicitly paired two devices, either by scanning a QR code from the parent settings or — between
+  devices sharing one Apple ID — through Apple's iCloud key-value store. In that case we receive an
+  opaque household token, opaque child and device tokens, integer game counters (stars earned and
+  spent, rounds completed per exercise and level), mascot customisation, and technical timestamps
+  used to reconcile two devices. Never a name, an age, a date of birth, a photo or free text.
+  Legal basis: performance of the service requested (GDPR Art. 6(1)(b)).
+</p>
+
+<h3 lang="en">3.2 Usage statistics — <em>off by default</em></h3>
+<p lang="en">
+  A checkbox, shown to the parent at first launch and <strong>not pre-ticked</strong>, offers to send
+  anonymous statistics; it is revocable at any time behind the parental gate. When on, each payload
+  contains only an event name from a closed list of eleven, an exercise identifier from a closed
+  list, integers (level, rounds, correct answers, points, item cost, mascot stage, trial days left),
+  and the app version. There is <strong>no free-text field and no identifier</strong> of any kind, so
+  two payloads cannot be linked to one another. This data is anonymous rather than pseudonymous.
+  Legal basis: parental consent (GDPR Art. 6(1)(a)).
+</p>
+
+<h3 lang="en">3.3 Technical error reports</h3>
+<p lang="en">
+  On a malfunction, the app may send the app version, the code location, the error message and the
+  stack trace, all truncated, with no game state attached and therefore no child's name. These
+  reports are <strong>not</strong> gated by the §3.2 checkbox — that is deliberate, and it is the only
+  way we learn that a bug is stopping play for the families who declined analytics. They contain no
+  identifier. Legal basis: legitimate interest in keeping the app working (GDPR Art. 6(1)(f)).
+</p>
+
+<h3 lang="en">3.4 Purchases and trial</h3>
+<p lang="en">
+  Purchases are handled by the App Store or Google Play. We never see your payment method, name or
+  address; Apple and Google process those under their own privacy policies. On iOS the trial period
+  is measured from Apple's signed purchase date, read locally on the device.
+</p>
+
+<h3 lang="en">3.5 Redemption codes</h3>
+<p lang="en">
+  If a parent enters a code, we store the SHA-256 hash of the code — never the code itself — the
+  opaque household token, and a use counter. Codes are given away free; they are never sold and are
+  not a payment mechanism.
+</p>
+
+<h2 lang="en">4. IP addresses and logs</h2>
+<p lang="en">
+  Our server does not log IP addresses: no access logging is enabled on our gateway. As with any
+  internet connection, our host processes the IP address transiently to route the request, as our
+  processor, and does not retain it on our behalf. Our application logs hold opaque tokens and
+  status codes, and are deleted after 30 days.
+</p>
+
+<h2 lang="en">5. Hosting, security, recipients</h2>
+<p lang="en">
+  Amazon Web Services, Europe (Paris) region <code>eu-west-3</code>, in France. No transfer outside
+  the European Union. Sole processor: Amazon Web Services EMEA SARL, 38 avenue John F. Kennedy, L-1855 Luxembourg, for hosting only. Encrypted in
+  transit (TLS) and at rest. No other recipient — no advertiser, no data broker, no commercial
+  partner.
+</p>
+
+<h2 lang="en">6. Retention</h2>
+<p lang="en">
+  Synced household progress: kept while the household exists, deleted on request. Usage statistics
+  and error reports: 400 days, then automatic deletion. Application logs: 30 days. Code hashes:
+  while the code remains valid.
+</p>
+
+<h2 lang="en">7. Your rights</h2>
+<p lang="en">
+  You have the rights of access, rectification, erasure, restriction, objection and portability, and
+  may withdraw consent at any time — one tap in the parent settings, as easy to withdraw as to give.
+  One honest caveat: we hold nothing that identifies you, so we cannot find your data from your name
+  or e-mail. To exercise these rights over synced progress, include the household share link
+  (parent settings → add a device → share), which carries the opaque household token. The §3.2
+  statistics are anonymous and therefore cannot be located or deleted individually — that is the
+  price of their anonymity. Write to
+  <a href="mailto:contact@dappit.fr">contact@dappit.fr</a>; we answer within one
+  month. You may also lodge a complaint with the CNIL (<a href="https://www.cnil.fr">www.cnil.fr</a>).
+</p>
+
+<h2 lang="en">8. Children</h2>
+<p lang="en">
+  The app is built for children and treated as such throughout. France sets the digital consent age
+  at 15, so every choice described here is the parent's. The screens carrying those choices are
+  deliberately written for an adult and sit behind a parental gate (an arithmetic question). No
+  price, no purchase and no external link is reachable by a child without passing it.
+</p>
+
+<h2 lang="en">9. Changes</h2>
+<p lang="en">
+  Any change is published on this page with a new date. A change to what data is collected is also
+  announced in the app.
+</p>
+
+<footer>Attrape-Lettres — <a href="mailto:contact@dappit.fr">contact@dappit.fr</a></footer>
+
+</body>
+</html>
