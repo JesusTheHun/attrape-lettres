@@ -68,7 +68,7 @@
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>CFBundleURLName</key>
-			<string>fr.dappit.attrape-lettres.pair</string>
+			<string>fr.dappit.attrapelettres.pair</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>attrape-lettres</string>

@@ -160,6 +160,13 @@ struct ProjectWiringTests {
         }
         #expect(settings("DEVELOPMENT_TEAM = 267VC765WT;") == 2)
         #expect(settings("CODE_SIGN_STYLE = Automatic;") == 2)
+        // The bundle identifier is pinned beside the team because the two
+        // failed together. `fr.dappit.attrape-lettres` is registered to the
+        // personal team and cannot be taken back without portal work, so the
+        // app ships under the name Android and the StoreKit products already
+        // use. An App ID is permanent once published: changing this line after
+        // the first release is a different app, not a rename.
+        #expect(settings("PRODUCT_BUNDLE_IDENTIFIER = fr.dappit.attrapelettres;") == 2)
         #expect(
             !project.contains("PROVISIONING_PROFILE_SPECIFIER"),
             "a pinned profile has been added; it will expire and break the build for everyone"

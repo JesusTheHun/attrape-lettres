@@ -2506,3 +2506,39 @@ over Apple's.
 
 It is also why licensing now depends on sync existing. Only on the *id*, though:
 `EntitlementModel` takes a `() -> String?`, not a `SyncClient`.
+
+## D62 — The app ships as `fr.dappit.attrapelettres`, and the hyphen stays lost
+
+D59 ends with a name to reclaim: the personal team registered
+`fr.dappit.attrape-lettres` by free provisioning, and only that team's portal
+can release it. Reclaiming it is a session in someone else's Apple ID, an
+uncertain propagation delay, and no benefit at the end — the identifier is a
+key, and nobody sees it.
+
+So the app takes the name the rest of the product already uses. Android's
+`applicationId` is `fr.dappit.attrapelettres`, and so are both StoreKit
+products (`…​.trial14`, `…​.unlock`). The hyphenated iOS bundle identifier was
+the outlier, not the standard, and dropping it makes three platforms and two
+IAP records agree.
+
+What moved: `PRODUCT_BUNDLE_IDENTIFIER` in both configurations, and
+`CFBundleURLName`, which is a label rather than a functional key. What did NOT
+move, deliberately:
+
+- **The URL scheme stays `attrape-lettres`.** It is the product's name, it is
+  what `PairingLink` builds and parses, and it is not an App ID — nothing about
+  it was ever contested.
+- **The iCloud entitlement needed no edit.** It is written
+  `$(TeamIdentifierPrefix)$(CFBundleIdentifier)`, so the KV-store container
+  follows the bundle wherever it goes. A literal string there would have been a
+  second thing to remember and a silent pairing failure when it was forgotten.
+- **Every storage key is untouched.** `CapacitorStorage.attrape-lettres:*`
+  names a schema this app inherited, not a bundle. They are unrelated strings
+  that happen to rhyme, and renaming them would strand the profiles on any
+  device that has already played.
+
+The identifier is now pinned in `AppLinkContractTests.signingTeam`, beside the
+team, because the two failed together and for one reason: settings Xcode is
+free to rewrite. And unlike the team, this one is permanent — an App ID cannot
+be changed after the first release. A build with a different string in that
+line is a different app, with no path back to the first one's users.
